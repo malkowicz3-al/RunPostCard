@@ -32,11 +32,11 @@ export function PostcardScreen({
   const [view, setView] = useState<'flat' | '3d'>('flat');
   const [showHighlights, setShowHighlights] = useState(false);
   const streams = useRunStreams(activity, onSessionExpired);
-  const has3d = !!streams?.altitude;
-  const is3d = view === '3d' && has3d;
-  // W 3D mapa się nie rysuje, więc też nie pobieramy kafelków.
-  const isMap = !is3d && look !== 'gradient' && look !== 'transparent';
+  const isMap = look !== 'gradient' && look !== 'transparent';
   const fit = useMemo(() => fitRoute(activity.map.summary_polyline, ROUTE_BOX), [activity]);
+  // 3D liczy się na płaskiej projekcji trasy, więc bez niej przycisk nie ma sensu.
+  const has3d = !!streams?.altitude && fit !== null;
+  const is3d = view === '3d' && has3d;
   const map = useMapLayers(fit?.projection ?? null, SIZE, POSTCARD, isMap);
   const mapLoading = isMap && !map.layers;
 
@@ -68,11 +68,6 @@ export function PostcardScreen({
   const choose = (value: Look) => {
     setMapFailed(false);
     setLook(value);
-  };
-
-  const chooseView = (value: 'flat' | '3d') => {
-    if (value === '3d' && look !== 'gradient' && look !== 'transparent') choose('gradient');
-    setView(value);
   };
 
   return (
@@ -110,16 +105,15 @@ export function PostcardScreen({
             onLook={choose}
             accent={accent}
             onAccent={setAccent}
-            mapDisabled={is3d}
           />
           {streams && (
             <div className="toggle-row">
               {has3d && (
                 <div className="toggle-group" role="group" aria-label="View">
-                  <button className="toggle" aria-pressed={!is3d} onClick={() => chooseView('flat')}>
+                  <button className="toggle" aria-pressed={!is3d} onClick={() => setView('flat')}>
                     Flat
                   </button>
-                  <button className="toggle" aria-pressed={is3d} onClick={() => chooseView('3d')}>
+                  <button className="toggle" aria-pressed={is3d} onClick={() => setView('3d')}>
                     3D
                   </button>
                 </div>

@@ -38,10 +38,12 @@ export function Postcard({
   // Jedna projekcja dla mapy i trasy („scena”).
   const polyline = activity.map.summary_polyline;
   const fit = useMemo(() => fitRoute(polyline, ROUTE_BOX), [polyline]);
-  const iso = useMemo(() => (view === '3d' && streams ? isoRoute(streams, ROUTE_BOX) : null), [view, streams]);
+  const iso = useMemo(
+    () => (view === '3d' && streams && fit ? isoRoute(streams, ROUTE_BOX, fit.projection) : null),
+    [view, streams, fit],
+  );
   const is3d = !!iso;
-  // W 3D mapa płaska nie pasuje do rzutu: tło 'map' spada do gradientu.
-  const showMap = !is3d && background === 'map' && fit && map;
+  const showMap = background === 'map' && fit && map;
   const items = useMemo(() => (highlights && streams ? findHighlights(streams) : []), [highlights, streams]);
   // Markery płaskie: strumień latlng tą samą projekcją co trasa; indeksy jak w strumieniu.
   const flatPoints = useMemo(
@@ -54,11 +56,36 @@ export function Postcard({
   return (
     <svg className="postcard" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920">
       {fontCss && <style>{fontCss}</style>}
-      {(background === 'gradient' || (is3d && background === 'map')) && <Background />}
-      <g>
-        {out?.scene}
-        {iso ? <IsoRoute iso={iso} /> : fit && <Route {...out?.route} d={fit.d} />}
-      </g>
+      {background === 'gradient' && <Background />}
+      {iso ? (
+        <g>
+          {out && (
+            <>
+              {/* Podłoga 3D: ta sama mapa co w widoku płaskim, przekształcona macierzą izometrii; brzegi wygaszone. */}
+              <rect width={1080} height={1920} fill={THEMES[theme].style({ accent }).background} />
+              <defs>
+                {/* Środek wygaszania w środku pola trasy (ROUTE_BOX), nie płótna, żeby podłoga była symetryczna. */}
+                <radialGradient id="iso-floor-fade-grad" gradientUnits="userSpaceOnUse" cx={540} cy={720} r={760}>
+                  <stop offset="0.6" stopColor="#ffffff" />
+                  <stop offset="1" stopColor="#000000" />
+                </radialGradient>
+                <mask id="iso-floor-fade">
+                  <rect width={1080} height={1920} fill="url(#iso-floor-fade-grad)" />
+                </mask>
+              </defs>
+              <g transform={`matrix(${iso.matrix.join(' ')})`}>
+                <g mask="url(#iso-floor-fade)">{out.scene}</g>
+              </g>
+            </>
+          )}
+          <IsoRoute iso={iso} flat={out?.route.stroke} text={text.color} />
+        </g>
+      ) : (
+        <g>
+          {out?.scene}
+          {fit && <Route {...out?.route} d={fit.d} />}
+        </g>
+      )}
       {items.length > 0 && <RouteMarkers points={iso ? iso.points : flatPoints} items={items} color={text.color} />}
       <g color={text.color} filter={text.filter}>
         {defaultLayout.map(({ slot, x, y, size }) => {

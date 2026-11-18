@@ -9,12 +9,15 @@ const hills = mockActivities().find((r) => r.name === 'Hill repeats')!;
 const streams = mockStreams(hills);
 
 describe('Postcard 3D i markery', () => {
-  it('3D z tłem map: bez mapy i podpisu OSM, tylko lokalne url(#…), bez zewnętrznych adresów', () => {
+  it('3D z tłem map: mapa jako podłoga, podpis OSM, tylko lokalne i unikalne id, bez zewnętrznych adresów', () => {
     const svg = renderToStaticMarkup(
       <Postcard activity={hills} background="map" map={LAYERS} theme="neon" streams={streams} view="3d" highlights />,
     );
-    expect(svg).not.toContain(MAP_ATTRIBUTION);
+    expect(svg).toContain('transform="matrix(');
+    expect(svg).toContain(MAP_ATTRIBUTION);
     for (const [, ref] of svg.matchAll(/url\(#([\w-]+)\)/g)) expect(svg).toContain(`id="${ref}"`);
+    const ids = [...svg.matchAll(/id="([^"]+)"/g)].map(([, id]) => id);
+    expect(new Set(ids).size).toBe(ids.length);
     // xmlns to identyfikator, nie zasób.
     expect(svg.replaceAll('http://www.w3.org/2000/svg', '')).not.toMatch(/https?:\/\//);
     expect(svg).toContain('MAX HR');

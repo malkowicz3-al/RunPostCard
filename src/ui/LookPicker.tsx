@@ -17,7 +17,6 @@ export function LookPicker({
   onLook,
   accent,
   onAccent,
-  mapDisabled = false,
 }: {
   polyline: string;
   hasRoute: boolean;
@@ -25,15 +24,12 @@ export function LookPicker({
   onLook: (look: Look) => void;
   accent: string;
   onAccent: (accent: string) => void;
-  mapDisabled?: boolean;
 }) {
-  const tile = (value: Look, label: string, preview: ReactNode, className = '', disabled = false) => (
+  const tile = (value: Look, label: string, preview: ReactNode, className = '') => (
     <button
       key={value}
       className="look-tile"
       aria-pressed={look === value}
-      disabled={disabled}
-      title={disabled ? 'Map themes are off in 3D' : undefined}
       onClick={() => onLook(value)}
     >
       <span className={`look-preview ${className}`}>{preview}</span>
@@ -58,7 +54,7 @@ export function LookPicker({
           (Object.keys(THEMES) as ThemeId[]).map((id) => {
             const theme = THEMES[id];
             const route = theme.render({}, { accent }).route.stroke;
-            return tile(id, theme.label, <RouteThumb polyline={polyline} style={theme.style({ accent })} route={route} />, '', mapDisabled);
+            return tile(id, theme.label, <RouteThumb polyline={polyline} style={theme.style({ accent })} route={route} />);
           })}
       </div>
       {look === 'neon' && (

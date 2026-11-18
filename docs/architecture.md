@@ -33,7 +33,7 @@ src/
     slots.ts              # model slotu {id, data, form}, rejestr danych (data -> etykieta + wartość z Activity), domyślny układ 9:16
     Postcard.tsx          # jeden <svg viewBox="0 0 1080 1920">: tło, trasa, sloty, znak Strava; ten sam SVG idzie do eksportu
     Background.tsx        # gradient + ziarno przez filtr feTurbulence (kod, bez obrazków)
-    IsoRoute.tsx          # widok 3D: kurtyna, cień na podłożu, trasa kolorowana nachyleniem (stałe kolory)
+    IsoRoute.tsx          # widok 3D: kurtyna, cień na podłożu, trasa kolorowana nachyleniem (płaskie odcinki w kolorze trasy motywu)
     RouteMarkers.tsx      # kropki i etykiety markerów (FASTEST, MAX HR, MIN HR, HIGHEST) w punktach trasy
     Route.tsx             # <path> trasy z gotowej ścieżki + styl z motywu (kolor, grubość, filtr); ROUTE_BOX = obszar trasy na płótnie
     MapBackground.tsx     # renderer warstw mapy: <rect> tła + jeden <path> na warstwę wg MapStyle (kolory, grubości, opcjonalny filtr; wektor inline, ADR 0004)
@@ -110,7 +110,7 @@ docs/
 - **Testy: Vitest**: współdzieli konfigurację Vite, zero dodatkowej konfiguracji; testy tylko dla logiki (polyline, format, stravaToken).
 - **Jednostki: tylko km** w etapie 1.
 - **Mapa wektorowa z OpenFreeMap rysowana jako SVG** (bez klucza i bez biblioteki map): kafelki liczone z tej samej projekcji co trasa, dekodowane przez `@mapbox/vector-tile` + `pbf`, jedna ścieżka na warstwę; CARTO usunięte (ADR 0004, zastępuje 0003).
-- **Strumienie tylko dla otwartej pocztówki** (limit zapytań Stravy); markery i 3D liczone czystymi funkcjami z jednego `RunStreams`. **W 3D mapa jest wyłączona** (płaska mapa nie pasuje do rzutu): tło `map` spada do gradientu, kafelki motywów nieaktywne, bez podpisu OSM (ADR 0006).
+- **Strumienie tylko dla otwartej pocztówki** (limit zapytań Stravy); markery i 3D liczone czystymi funkcjami z jednego `RunStreams`. **W 3D mapa jest podłogą**: izometria jest afiniczna na płaskim płótnie, więc ta sama scena motywu leży pod trasą w `<g transform="matrix(...)">` (`iso.matrix`), z wygaszonymi brzegami i podpisem OSM (ADR 0006).
 - **Motywy mapy tylko stylistyczne** (dark, light, neon): te same warstwy mapy, inne kolory, grubości i filtry SVG (lokalne `url(#…)`, więc eksport działa); bez ikon, bez plików graficznych i nowych zależności; miniatury listy bez zmian (ADR 0005). Neon liczony z jednego koloru `accent`.
 
 ## Otwarte pytania

@@ -429,12 +429,6 @@ button.look-tile {
   border-color: var(--text);
 }
 
-.look-tile:disabled,
-.look-tile:disabled:hover {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
 .toggle-row {
   display: flex;
   flex-wrap: wrap;

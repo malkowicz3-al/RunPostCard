@@ -63,27 +63,29 @@ Ograniczenia:
   export type IsoRoute = {
     points: [number, number][]; // trasa podniesiona o wysokość, w układzie płótna
     ground: [number, number][]; // ta sama trasa na podłożu (cień, dół kurtyny)
-    grade: number[];            // wygładzone nachylenie odcinka i -> i+1 (kolor)
+    slope: (-1 | 0 | 1)[];      // klasa nachylenia odcinka i -> i+1 (kolor)
     exaggeration: number;       // >1 = przewyższenie wzmocnione (podpis "elevation ×N")
+    matrix: [number, number, number, number, number, number]; // SVG matrix: płaskie płótno -> podłoże 3D
   };
-  export function isoRoute(s: RunStreams, box: Box): IsoRoute | null; // null bez altitude
+  export function isoRoute(s: RunStreams, box: Box, projection: GeoProjection): IsoRoute | null; // null bez altitude
   ```
-  - Mercator z d3-geo (jak `fitRoute`), obrót 45°, oś Y × 0,5, podniesienie `(alt - min) × skala`, na końcu własne dopasowanie bboxu `points ∪ ground` do `box`. Skala wysokości: co najmniej ok. 15% wysokości `box`.
-  - Nie zależy od `fitRoute`; `routePath.ts` zostaje bez zmian. `Box` importowany z `routePath.ts`, `ROUTE_BOX` z `postcard/Route.tsx`.
+  - `projection` = `fit.projection` (płaska projekcja pocztówki, ta sama co mapa). Punkt podłoża = `projection(latlng)`, potem obrót 45° i oś Y × 0,5, podniesienie `(alt - min) × skala`, na końcu dopasowanie bboxu `points ∪ ground` do `box`. Całość podłoża jest afiniczna, więc `matrix` przenosi płaską mapę pod trasę 3D.
+  - Wygładzanie (szum zegarka): `latlng` średnią kroczącą z 7 próbek (indeksy zachowane), wysokość średnią w oknie ±100 m dystansu, nachylenie z okna ±100 m, progi ±4%, serie krótsze niż 150 m przejmują klasę sąsiada (bez migotania).
+  - Wzmocnienie: celuje w ok. 6% wysokości `box`, ale najwyżej ×3 (`MAX_EXAGGERATION`), żeby płaski bieg wyglądał płasko.
 - Obie funkcje bez DOM i sieci, z testami Vitest.
 
 ### 5. Rysowanie i `Postcard.tsx`
 - Nowe props: `streams?: RunStreams | null`, `view?: 'flat' | '3d'` (domyślnie `'flat'`), `highlights?: boolean` (domyślnie `false`). Bez nich pocztówka jest identyczna jak dziś.
 - `Postcard` liczy `useMemo`: `highlights(streams)` i przy `view === '3d'` `isoRoute(streams, ROUTE_BOX)`.
-- **Reguła 3D:** przy `view === '3d'` mapa się nie rysuje (`showMap` wymaga `view === 'flat'`), więc motyw nie działa, tekst biały, znak biały, bez podpisu OSM. Tło gradient albo przezroczyste jak dziś.
-- `src/postcard/IsoRoute.tsx`: kurtyna, cień, trasa kolorowana nachyleniem. Kolory nachylenia to stałe w tym pliku (w 3D nie ma motywu, więc `ThemeOutput` nie istnieje).
+- **Mapa w 3D jako podłoga:** przy motywie mapy rysujemy prostokąt w kolorze tła motywu, potem `scene` motywu w `<g transform="matrix(iso.matrix)">` z maską wygaszającą brzegi (`iso-floor-fade`), na końcu trasę 3D. Tekst, znak i podpis OSM jak w widoku płaskim. (Wcześniej 3D wyłączało mapę; zmienione na prośbę właściciela: bez mapy brakowało odniesienia.)
+- `src/postcard/IsoRoute.tsx`: kurtyna, cień, trasa kolorowana nachyleniem; rysuje najwyżej ~800 punktów (co k-ty + ostatni), markery dalej używają pełnych `iso.points`. Kolory z/pod górę stałe; płaskie odcinki i kurtyna w kolorze trasy motywu (biały bez mapy).
 - `src/postcard/RouteMarkers.tsx`: `{ points: [number, number][]; items: Highlight[]; color: string }`. Widok płaski podaje punkty rzutowane przez `fit.projection` (projekcja z `summary_polyline`; strumień `latlng` jest gęstszy, ale leży na tej samej trasie), 3D podaje `iso.points`. Kolor = `text.color`.
 - Wszystko zwykłe SVG wewnątrz tego samego `<svg>`, eksport PNG/SVG bez zmian.
 
 ### 6. `PostcardScreen.tsx` i panel Style
 - Stan `view` i `highlights` (domyślnie `'flat'` i wyłączone); `streams = useRunStreams(activity)`.
 - Przełącznik „Highlights” widoczny, gdy `streams` istnieje; „Flat / 3D” widoczny, gdy `streams?.altitude` istnieje.
-- Przejście do 3D przy wybranym motywie mapy ustawia `look = 'gradient'` (jak dzisiejsza obsługa błędu mapy); w 3D kafelki motywów są `disabled`. `isMap` jest wtedy fałszywe, więc `useMapLayers` nic nie pobiera.
+- Przełącznik 3D nie zmienia wyglądu; kafelki motywów działają w obu widokach i mapa ładuje się tak samo.
 
 ## Konsekwencje
 - Jedno dodatkowe zapytanie do Stravy na otwarcie pocztówki; lista bez zmian w kosztach. Powrót do tej samej pocztówki pobiera ponownie (bez cache, świadomie).
