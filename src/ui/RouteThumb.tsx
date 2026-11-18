@@ -12,8 +12,8 @@ export function RouteThumb({ polyline }: { polyline: string }) {
       <path
         d={routePath(polyline, BOX) ?? ''}
         fill="none"
-        stroke="#fc4c02"
-        strokeWidth={4}
+        stroke="currentColor"
+        strokeWidth={2.5}
         strokeLinecap="round"
         strokeLinejoin="round"
       />

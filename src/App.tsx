@@ -64,7 +64,7 @@ export function App() {
     const timer = setTimeout(() => {
       history.pushState({ screen: 'postcard' }, '');
       setScreen('postcard');
-    }, 1200);
+    }, 700);
     return () => clearTimeout(timer);
   }, [screen]);
 
@@ -92,10 +92,6 @@ export function App() {
 
   return (
     <main className="app">
-      <header className="app-header">
-        <h1>RunPostcard</h1>
-        <p>Turn one of your runs into a postcard.</p>
-      </header>
       {error && <p className="error">{error}</p>}
       {screen === 'login' && <LoginScreen />}
       {screen === 'debug' && RawActivities && (
@@ -103,25 +99,22 @@ export function App() {
           <RawActivities />
         </Suspense>
       )}
-      {screen === 'list' && <ActivityList runs={runs} loading={loading} onSelect={onSelect} />}
+      {screen === 'list' && (
+        <ActivityList runs={runs} loading={loading} onSelect={onSelect} onLogout={onLogout} />
+      )}
       {screen === 'generating' && (
         <div className="screen generating">
-          <div className="pulse" />
-          <p>Generating…</p>
+          <div className="postcard-frame" />
+          <p>Creating your postcard…</p>
         </div>
       )}
       {screen === 'postcard' && selected && (
-        <PostcardScreen
-          activity={selected}
-          onBack={() => history.back()}
-          onLogout={onLogout}
-        />
+        <PostcardScreen activity={selected} onBack={() => history.back()} />
       )}
       <footer>
-        <svg className="strava-mark" viewBox="0 0 340 36">
+        <svg className="strava-mark" viewBox="0 0 340 36" role="img" aria-label="Powered by Strava">
           <StravaMark x={0} y={26} />
         </svg>
-        {screen === 'list' && <button onClick={onLogout}>Log out</button>}
       </footer>
     </main>
   );

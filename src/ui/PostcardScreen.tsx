@@ -4,15 +4,7 @@ import { Postcard } from '../postcard/Postcard';
 import { exportPng, exportSvg } from '../lib/exportPng';
 import { loadFontCss } from '../lib/fonts';
 
-export function PostcardScreen({
-  activity,
-  onBack,
-  onLogout,
-}: {
-  activity: Activity;
-  onBack: () => void;
-  onLogout: () => void;
-}) {
+export function PostcardScreen({ activity, onBack }: { activity: Activity; onBack: () => void }) {
   const previewRef = useRef<HTMLDivElement>(null);
   const [fontCss, setFontCss] = useState<string>();
   const [exportFailed, setExportFailed] = useState(false);
@@ -38,21 +30,31 @@ export function PostcardScreen({
 
   return (
     <div className="screen postcard-screen">
-      <div className="preview" ref={previewRef}>
+      <div className="top-bar">
+        <button className="text-button" aria-label="Back to runs" onClick={onBack}>
+          ‹ Runs
+        </button>
+        <h1 className="run-title">{activity.name}</h1>
+      </div>
+      {/* Szachownica tylko na otoczce podglądu, żeby nie trafiła do eksportu. */}
+      <div className={`postcard-frame${transparent ? ' checkerboard' : ''}`} ref={previewRef}>
         <Postcard activity={activity} fontCss={fontCss} transparent={transparent} />
       </div>
-      <div className="actions">
-        <button aria-pressed={transparent} onClick={() => setTransparent((t) => !t)}>
-          Background: {transparent ? 'transparent' : 'gradient'}
+      <div className="segmented" role="group" aria-label="Background">
+        <button aria-pressed={!transparent} onClick={() => setTransparent(false)}>
+          Gradient
+        </button>
+        <button aria-pressed={transparent} onClick={() => setTransparent(true)}>
+          Transparent
         </button>
       </div>
       <div className="actions">
         <button className="primary" onClick={downloadPng}>
           Download PNG
         </button>
-        <button onClick={downloadSvg}>Download SVG</button>
-        <button onClick={onBack}>Back</button>
-        <button onClick={onLogout}>Log out</button>
+        <button aria-label="Download SVG" onClick={downloadSvg}>
+          SVG
+        </button>
       </div>
       {exportFailed && <p className="error">Could not create the PNG.</p>}
     </div>

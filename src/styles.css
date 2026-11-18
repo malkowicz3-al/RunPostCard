@@ -1,108 +1,207 @@
 :root {
-  color-scheme: dark;
-  font-family: system-ui, sans-serif;
-  background: #0b0b14;
-  color: #f5f5f7;
-  --accent: #fc4c02;
-  --surface: #14141f;
-  --surface-hover: #1a1a2a;
-  --border: #262636;
-  --muted: #9a9aaf;
+  color-scheme: light dark;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.4;
+  --bg: #0a0a0b;
+  --surface: #141416;
+  --surface-hover: #1c1c1f;
+  --text: #fafafa;
+  --text-secondary: #a1a1aa;
+  --separator: #27272a;
+  --strava: #fc4c02;
+  --segment-selected: #2c2c30;
+  --error: #ff8a8a;
+  --primary-bg: var(--text);
+  --primary-text: var(--bg);
+  background: var(--bg);
+  color: var(--text);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #ffffff;
+    --surface: #f4f4f5;
+    --surface-hover: #ebebed;
+    --text: #0a0a0b;
+    --text-secondary: #52525b;
+    --separator: #e4e4e7;
+    --segment-selected: #ffffff;
+    --error: #c62828;
+  }
 }
 
 body {
   margin: 0;
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .app {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.75rem;
-  min-height: 100vh;
-  padding: 2.5rem 1rem 1rem;
+  gap: 16px;
+  min-height: 100dvh;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.top-bar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 1120px;
+  padding: 12px 16px;
   box-sizing: border-box;
+  background: var(--bg);
 }
 
-.app-header {
-  text-align: center;
-}
-
-.app-header h1 {
+.screen-title {
   margin: 0;
-  font-size: 2rem;
-  letter-spacing: -0.02em;
+  font-size: 28px;
+  font-weight: 600;
 }
 
-.app-header p {
-  margin: 0.35rem 0 0;
-  color: var(--muted);
+.run-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .screen {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
+  gap: 16px;
   width: 100%;
   max-width: 480px;
+  padding: 0 16px;
+  box-sizing: border-box;
+}
+
+.list-screen,
+.postcard-screen,
+.generating {
+  max-width: none;
+  padding: 0;
 }
 
 button {
   font: inherit;
-  padding: 0.7rem 1.2rem;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: #1b1b28;
-  color: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  min-height: 44px;
+  padding: 0 20px;
+  border-radius: 12px;
+  border: none;
+  background: var(--surface);
+  color: var(--text);
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.15s;
 }
 
 button:hover {
-  background: #23233a;
-  border-color: #3f3f56;
+  background: var(--surface-hover);
 }
 
 button:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--text);
   outline-offset: 2px;
 }
 
-button.primary,
-button.strava {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #ffffff;
-  font-weight: 600;
+button.primary {
+  background: var(--primary-bg);
+  color: var(--primary-text);
 }
 
-button.primary:hover,
+button.primary:hover {
+  opacity: 0.9;
+}
+
+button.strava {
+  background: var(--strava);
+  color: #ffffff;
+}
+
 button.strava:hover {
   background: #e04302;
-  border-color: #e04302;
+}
+
+button.text-button {
+  background: none;
+  padding: 0 12px;
 }
 
 .error {
-  color: #ff8a8a;
+  color: var(--error);
+  text-align: center;
+  margin: 12px 16px 0;
+}
+
+/* Login */
+.login {
+  flex: 1;
+  justify-content: center;
   text-align: center;
 }
 
-.runs {
-  list-style: none;
-  padding: 0;
+.login h1 {
   margin: 0;
-  width: 100%;
-  max-width: 960px;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
-@media (min-width: 640px) {
+.login p {
+  margin: 0;
+  font-size: 17px;
+  color: var(--text-secondary);
+}
+
+.login .login-note {
+  font-size: 13px;
+}
+
+/* Lista */
+.runs {
+  list-style: none;
+  margin: 0;
+  width: 100%;
+  max-width: 1120px;
+  padding: 0 16px;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+@media (min-width: 720px) {
   .runs {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+}
+
+@media (min-width: 1040px) {
+  .runs {
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 
@@ -114,28 +213,23 @@ button.strava:hover {
   display: flex;
   flex-direction: column;
   flex: 1;
-  gap: 0.6rem;
+  gap: 8px;
   width: 100%;
-  padding: 0.75rem;
+  box-sizing: border-box;
+  padding: 10px;
   text-align: left;
-  background: var(--surface);
-  border-radius: 14px;
-}
-
-.run-tile:hover {
-  background: var(--surface-hover);
-  border-color: var(--accent);
+  border-radius: 16px;
+  font-weight: 400;
 }
 
 .route-thumb {
   display: block;
   width: 100%;
   aspect-ratio: 1;
-  border-radius: 10px;
-  background: #0f0f1a;
 }
 
 .run-name {
+  font-size: 15px;
   font-weight: 600;
   line-height: 1.25;
   display: -webkit-box;
@@ -145,12 +239,121 @@ button.strava:hover {
 }
 
 .run-meta {
-  font-size: 0.85rem;
-  color: var(--muted);
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
 }
 
-.preview {
+.loading {
+  display: flex;
+  justify-content: center;
   width: 100%;
+}
+
+.skeleton .run-tile {
+  background: var(--surface);
+}
+
+.skeleton .route-thumb,
+.skeleton-bar {
+  border-radius: 8px;
+  background: var(--surface-hover);
+  animation: skeleton 1.4s ease-in-out infinite;
+}
+
+.skeleton-bar {
+  height: 14px;
+  width: 80%;
+}
+
+.skeleton-bar.short {
+  width: 50%;
+}
+
+@keyframes skeleton {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.empty {
+  text-align: center;
+  padding: 48px 16px;
+}
+
+.empty p {
+  margin: 0;
+  font-size: 17px;
+}
+
+.empty p + p {
+  margin-top: 4px;
+  font-size: 15px;
+  color: var(--text-secondary);
+}
+
+/* Pocztówka i "generating": ta sama szerokość ramki 9:16 */
+.postcard-frame {
+  /* Dolna granica: przy niskim oknie (telefon w poziomie) podgląd nie znika. */
+  width: max(200px, min(100% - 32px, 480px, calc((100dvh - 260px) * 9 / 16)));
+  aspect-ratio: 9 / 16;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.generating .postcard-frame {
+  background: var(--surface);
+  box-shadow: none;
+}
+
+.generating p {
+  margin: 0;
+  font-size: 15px;
+  color: var(--text-secondary);
+}
+
+/* Stałe, ciemne tony w obu motywach: treść pocztówki jest biała i na jasnej szachownicy znika. */
+.postcard-frame.checkerboard {
+  background: conic-gradient(#3a3a3f 25%, #2c2c30 0 50%, #3a3a3f 0 75%, #2c2c30 0) 0 0 / 32px 32px;
+}
+
+.postcard {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.segmented {
+  display: flex;
+  width: min(100% - 32px, 320px);
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--surface);
+  box-sizing: border-box;
+}
+
+.segmented button {
+  flex: 1;
+  font-weight: 400;
+  border-radius: 8px;
+  background: none;
+}
+
+.segmented button[aria-pressed='true'] {
+  background: var(--segment-selected);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
 }
 
 .raw-json {
@@ -163,57 +366,24 @@ button.strava:hover {
   border-radius: 10px;
 }
 
-.postcard {
-  display: block;
-  width: 100%;
-  height: auto;
-  max-height: 80vh;
-  border-radius: 14px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
-}
-
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  justify-content: center;
-}
-
-.generating .pulse {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: var(--accent);
-  animation: pulse 1.2s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%,
-  100% {
-    transform: scale(0.6);
-    opacity: 0.4;
-  }
-  50% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
 footer {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  width: 100%;
-  max-width: 960px;
+  justify-content: center;
   margin-top: auto;
-  padding-top: 1rem;
-  border-top: 1px solid var(--border);
-  box-sizing: border-box;
+  padding: 16px 0 20px;
 }
 
 .strava-mark {
-  width: 180px;
-  height: auto;
-  opacity: 0.85;
+  display: block;
+  height: 14px;
+  width: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }
