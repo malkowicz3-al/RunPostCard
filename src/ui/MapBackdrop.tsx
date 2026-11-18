@@ -2,8 +2,10 @@ import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import type { GeoProjection } from 'd3-geo';
 import { backdropViewBox, nextBackdropArea, type LoadedArea } from '../lib/backdrop';
 import { cameraTransform, type Camera } from '../lib/camera';
+import type { IsoRoute as Iso } from '../lib/isoRoute';
 import type { Rect, Region } from '../lib/mapTiles';
 import { loadAreaLayers, type MapProfile } from '../lib/vectorMap';
+import { IsoRoute } from '../postcard/IsoRoute';
 import { MapBackground } from '../postcard/MapBackground';
 import { Route } from '../postcard/Route';
 import { THEMES, type ThemeId } from '../postcard/themes';
@@ -23,6 +25,7 @@ export function MapBackdrop({
   profile,
   camera,
   settled,
+  iso,
 }: {
   frameRef: RefObject<HTMLElement | null>;
   projection: GeoProjection;
@@ -32,6 +35,7 @@ export function MapBackdrop({
   profile: MapProfile;
   camera: Camera;
   settled: Camera; // kamera po zatrzymaniu: od niej zależy doczytany obszar
+  iso?: Iso; // widok 3D: mapa jako podłoga z macierzą izometrii i trasa z przewyższeniem
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [viewBox, setViewBox] = useState<Rect | null>(null);
@@ -63,9 +67,9 @@ export function MapBackdrop({
   const area = useRef<LoadedArea | null>(null);
   const region = useMemo((): Region | null => {
     if (!viewBox) return null;
-    area.current = nextBackdropArea(area.current, viewBox, settled);
+    area.current = nextBackdropArea(area.current, viewBox, settled, iso?.matrix);
     return area.current;
-  }, [viewBox, settled]);
+  }, [viewBox, settled, iso]);
   const { refined } = useRegionLayers(projection, region, profile, true, loadArea);
 
   const { style, routeStyle } = useMemo(() => {
@@ -84,8 +88,19 @@ export function MapBackdrop({
     >
       <rect x={x0} y={y0} width={x1 - x0} height={y1 - y0} fill={style.background} />
       <g transform={cameraTransform(camera)}>
-        {refined && <MapBackground layers={refined.layers} style={style} rect={refined.rect} />}
-        <Route d={route} stroke={routeStyle.stroke} width={routeStyle.width} dash={routeStyle.dash} zoom={camera.zoom} />
+        {iso ? (
+          <>
+            <g transform={`matrix(${iso.matrix.join(' ')})`}>
+              {refined && <MapBackground layers={refined.layers} style={style} rect={refined.rect} />}
+            </g>
+            <IsoRoute iso={iso} flat={routeStyle.stroke} dash={routeStyle.dash} zoom={camera.zoom} gradientId="backdrop-curtain-grad" />
+          </>
+        ) : (
+          <>
+            {refined && <MapBackground layers={refined.layers} style={style} rect={refined.rect} />}
+            <Route d={route} stroke={routeStyle.stroke} width={routeStyle.width} dash={routeStyle.dash} zoom={camera.zoom} />
+          </>
+        )}
       </g>
       <rect x={x0} y={y0} width={x1 - x0} height={y1 - y0} fill="#000000" opacity={0.5} />
     </svg>

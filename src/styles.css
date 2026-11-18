@@ -340,6 +340,7 @@ button.text-button {
 .postcard-frame.pannable {
   touch-action: none;
   cursor: grab;
+  user-select: none; /* przeciąganie mapy nie zaznacza tekstu pocztówki */
 }
 
 /* Płasko przy zoomie 1: palec przewija stronę, szczypanie dalej przychodzi jako zdarzenia wskaźnika. */

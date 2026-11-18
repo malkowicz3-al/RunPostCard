@@ -345,6 +345,13 @@ describe('loadRegionLayers', () => {
     expect(pbfCalls(fetchMock)).toBe(0);
   });
 
+  it('bez gęstszych kafelków fragment poza płótnem dostaje mapę na poziomie pocztówki', async () => {
+    const fetchMock = stubTiles();
+    const layers = await loadRegionLayers(atZoom(14), SIZE, POSTCARD, { k: 2, rect: [-500, 0, 500, 500] });
+    expect(layers?.water).toBeDefined();
+    expect(fetchMock.mock.calls.map(([url]) => String(url)).filter((u) => u.endsWith('.pbf')).every((u) => u.includes('/14/'))).toBe(true);
+  });
+
   it('null, gdy fragment wymaga ponad 24 kafelków', async () => {
     const fetchMock = stubTiles();
     // k = 8 -> z13, kafelek 128 jednostek: całe płótno to 81 kafelków.

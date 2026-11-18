@@ -15,17 +15,10 @@ export const cameraTransform = ({ zoom, x, y }: Camera) =>
   `translate(${CX * (1 - zoom) + x} ${CY * (1 - zoom) + y}) scale(${zoom})`;
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
-// 3D: środek trasy nie wychodzi poza płótno, a przy zoomie każdy punkt pola trasy da się przesunąć na środek.
-// Płaski: przeskalowane płótno zawsze przykrywa ramkę (przy zoomie 1 brak przesuwania).
-export const clampCamera = ({ zoom, x, y }: Camera, view: 'flat' | '3d' = '3d'): Camera => {
+// Środek trasy nie wychodzi poza płótno, a przy zoomie każdy punkt pola trasy da się przesunąć na środek.
+// Płasko też: lukę poza płótnem wypełnia mapa doczytana poza nim (loadRegionLayers).
+export const clampCamera = ({ zoom, x, y }: Camera): Camera => {
   const z = clamp(zoom, 1, MAX_ZOOM);
-  if (view === 'flat') {
-    return {
-      zoom: z,
-      x: clamp(x, -(SIZE[0] - CX) * (z - 1), CX * (z - 1)),
-      y: clamp(y, -(SIZE[1] - CY) * (z - 1), CY * (z - 1)),
-    };
-  }
   const lx = Math.max(CX, HALF_BOX[0] * z);
   const ly = HALF_BOX[1] * z;
   return {

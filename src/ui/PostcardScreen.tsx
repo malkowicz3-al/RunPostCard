@@ -11,6 +11,7 @@ import type { Activity } from '../strava/api';
 import { Postcard } from '../postcard/Postcard';
 import { ROUTE_BOX } from '../postcard/Route';
 import { CAMERA_CENTER, DEFAULT_CAMERA, MAX_ZOOM, clampCamera, keepCamera, type Camera } from '../lib/camera';
+import { backdropArea, nextBackdropArea, type LoadedArea } from '../lib/backdrop';
 import { exportPng, exportSvg } from '../lib/exportPng';
 import { DEFAULT_FONT, FONTS, loadFontCss, type FontId } from '../lib/fonts';
 import { loadPhoto } from '../lib/photo';
@@ -34,6 +35,7 @@ import { useRunStreams } from './useRunStreams';
 const SIZE: [number, number] = [1080, 1920];
 const IDENTITY: [number, number, number, number, number, number] = [1, 0, 0, 1, 0, 0];
 const CANVAS: [number, number, number, number] = [0, 0, 1080, 1920];
+const UNBOUNDED: [number, number, number, number] = [-Infinity, -Infinity, Infinity, Infinity];
 
 type Point = { x: number; y: number };
 
@@ -106,7 +108,6 @@ export function PostcardScreen({
   // 3D liczy się na płaskiej projekcji trasy, więc bez niej przycisk nie ma sensu.
   const has3d = !!streams?.altitude && fit !== null;
   const is3d = view === '3d' && has3d;
-  const camView = is3d ? '3d' : 'flat';
   const [detailed, setDetailed] = useState(false);
   const profile = detailed ? POSTCARD_DETAILED : POSTCARD;
   const map = useMapLayers(fit?.projection ?? null, SIZE, profile, isMap);
@@ -126,7 +127,7 @@ export function PostcardScreen({
       frame.current = 0;
       const fns = queued.current;
       queued.current = [];
-      setCamera((c) => keepCamera(c, fns.reduce((acc, f) => clampCamera(f(acc), camView), c)));
+      setCamera((c) => keepCamera(c, fns.reduce((acc, f) => clampCamera(f(acc)), c)));
     });
   };
   useEffect(() => () => cancelAnimationFrame(frame.current), []);
@@ -140,16 +141,22 @@ export function PostcardScreen({
     () => (is3d && streams && fit ? isoRoute(streams, ROUTE_BOX, fit.projection) : null),
     [is3d, streams, fit],
   );
-  // Płasko: macierz jednostkowa i całe płótno jako podłoga.
-  const region = useMemo(
-    () =>
-      !isMap
-        ? null
-        : iso
-          ? zoomRegion(settled, iso.matrix, CAMERA_CENTER, SIZE)
-          : zoomRegion(settled, IDENTITY, CAMERA_CENTER, SIZE, 0.15, CANVAS),
-    [iso, isMap, settled],
-  );
+  // Płasko: macierz jednostkowa, fragment może wyjść poza płótno (przesunięta kamera); przy zoomie < 1,5 tylko obszar
+  // widocznej ramki na poziomie pocztówki (loadRegionLayers zwraca null, gdy cały mieści się na płótnie).
+  const regionArea = useRef<LoadedArea | null>(null);
+  const region = useMemo(() => {
+    if (!isMap) return null;
+    const matrix = iso?.matrix ?? IDENTITY;
+    // 3D: podłoga bez wygaszania, więc widoczną część poza płótnem doczytujemy zawsze (także przy kamerze domyślnej).
+    if (!iso) {
+      // Płasko: widok w całości na płótnie = mapa bazowa wystarcza (bez drugiej kopii w eksporcie).
+      const [x0, y0, x1, y1] = backdropArea(CANVAS, settled, 0);
+      if (settled.zoom < 1.5 && x0 >= 0 && y0 >= 0 && x1 <= SIZE[0] && y1 <= SIZE[1]) return null;
+    }
+    // Małe przesunięcie w doczytanym obszarze zostawia go (bez nowego zapytania), jak w tle ekranu.
+    if (settled.zoom < 1.5) return (regionArea.current = nextBackdropArea(regionArea.current, CANVAS, settled, matrix));
+    return zoomRegion(settled, matrix, CAMERA_CENTER, SIZE, 0.15, UNBOUNDED);
+  }, [iso, isMap, settled]);
   const zoomed = useRegionLayers(fit?.projection ?? null, region, profile, isMap);
   const loading = mapLoading || zoomed.loading;
 
@@ -171,7 +178,7 @@ export function PostcardScreen({
 
   // Płasko przy zoomie 1 nie ma czego przesuwać: kółko i palec przewijają stronę (ctrl+kółko i szczypanie nadal przybliżają).
   const scrollsPage = !is3d && camera.zoom <= 1;
-  // Listener nie-pasywny, żeby preventDefault blokował przewijanie strony; is3d w zależnościach, bo zmienia ograniczenie kamery.
+  // Listener nie-pasywny, żeby preventDefault blokował przewijanie strony; is3d w zależnościach przez scrollsPage.
   useEffect(() => {
     const el = previewRef.current;
     if (!el) return;
@@ -277,8 +284,8 @@ export function PostcardScreen({
       .finally(() => setPhotoBusy(false));
   };
 
-  // Tło ekranu tylko przy motywie mapy, płasko i po wczytaniu mapy pocztówki (ADR 0007).
-  const backdrop = isMap && !is3d && !mapMissing && fit !== null;
+  // Tło ekranu tylko przy motywie mapy i po wczytaniu mapy pocztówki, płasko i w 3D (ADR 0007).
+  const backdrop = isMap && !mapMissing && fit !== null;
 
   return (
     <div className={`screen postcard-screen${backdrop ? ' has-backdrop' : ''}`}>
@@ -292,6 +299,7 @@ export function PostcardScreen({
           profile={profile}
           camera={camera}
           settled={settled}
+          iso={iso ?? undefined}
         />
       )}
       <div className="top-bar">
@@ -423,7 +431,7 @@ export function PostcardScreen({
                     max={MAX_ZOOM}
                     step={0.1}
                     value={camera.zoom}
-                    onChange={(e) => setCamera((c) => keepCamera(c, clampCamera({ ...c, zoom: Number(e.target.value) }, camView)))}
+                    onChange={(e) => setCamera((c) => keepCamera(c, clampCamera({ ...c, zoom: Number(e.target.value) })))}
                   />
                 </label>
                 <button className="toggle" onClick={() => setCamera((c) => keepCamera(c, DEFAULT_CAMERA))}>

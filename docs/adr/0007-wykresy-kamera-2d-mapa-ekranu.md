@@ -125,6 +125,11 @@ Ograniczenia:
 - **d3-shape / d3-scale / biblioteka wykresów:** 4 proste kształty to kilkadziesiąt linii, więc zależność się nie opłaca. Decyzja o bibliotece wykresów z CLAUDE.md jest zamknięta: bez biblioteki.
 - **Zachowanie markerów bez UI:** martwy kod z testami do utrzymania, a historia gita wystarcza.
 
+## Zmiana po wdrożeniu (decyzja właściciela)
+- Widok płaski ma to samo ograniczenie kamery co 3D (środek trasy zostaje na płótnie), więc przesuwanie działa też przy zoomie 1. Lukę poza płótnem wypełnia `loadRegionLayers`: gdy gęstsze kafelki nic nie dają, fragment wychodzący poza płótno dostaje mapę na poziomie pocztówki (`loadAreaLayers`). Zanim kafelki dojdą, widać tło motywu.
+- Tło ekranu działa także w 3D: `MapBackdrop` rysuje mapę z macierzą izometrii i trasę `IsoRoute` (bez filtrów), a obszar do doczytania liczy odwrotność kamery i macierzy.
+- Podłoga 3D na pocztówce nie jest już wygaszana na brzegach (maska `iso-floor-fade` usunięta, zastępuje ADR 0006): widoczną część poza płótnem zawsze doczytuje fragment `refined`, także przy kamerze domyślnej. Płasko fragment powstaje tylko, gdy widok wychodzi poza płótno albo przy zoomie ≥ 1,5.
+
 ## Konsekwencje
 - Eksport bez zmian; tło ekranu nie może trafić do pliku.
 - Poza ramką motyw wygląda prościej (bez poświaty i faktur). Gdyby właściciel tego chciał, motywy musiałyby dostać parametr obszaru filtrów: zmiana w każdym pliku `themes/*`.

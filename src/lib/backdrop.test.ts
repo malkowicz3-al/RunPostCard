@@ -20,6 +20,12 @@ describe('backdropArea', () => {
     const area = backdropArea([cx - 100, cy - 100, cx + 100, cy + 100], { zoom: 2, x: 40, y: 0 }, 0);
     expect(area).toEqual([cx - 70, cy - 50, cx + 30, cy + 50]);
   });
+
+  it('macierz skali y 0,5 podwaja zakres y', () => {
+    const [cx, cy] = CAMERA_CENTER;
+    const area = backdropArea([cx - 100, cy - 100, cx + 100, cy + 100], DEFAULT_CAMERA, 0, [1, 0, 0, 0.5, 0, 0]);
+    expect(area).toEqual([cx - 100, 2 * (cy - 100), cx + 100, 2 * (cy + 100)]);
+  });
 });
 
 describe('nextBackdropArea', () => {
@@ -29,5 +35,11 @@ describe('nextBackdropArea', () => {
     expect(nextBackdropArea(first, vb, { zoom: 1, x: 50, y: 0 })).toBe(first);
     expect(nextBackdropArea(first, vb, { zoom: 1, x: 500, y: 0 })).not.toBe(first);
     expect(nextBackdropArea(first, vb, { zoom: 1.5, x: 0, y: 0 })).not.toBe(first);
+  });
+
+  it('inna macierz unieważnia obszar', () => {
+    const first = nextBackdropArea(null, vb, DEFAULT_CAMERA, [1, 0, 0, 1, 0, 0]);
+    expect(nextBackdropArea(first, vb, DEFAULT_CAMERA, [1, 0, 0, 1, 0, 0])).not.toBe(first);
+    expect(nextBackdropArea(first, vb, DEFAULT_CAMERA, first.matrix)).toBe(first);
   });
 });

@@ -76,7 +76,7 @@ export function Postcard({
         </clipPath>
       </defs>
       <g clipPath="url(#refined-clip)">
-        <MapBackground layers={refined.layers} style={THEMES[theme].style({ accent })} />
+        <MapBackground layers={refined.layers} style={THEMES[theme].style({ accent })} rect={refined.rect} />
       </g>
     </>
   );
@@ -97,25 +97,11 @@ export function Postcard({
           {out && <rect width={1080} height={1920} fill={THEMES[theme].style({ accent }).background} />}
           <g transform={cameraTransform(camera)}>
             {out && (
-              <>
-                {/* Podłoga 3D: ta sama mapa co w widoku płaskim, przekształcona macierzą izometrii; brzegi wygaszone. */}
-                <defs>
-                  {/* Środek wygaszania w środku pola trasy (ROUTE_BOX), nie płótna, żeby podłoga była symetryczna. */}
-                  <radialGradient id="iso-floor-fade-grad" gradientUnits="userSpaceOnUse" cx={540} cy={720} r={760}>
-                    <stop offset="0.6" stopColor="#ffffff" />
-                    <stop offset="1" stopColor="#000000" />
-                  </radialGradient>
-                  <mask id="iso-floor-fade">
-                    <rect width={1080} height={1920} fill="url(#iso-floor-fade-grad)" />
-                  </mask>
-                </defs>
-                <g transform={`matrix(${iso.matrix.join(' ')})`}>
-                  <g mask="url(#iso-floor-fade)">
-                    {out.scene}
-                    {refinedMap}
-                  </g>
-                </g>
-              </>
+              // Podłoga 3D: ta sama mapa co w widoku płaskim, przekształcona macierzą izometrii; poza płótnem dochodzi fragment refined.
+              <g transform={`matrix(${iso.matrix.join(' ')})`}>
+                {out.scene}
+                {refinedMap}
+              </g>
             )}
           </g>
           {/* Faktura papieru w przestrzeni płótna (jak w widoku płaskim), nie na pochylonej i powiększanej podłodze. */}
@@ -126,6 +112,8 @@ export function Postcard({
         </g>
       ) : (
         <g>
+          {/* Przesunięta kamera odsłania obszar poza płótnem, zanim dojdą kafelki: tło motywu zamiast pustki. */}
+          {out && <rect width={1080} height={1920} fill={THEMES[theme].style({ accent }).background} />}
           <g transform={cameraTransform(camera)}>
             {out?.scene}
             {refinedMap}

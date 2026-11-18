@@ -390,7 +390,8 @@ export async function loadMapLayers(
 
 const MAX_REGION_TILES = 24;
 
-// Ostrzejsza mapa dla przybliżonego fragmentu (zoom 3D); null = nie ma czego doczytać albo za dużo kafelków.
+// Ostrzejsza mapa dla przybliżonego fragmentu; bez gęstszych kafelków fragment wychodzący poza płótno
+// dostaje mapę na poziomie pocztówki. null = nie ma czego doczytać albo za dużo kafelków.
 export async function loadRegionLayers(
   projection: GeoProjection,
   size: [number, number],
@@ -401,8 +402,11 @@ export async function loadRegionLayers(
   const { template, maxZoom } = await loadTileJson();
   signal?.throwIfAborted();
   const { k, rect } = region;
-  // Podstawowa mapa ma już najgęstsze kafelki (z14): nic nie zyskamy.
-  if (!(tileZoom(projection, profile.tileUnits, maxZoom, k) > tileZoom(projection, profile.tileUnits, maxZoom))) return null;
+  // Gęstsze kafelki nic nie dadzą (k <= 1 albo już z14): zostaje tylko obszar poza płótnem.
+  if (!(tileZoom(projection, profile.tileUnits, maxZoom, k) > tileZoom(projection, profile.tileUnits, maxZoom))) {
+    const inside = rect[0] >= 0 && rect[1] >= 0 && rect[2] <= size[0] && rect[3] <= size[1];
+    return inside ? null : loadAreaLayers(projection, size, profile, rect, signal);
+  }
   const tiles = mapTiles(projection, size, profile.tileUnits, maxZoom, region);
   if (tiles.length > MAX_REGION_TILES) return null;
   const sharper = { ...profile, precision: k > 2 ? 0.25 : 0.5, minBuildingArea: profile.minBuildingArea / k ** 2 };

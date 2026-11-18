@@ -18,20 +18,6 @@ describe('clampCamera', () => {
   });
 });
 
-describe('clampCamera flat', () => {
-  it('przy zoomie 1 brak przesuwania', () => {
-    const c = clampCamera({ zoom: 1, x: 300, y: -300 }, 'flat');
-    expect(c.x).toBeCloseTo(0);
-    expect(c.y).toBeCloseTo(0); // -0 z mnożenia przez (z − 1)
-  });
-
-  it('przy zoomie 2 płótno dalej przykrywa ramkę: brzegi dochodzą do krawędzi', () => {
-    // Środek (540, 720): x ∈ [−540, 540], y ∈ [−1200, 720].
-    expect(clampCamera({ zoom: 2, x: 9999, y: 9999 }, 'flat')).toEqual({ zoom: 2, x: 540, y: 720 });
-    expect(clampCamera({ zoom: 2, x: -9999, y: -9999 }, 'flat')).toEqual({ zoom: 2, x: -540, y: -1200 });
-  });
-});
-
 describe('cameraTransform', () => {
   it('skala wokół środka pola trasy (540, 720) + przesunięcie', () => {
     expect(cameraTransform({ zoom: 2, x: 10, y: -20 })).toBe('translate(-530 -740) scale(2)');

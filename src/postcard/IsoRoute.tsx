@@ -16,12 +16,14 @@ export function IsoRoute({
   filter,
   dash,
   zoom = 1,
+  gradientId = 'iso-curtain-grad',
 }: {
   iso: Iso;
   flat?: string;
   filter?: string;
   dash?: string; // stroke-dasharray trasy motywu
   zoom?: number;
+  gradientId?: string; // tło ekranu to osobny <svg> w tym samym dokumencie: inne id, bez duplikatów
 }) {
   const { curtain, shadow, runs, top, bottom } = useMemo(() => {
     const { points, ground, slope } = iso;
@@ -52,12 +54,12 @@ export function IsoRoute({
     <g>
       <defs>
         {/* Pionowy gradient kurtyny: mocniej przy trasie, prawie przezroczysto przy podłożu. */}
-        <linearGradient id="iso-curtain-grad" gradientUnits="userSpaceOnUse" x1={0} y1={top} x2={0} y2={Math.max(bottom, top + 1)}>
+        <linearGradient id={gradientId} gradientUnits="userSpaceOnUse" x1={0} y1={top} x2={0} y2={Math.max(bottom, top + 1)}>
           <stop offset="0" stopColor={flat} stopOpacity={0.45} />
           <stop offset="1" stopColor={flat} stopOpacity={0.08} />
         </linearGradient>
       </defs>
-      <path d={curtain} fill="url(#iso-curtain-grad)" stroke="none" />
+      <path d={curtain} fill={`url(#${gradientId})`} stroke="none" />
       <path d={shadow} fill="none" stroke="#000000" strokeOpacity={0.2} strokeWidth={6 / zoom} strokeLinecap="round" strokeLinejoin="round" />
       <g filter={filter}>
         {runs.map((r, i) => (
