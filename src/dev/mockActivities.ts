@@ -1,5 +1,6 @@
 // Tylko dev (?mock=1): fałszywe biegi do podglądu listy i pocztówki. Dane są wymyślone.
-import type { Activity } from '../strava/api';
+import type { Activity, RunStreams } from '../strava/api';
+import { decodePolyline } from '../lib/polyline';
 
 // Koder Google encoded polyline (odwrotność src/lib/polyline.ts).
 function encodeValue(value: number): string {
@@ -65,4 +66,36 @@ export function mockActivities(): Activity[] {
     start_date_local: r.date,
     map: { summary_polyline: route(r.shape) },
   }));
+}
+
+function haversine([lat1, lng1]: [number, number], [lat2, lng2]: [number, number]): number {
+  const rad = Math.PI / 180;
+  const a =
+    Math.sin(((lat2 - lat1) * rad) / 2) ** 2 +
+    Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(((lng2 - lng1) * rad) / 2) ** 2;
+  return 2 * 6371000 * Math.asin(Math.sqrt(a));
+}
+
+// Syntetyczne strumienie (deterministyczne): wzgórze z sinusa, wolniej i wyższe tętno pod górę.
+export function mockStreams(activity: Activity): RunStreams {
+  const latlng = decodePolyline(activity.map.summary_polyline);
+  const n = latlng.length;
+  const D = activity.distance;
+  const cum = [0];
+  for (let i = 1; i < n; i++) cum.push(cum[i - 1] + haversine(latlng[i - 1], latlng[i]));
+  const total = cum[n - 1];
+  // Zdegenerowana trasa (wszystkie punkty w jednym miejscu): dystans liniowo.
+  const distance = cum.map((c, i) => (total > 0 ? (c / total) * D : (i / Math.max(1, n - 1)) * D));
+  const halves = /hill repeats/i.test(activity.name) ? 6 : 1;
+  const altitude = distance.map((d) => 200 + 40 * Math.sin((halves * Math.PI * d) / D));
+  // Nachylenie z pochodnej sinusa i jego maksimum (do normalizacji tętna).
+  const maxGrade = (40 * halves * Math.PI) / D;
+  const grade = distance.map((d) => maxGrade * Math.cos((halves * Math.PI * d) / D));
+  const time = distance.map((d) => (d / D) * activity.moving_time);
+  const speed = D / activity.moving_time;
+  const velocity = grade.map((g) => Math.max(0.5, speed * (1 - 3 * g)));
+  const streams: RunStreams = { latlng, distance, time, altitude, velocity };
+  const hr = activity.average_heartrate;
+  if (hr) streams.heartrate = distance.map((d, i) => Math.round(hr + 25 * (grade[i] / maxGrade) + 10 * (d / D - 0.5)));
+  return streams;
 }

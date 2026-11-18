@@ -10,17 +10,32 @@ import { DEFAULT_ACCENT } from '../postcard/themes/neon';
 import { DownloadMenu } from './DownloadMenu';
 import { LookPicker, type Look } from './LookPicker';
 import { useMapLayers } from './useMapLayers';
+import { useRunStreams } from './useRunStreams';
 
 const SIZE: [number, number] = [1080, 1920];
 
-export function PostcardScreen({ activity, onBack }: { activity: Activity; onBack: () => void }) {
+export function PostcardScreen({
+  activity,
+  onBack,
+  onSessionExpired,
+}: {
+  activity: Activity;
+  onBack: () => void;
+  onSessionExpired: () => void;
+}) {
   const previewRef = useRef<HTMLDivElement>(null);
   const [fontCss, setFontCss] = useState<string>();
   const [exportFailed, setExportFailed] = useState(false);
   const [look, setLook] = useState<Look>('gradient');
   const [accent, setAccent] = useState(DEFAULT_ACCENT);
   const [mapFailed, setMapFailed] = useState(false);
-  const isMap = look !== 'gradient' && look !== 'transparent';
+  const [view, setView] = useState<'flat' | '3d'>('flat');
+  const [showHighlights, setShowHighlights] = useState(false);
+  const streams = useRunStreams(activity, onSessionExpired);
+  const has3d = !!streams?.altitude;
+  const is3d = view === '3d' && has3d;
+  // W 3D mapa się nie rysuje, więc też nie pobieramy kafelków.
+  const isMap = !is3d && look !== 'gradient' && look !== 'transparent';
   const fit = useMemo(() => fitRoute(activity.map.summary_polyline, ROUTE_BOX), [activity]);
   const map = useMapLayers(fit?.projection ?? null, SIZE, POSTCARD, isMap);
   const mapLoading = isMap && !map.layers;
@@ -55,6 +70,11 @@ export function PostcardScreen({ activity, onBack }: { activity: Activity; onBac
     setLook(value);
   };
 
+  const chooseView = (value: 'flat' | '3d') => {
+    if (value === '3d' && look !== 'gradient' && look !== 'transparent') choose('gradient');
+    setView(value);
+  };
+
   return (
     <div className="screen postcard-screen">
       <div className="top-bar">
@@ -76,6 +96,9 @@ export function PostcardScreen({ activity, onBack }: { activity: Activity; onBac
             map={map.layers}
             theme={isMap ? look : undefined}
             accent={accent}
+            streams={streams}
+            view={is3d ? '3d' : 'flat'}
+            highlights={showHighlights}
           />
         </div>
         <div className="style-panel">
@@ -87,7 +110,29 @@ export function PostcardScreen({ activity, onBack }: { activity: Activity; onBac
             onLook={choose}
             accent={accent}
             onAccent={setAccent}
+            mapDisabled={is3d}
           />
+          {streams && (
+            <div className="toggle-row">
+              {has3d && (
+                <div className="toggle-group" role="group" aria-label="View">
+                  <button className="toggle" aria-pressed={!is3d} onClick={() => chooseView('flat')}>
+                    Flat
+                  </button>
+                  <button className="toggle" aria-pressed={is3d} onClick={() => chooseView('3d')}>
+                    3D
+                  </button>
+                </div>
+              )}
+              <button
+                className="toggle"
+                aria-pressed={showHighlights}
+                onClick={() => setShowHighlights((v) => !v)}
+              >
+                Highlights
+              </button>
+            </div>
+          )}
           <DownloadMenu disabled={mapLoading} onPng={downloadPng} onSvg={downloadSvg} />
           {mapLoading && (
             <p className="hint" role="status">

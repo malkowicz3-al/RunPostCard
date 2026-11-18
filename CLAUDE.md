@@ -4,7 +4,7 @@ Otwarta aplikacja webowa, która z wybranego biegu ze Stravy generuje „pocztó
 (Folder nazywał się `ShowRunPic`; właściciel zmienia go na `RunPostcard` ręcznie po sesji.)
 
 ## Status
-Etap 1 w trakcie domykania (logowanie, lista kafelków z trasami, pocztówka 9:16, PNG i SVG, tło gradient/przezroczyste, tryb jasny/ciemny, tryby dev `?mock=1` i `?debug=1`). Zrobione też: font Barlow Condensed, oficjalne znaki Stravy, wektorowy zarys mapy (tło pocztówki i kafelki). Etap 1 zamknięty; w toku etap 2 (motywy map).
+Etap 1 w trakcie domykania (logowanie, lista kafelków z trasami, pocztówka 9:16, PNG i SVG, tło gradient/przezroczyste, tryb jasny/ciemny, tryby dev `?mock=1` i `?debug=1`). Zrobione też: font Barlow Condensed, oficjalne znaki Stravy, wektorowy zarys mapy (tło pocztówki i kafelki). Etap 1 zamknięty; etap 2 (motywy map) ma Dark/Light/Neon z wyborem koloru neonu, kafelki wyglądu i menu Download. Zrobiony etap A z planu „dane biegu” (ADR 0006): strumienie Stravy dla otwartego biegu, markery (najszybszy punkt, max/min tętno, najwyższy punkt) i widok izometryczny 3D z przewyższeniami. Dalej w planie: B zdjęcie + fonty, C preset „w ulicy” (4 rogi, perspektywa), D „behind” (segmentacja MediaPipe). Przycięcie trasy 200 m dotyczy na razie tylko markerów; samą trasę przytniemy w etapie 3.
 Na razie bez wdrożenia na Vercel: aplikacja działa tylko lokalnie (`npm run dev`).
 
 ## Model projektu
@@ -52,6 +52,7 @@ Wymiana kodu OAuth na token i jego odświeżanie wymagają sekretu aplikacji, wi
 6. Dalszy rozwój presetów i stylistyki.
 
 ## Do sprawdzenia (nie potwierdzone)
+- Strumienie Stravy: czy strefy prywatności są z nich wycięte przy `activity:read`; zasady wyświetlania strumieni.
 - Pełny tekst API Agreement/Policy Stravy: czy zezwala na publiczne repo z gotową integracją; zasada „dane tylko dla właściciela” (znana tylko ze wtórnych streszczeń); wytyczne „Powered by Strava”.
 - Potwierdzone: wtyczka Vite `configureServer` działa; własna aplikacja Stravy działa dla jednego sportowca bez przeglądu; wylogowanie odwołuje dostęp. Po wylogowaniu Strava czasem zwraca 403 (limit sportowców) przy natychmiastowym ponownym logowaniu.
 

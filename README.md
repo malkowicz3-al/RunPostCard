@@ -109,6 +109,13 @@ On the postcard screen you pick the look from a row of tiles that preview your r
 
 **Download** opens a menu with **PNG image** and **SVG (vector)**.
 
+## Highlights and 3D view
+
+When you open a postcard, the app makes one extra Strava request for that run only: its streams (GPS points, distance, time, elevation, heart rate, speed). Nothing is cached; opening the postcard again fetches them again. If the request fails, the postcard works as before, without the options below.
+
+- **Highlights** (off by default) marks points on the route: fastest pace (averaged over 10 samples), max and min heart rate (min only after the first 5 minutes) and the highest point. Kinds without data (e.g. no heart rate monitor) are skipped. No marker is placed in the first or last 200 m of the run.
+- **Flat / 3D** (shown when the run has elevation data) draws the route in an isometric view, raised by elevation and colored by gradient (blue downhill, white flat, orange uphill). On flat runs the elevation is exaggerated so it stays visible, and the postcard says "elevation ×N". Map themes are off in 3D; the background is the gradient or transparent.
+
 - Your browser downloads the tiles directly from `tiles.openfreemap.org` (served through Cloudflare), so OpenFreeMap and Cloudflare can see the area of your run (approximate location).
 - With the map background, the postcard shows the surroundings of the start and finish of your run, which may reveal where you live. Strava privacy zones still apply to the route.
 - OpenFreeMap is a free external service without an SLA; its terms and availability are outside this project's control. The app sends at most 4 tile requests at a time.

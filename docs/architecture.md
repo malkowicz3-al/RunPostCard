@@ -26,12 +26,15 @@ src/
 
   strava/
     auth.ts               # URL autoryzacji + parametr state, obsługa ?code po powrocie, sessionStorage, odświeżanie przed wygaśnięciem, wylogowanie (deauthorize + czyszczenie)
-    api.ts                # GET /athlete/activities bezpośrednio z przeglądarki, filtr biegów (sport_type Run/TrailRun/VirtualRun), typ Activity
+    api.ts                # stravaGet (token, 401/429); GET /athlete/activities, filtr biegów (sport_type Run/TrailRun/VirtualRun), typ Activity; fetchStreams + normalizeStreams -> RunStreams (ADR 0006)
+    api.test.ts           # normalizeStreams
   
   postcard/
     slots.ts              # model slotu {id, data, form}, rejestr danych (data -> etykieta + wartość z Activity), domyślny układ 9:16
     Postcard.tsx          # jeden <svg viewBox="0 0 1080 1920">: tło, trasa, sloty, znak Strava; ten sam SVG idzie do eksportu
     Background.tsx        # gradient + ziarno przez filtr feTurbulence (kod, bez obrazków)
+    IsoRoute.tsx          # widok 3D: kurtyna, cień na podłożu, trasa kolorowana nachyleniem (stałe kolory)
+    RouteMarkers.tsx      # kropki i etykiety markerów (FASTEST, MAX HR, MIN HR, HIGHEST) w punktach trasy
     Route.tsx             # <path> trasy z gotowej ścieżki + styl z motywu (kolor, grubość, filtr); ROUTE_BOX = obszar trasy na płótnie
     MapBackground.tsx     # renderer warstw mapy: <rect> tła + jeden <path> na warstwę wg MapStyle (kolory, grubości, opcjonalny filtr; wektor inline, ADR 0004)
     mapStyle.ts           # typ MapStyle (kolory, grubości linii, filtry warstw)
@@ -52,6 +55,7 @@ src/
     DownloadMenu.tsx      # przycisk „Download” z menu (role=menu): PNG image / SVG (vector); Escape, kliknięcie obok, fokus wraca
     RouteThumb.tsx        # miniatura trasy na zarysie mapy (profil THUMB); kolory z tokenów CSS --map-* (lista) albo z MapStyle motywu; style=null = sama trasa
     useMapLayers.ts       # hook: projekcja -> ścieżki mapy {layers, failed}, anulowanie przy odmontowaniu
+    useRunStreams.ts      # hook: strumienie otwartego biegu (null = brak/ładowanie/błąd); ?mock=1 -> mockStreams
 
   assets/brand/strava/    # oficjalne zasoby Stravy (przycisk Connect, znaki Powered by), bez modyfikacji
 
@@ -65,6 +69,10 @@ src/
     exportPng.ts          # SVG -> XMLSerializer -> Blob URL -> Image -> canvas 1080x1920 -> toBlob -> pobranie
     fonts.ts              # font pocztówki (TTF) jako data URL wstrzykiwany do <style> w SVG (img nie pobiera zewnętrznych fontów)
     dataUrl.ts            # fetch -> data URL z cache w pamięci (font)
+    runHighlights.ts      # highlights(streams) -> indeksy markerów; TRIM_M = 200 m bez markerów na początku i końcu
+    runHighlights.test.ts
+    isoRoute.ts           # izometria: Mercator, obrót 45°, Y × 0,5, podniesienie o wysokość (min. 15% pola), dopasowanie do ROUTE_BOX
+    isoRoute.test.ts
     routePath.ts          # fitRoute: polyline -> d3-geo geoMercator().fitExtent -> {projection, d}; routePath = samo d
     mapTiles.ts           # czysta funkcja: projekcja trasy + tileUnits -> kafelki XYZ pokrywające płótno; tileUrlFrom (ADR 0004)
     mapTiles.test.ts
@@ -84,8 +92,9 @@ docs/
 2. Wymiana kodu: przeglądarka -> `POST /api/strava/token {code}` -> (Vercel: `api/strava/token.ts` | lokalnie: wtyczka w `vite.config.ts`) -> `server/stravaToken.ts` (+ `STRAVA_CLIENT_SECRET`) -> `POST https://www.strava.com/oauth/token` -> `{access_token, refresh_token, expires_at, athlete}` -> `sessionStorage`.
 3. Odświeżanie: gdy `expires_at` mija, przeglądarka -> `POST /api/strava/token {refresh_token}` -> ten sam moduł.
 4. Dane: przeglądarka -> `GET https://www.strava.com/api/v3/athlete/activities?per_page=30` z `Authorization: Bearer` (bez backendu). Lista zawiera `map.summary_polyline`, `distance`, `moving_time`, `average_heartrate`, `start_date_local` – wystarcza na etap 1, bez pobierania streamów.
-5. Render: Activity -> sloty (`slots.ts`) + trasa (`polyline.ts` -> `Route.tsx`) -> `<svg>` -> `exportPng.ts` -> plik PNG.
-6. Wylogowanie: przeglądarka -> `POST https://www.strava.com/oauth/deauthorize` z tokenem -> czyszczenie `sessionStorage`.
+5. Strumienie (tylko otwarta pocztówka, ADR 0006): przeglądarka -> `GET /activities/{id}/streams?keys=latlng,altitude,heartrate,velocity_smooth,distance,time&key_by_type=true` -> `normalizeStreams` -> `RunStreams` w stanie `PostcardScreen` (bez cache). Z tego samego źródła: `highlights` (markery, indeksy w strumieniu) i `isoRoute` (widok 3D). Błąd = pocztówka bez markerów i bez 3D.
+6. Render: Activity -> sloty (`slots.ts`) + trasa (`polyline.ts` -> `Route.tsx`) -> `<svg>` -> `exportPng.ts` -> plik PNG.
+7. Wylogowanie: przeglądarka -> `POST https://www.strava.com/oauth/deauthorize` z tokenem -> czyszczenie `sessionStorage`.
 
 ## Kluczowe decyzje
 
@@ -101,6 +110,7 @@ docs/
 - **Testy: Vitest**: współdzieli konfigurację Vite, zero dodatkowej konfiguracji; testy tylko dla logiki (polyline, format, stravaToken).
 - **Jednostki: tylko km** w etapie 1.
 - **Mapa wektorowa z OpenFreeMap rysowana jako SVG** (bez klucza i bez biblioteki map): kafelki liczone z tej samej projekcji co trasa, dekodowane przez `@mapbox/vector-tile` + `pbf`, jedna ścieżka na warstwę; CARTO usunięte (ADR 0004, zastępuje 0003).
+- **Strumienie tylko dla otwartej pocztówki** (limit zapytań Stravy); markery i 3D liczone czystymi funkcjami z jednego `RunStreams`. **W 3D mapa jest wyłączona** (płaska mapa nie pasuje do rzutu): tło `map` spada do gradientu, kafelki motywów nieaktywne, bez podpisu OSM (ADR 0006).
 - **Motywy mapy tylko stylistyczne** (dark, light, neon): te same warstwy mapy, inne kolory, grubości i filtry SVG (lokalne `url(#…)`, więc eksport działa); bez ikon, bez plików graficznych i nowych zależności; miniatury listy bez zmian (ADR 0005). Neon liczony z jednego koloru `accent`.
 
 ## Otwarte pytania

@@ -22,6 +22,11 @@ export function App() {
   const [selected, setSelected] = useState<Activity>();
   const [error, setError] = useState<string>();
 
+  const onSessionExpired = () => {
+    setScreen('login');
+    setError('Your Strava session has expired. Connect again.');
+  };
+
   const loadRuns = async () => {
     setScreen('list');
     setLoading(true);
@@ -30,8 +35,7 @@ export function App() {
       setRuns(await fetchRuns());
     } catch (e) {
       if (e instanceof SessionExpiredError) {
-        setScreen('login');
-        setError('Your Strava session has expired. Connect again.');
+        onSessionExpired();
       } else {
         setError(errorMessage(e));
       }
@@ -110,7 +114,7 @@ export function App() {
         </div>
       )}
       {screen === 'postcard' && selected && (
-        <PostcardScreen activity={selected} onBack={() => history.back()} />
+        <PostcardScreen activity={selected} onBack={() => history.back()} onSessionExpired={onSessionExpired} />
       )}
       <footer>
         {screen === 'list' && (

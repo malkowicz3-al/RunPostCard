@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { decodePolyline } from '../lib/polyline';
-import { encodePolyline, mockActivities } from './mockActivities';
+import { encodePolyline, mockActivities, mockStreams } from './mockActivities';
 
 describe('encodePolyline', () => {
   it('koduje przykład z dokumentacji Google', () => {
@@ -32,5 +32,32 @@ describe('encodePolyline', () => {
     for (const run of runs) {
       expect(decodePolyline(run.map.summary_polyline).length).toBeGreaterThan(10);
     }
+  });
+});
+
+describe('mockStreams', () => {
+  const runs = mockActivities();
+
+  it('deterministyczne, równe długości, dystans rosnący do activity.distance', () => {
+    for (const run of runs) {
+      const s = mockStreams(run);
+      expect(mockStreams(run)).toEqual(s);
+      const n = s.latlng.length;
+      for (const key of ['distance', 'time', 'altitude', 'velocity'] as const) expect(s[key]).toHaveLength(n);
+      for (let i = 1; i < n; i++) expect(s.distance[i]).toBeGreaterThan(s.distance[i - 1]);
+      expect(s.distance[n - 1]).toBeCloseTo(run.distance, 6);
+    }
+  });
+
+  it('bieg bez tętna nie ma strumienia tętna', () => {
+    const noHr = runs.find((r) => !r.average_heartrate)!;
+    expect(mockStreams(noHr).heartrate).toBeUndefined();
+    expect(mockStreams(runs[0]).heartrate).toHaveLength(mockStreams(runs[0]).latlng.length);
+  });
+
+  it('Hill repeats ma kilka wzgórz', () => {
+    const alt = mockStreams(runs.find((r) => r.name === 'Hill repeats')!).altitude!;
+    const peaks = alt.filter((a, i) => i > 0 && i < alt.length - 1 && a > alt[i - 1] && a > alt[i + 1]);
+    expect(peaks.length).toBeGreaterThan(1);
   });
 });

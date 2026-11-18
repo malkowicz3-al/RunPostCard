@@ -429,6 +429,36 @@ button.look-tile {
   border-color: var(--text);
 }
 
+.look-tile:disabled,
+.look-tile:disabled:hover {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.toggle-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 16px;
+}
+
+.toggle-group {
+  display: flex;
+  gap: 4px;
+}
+
+button.toggle {
+  min-height: 44px;
+  border: 2px solid var(--separator);
+  color: var(--text-secondary);
+}
+
+button.toggle[aria-pressed='true'] {
+  border-color: var(--text);
+  color: var(--text);
+}
+
 .swatches {
   display: flex;
   flex-wrap: wrap;
@@ -546,7 +576,8 @@ button.swatch,
     flex: none;
   }
 
-  .swatches {
+  .swatches,
+  .toggle-row {
     justify-content: flex-start;
     padding: 0;
   }
