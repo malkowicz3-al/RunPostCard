@@ -4,11 +4,19 @@ import { Route } from './Route';
 import { StravaMark } from './StravaMark';
 import { DATA, FORMS, defaultLayout } from './slots';
 
-export function Postcard({ activity, fontCss }: { activity: Activity; fontCss?: string }) {
+export function Postcard({
+  activity,
+  fontCss,
+  transparent = false,
+}: {
+  activity: Activity;
+  fontCss?: string;
+  transparent?: boolean;
+}) {
   return (
     <svg className="postcard" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920">
       {fontCss && <style>{fontCss}</style>}
-      <Background />
+      {!transparent && <Background />}
       <Route polyline={activity.map.summary_polyline} />
       {defaultLayout.map(({ slot, x, y, size }) => {
         const Form = FORMS[slot.form];

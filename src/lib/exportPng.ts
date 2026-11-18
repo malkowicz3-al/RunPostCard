@@ -1,9 +1,28 @@
-// SVG pocztówki -> PNG 1080x1920 w przeglądarce (ten sam SVG co podgląd).
-export async function exportPng(svg: SVGSVGElement, filename: string): Promise<void> {
+// Ten sam SVG co podgląd, z jawnym rozmiarem 1080x1920.
+function serialize(svg: SVGSVGElement): string {
   const clone = svg.cloneNode(true) as SVGSVGElement;
   clone.setAttribute('width', '1080');
   clone.setAttribute('height', '1920');
-  const xml = new XMLSerializer().serializeToString(clone);
+  return new XMLSerializer().serializeToString(clone);
+}
+
+function download(blob: Blob, filename: string): void {
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+  // Od razu po click część przeglądarek jeszcze nie zdążyła pobrać pliku.
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+}
+
+// SVG jest skalowalny bez utraty jakości; fonty są osadzone w <style>.
+export function exportSvg(svg: SVGSVGElement, filename: string): void {
+  download(new Blob([serialize(svg)], { type: 'image/svg+xml;charset=utf-8' }), filename);
+}
+
+// PNG 1080x1920; bez tła w SVG wynik ma przezroczyste tło (canvas nie jest wypełniany).
+export async function exportPng(svg: SVGSVGElement, filename: string): Promise<void> {
+  const xml = serialize(svg);
 
   const svgUrl = URL.createObjectURL(new Blob([xml], { type: 'image/svg+xml;charset=utf-8' }));
   try {
@@ -17,13 +36,7 @@ export async function exportPng(svg: SVGSVGElement, filename: string): Promise<v
     canvas.getContext('2d')!.drawImage(img, 0, 0);
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
     if (!blob) throw new Error('PNG export failed');
-
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = filename;
-    link.click();
-    // Od razu po click część przeglądarek jeszcze nie zdążyła pobrać pliku.
-    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    download(blob, filename);
   } finally {
     URL.revokeObjectURL(svgUrl);
   }
