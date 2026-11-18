@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { MapLayers } from '../../lib/vectorMap';
+import type { MapStyle } from '../mapStyle';
 import type { RouteStyle } from '../Route';
 import type { StravaMarkVariant } from '../StravaMark';
 import { dark } from './dark';
@@ -16,6 +17,12 @@ export type ThemeOutput = {
   mark: StravaMarkVariant;
 };
 
-export type MapTheme = { label: string; render: (layers: MapLayers) => ThemeOutput };
+export type ThemeOptions = { accent?: string }; // accent: kolor neonu; Dark i Light ignorują
+
+export type MapTheme = {
+  label: string;
+  style: (opts?: ThemeOptions) => MapStyle; // paleta jako dane (miniatury w wyborze wyglądu)
+  render: (layers: MapLayers, opts?: ThemeOptions) => ThemeOutput;
+};
 
 export const THEMES: Record<ThemeId, MapTheme> = { dark, light, neon };

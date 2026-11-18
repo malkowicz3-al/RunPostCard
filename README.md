@@ -105,7 +105,9 @@ Vercel and local Node are the officially supported setups. Other hosting platfor
 
 Route thumbnails and the **Map** postcard background are a minimalist outline (streets, buildings, water, greenery) drawn by the app as SVG from vector tiles by [OpenFreeMap](https://openfreemap.org) ([OpenMapTiles](https://openmaptiles.org) schema, [OpenStreetMap](https://www.openstreetmap.org/copyright) data). No API key or configuration is needed. The attribution "Map: OpenFreeMap © OpenMapTiles © OpenStreetMap contributors" is shown under the run list, and "© OpenMapTiles © OpenStreetMap contributors" on postcards with the map background.
 
-With the Map background you can pick a map theme: **Dark** (the outline above, default), **Light** (a light outline with a dark route and text) or **Neon** (a night-blue map with glowing streets and a glowing pink route). Themes only change colors, line styles and glow; they use the same map data. Route thumbnails always use the minimalist outline.
+On the postcard screen you pick the look from a row of tiles that preview your route: **Gradient**, **Transparent** and three map themes: **Dark** (the outline above), **Light** (a light outline with a dark route and text) and **Neon** (a near-black map with glowing streets and a glowing route). Neon uses one color for the route and streets: pick pink (default), red, orange, yellow, green, cyan or violet, or any custom color. Map tiles are hidden for runs without a route. Themes only change colors, line styles and glow; they use the same map data. Thumbnails in the run list always use the minimalist outline.
+
+**Download** opens a menu with **PNG image** and **SVG (vector)**.
 
 - Your browser downloads the tiles directly from `tiles.openfreemap.org` (served through Cloudflare), so OpenFreeMap and Cloudflare can see the area of your run (approximate location).
 - With the map background, the postcard shows the surroundings of the start and finish of your run, which may reveal where you live. Strava privacy zones still apply to the route.

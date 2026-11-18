@@ -20,6 +20,7 @@ const STYLE: MapStyle = {
 
 export const dark: MapTheme = {
   label: 'Dark',
+  style: () => STYLE,
   render: (layers) => ({
     scene: <MapBackground layers={layers} style={STYLE} />,
     route: { stroke: '#ffffff', width: 14 },

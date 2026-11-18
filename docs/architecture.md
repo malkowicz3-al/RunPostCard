@@ -38,17 +38,19 @@ src/
     SlotNumber.tsx        # forma "liczba"; kolor tylko przez currentColor (motyw ustawia color na grupie slotów)
     StravaMark.tsx        # oficjalny znak „Powered by Strava” (white/black/orange) jako <image> z data URL (import ?raw, bez modyfikacji plików)
     themes/               # motywy mapy na pocztówce, tylko stylistyka (ADR 0005)
-      index.ts            # typy ThemeOutput/MapTheme, rejestr THEMES (dark, light, neon)
-      index.test.tsx      # kolejność rejestru; każde url(#id) wskazuje element z tego samego SVG
+      index.ts            # typy ThemeOutput/MapTheme/ThemeOptions ({accent}), rejestr THEMES (dark, light, neon); style(opts) = paleta jako dane (miniatury)
+      index.test.tsx      # kolejność rejestru; każde url(#id) wskazuje element z tego samego SVG (też neon w innym kolorze); neonStyle
       dark.tsx            # ciemny zarys (dotychczasowy wygląd)
       light.tsx           # jasny zarys, ciemna trasa i tekst, czarny znak Stravy
-      neon.tsx            # granatowe tło, świecące ulice i trasa (feGaussianBlur + feMerge, obszar filtra = płótno)
+      neon.tsx            # neonStyle(accent): trasa i ulice z jednego koloru, woda stała; NEON_ACCENTS (gotowe kolory); poświaty feGaussianBlur + feMerge
 
   ui/
     LoginScreen.tsx       # przycisk „Connect with Strava” (oficjalny styl) + znak Strava
     ActivityList.tsx      # lista ostatnich biegów (nazwa, data, dystans) do wyboru
-    PostcardScreen.tsx    # podgląd pocztówki, wybór tła (gradient / przezroczyste / mapa) i motywu mapy, „Download PNG”/SVG
-    RouteThumb.tsx        # miniatura trasy na zarysie mapy (profil THUMB, kolory z tokenów CSS --map-*)
+    PostcardScreen.tsx    # podgląd pocztówki, stan look (gradient / transparent / motyw mapy) i accent; telefon: kolumna, ≥900px: pocztówka + panel „Style”
+    LookPicker.tsx        # kafelki wyglądu z podglądem trasy (aria-pressed) + kółka koloru neonu i własny kolor (<input type="color">)
+    DownloadMenu.tsx      # przycisk „Download” z menu (role=menu): PNG image / SVG (vector); Escape, kliknięcie obok, fokus wraca
+    RouteThumb.tsx        # miniatura trasy na zarysie mapy (profil THUMB); kolory z tokenów CSS --map-* (lista) albo z MapStyle motywu; style=null = sama trasa
     useMapLayers.ts       # hook: projekcja -> ścieżki mapy {layers, failed}, anulowanie przy odmontowaniu
 
   assets/brand/strava/    # oficjalne zasoby Stravy (przycisk Connect, znaki Powered by), bez modyfikacji
@@ -58,6 +60,8 @@ src/
     polyline.test.ts
     format.ts             # dystans km, czas h:mm:ss, tempo min/km, data
     format.test.ts
+    color.ts              # hexToRgb, rgbToHex, mix (paleta neonu)
+    color.test.ts
     exportPng.ts          # SVG -> XMLSerializer -> Blob URL -> Image -> canvas 1080x1920 -> toBlob -> pobranie
     fonts.ts              # font pocztówki (TTF) jako data URL wstrzykiwany do <style> w SVG (img nie pobiera zewnętrznych fontów)
     dataUrl.ts            # fetch -> data URL z cache w pamięci (font)
@@ -97,7 +101,7 @@ docs/
 - **Testy: Vitest**: współdzieli konfigurację Vite, zero dodatkowej konfiguracji; testy tylko dla logiki (polyline, format, stravaToken).
 - **Jednostki: tylko km** w etapie 1.
 - **Mapa wektorowa z OpenFreeMap rysowana jako SVG** (bez klucza i bez biblioteki map): kafelki liczone z tej samej projekcji co trasa, dekodowane przez `@mapbox/vector-tile` + `pbf`, jedna ścieżka na warstwę; CARTO usunięte (ADR 0004, zastępuje 0003).
-- **Motywy mapy tylko stylistyczne** (dark, light, neon): te same warstwy mapy, inne kolory, grubości i filtry SVG (lokalne `url(#…)`, więc eksport działa); bez ikon, bez plików graficznych i nowych zależności; miniatury bez zmian (ADR 0005).
+- **Motywy mapy tylko stylistyczne** (dark, light, neon): te same warstwy mapy, inne kolory, grubości i filtry SVG (lokalne `url(#…)`, więc eksport działa); bez ikon, bez plików graficznych i nowych zależności; miniatury listy bez zmian (ADR 0005). Neon liczony z jednego koloru `accent`.
 
 ## Otwarte pytania
 

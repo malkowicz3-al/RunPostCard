@@ -15,17 +15,19 @@ export function Postcard({
   background = 'gradient',
   map,
   theme = 'dark',
+  accent,
 }: {
   activity: Activity;
   fontCss?: string;
   background?: PostcardBackground;
   map?: MapLayers;
   theme?: ThemeId;
+  accent?: string;
 }) {
   // Jedna projekcja dla mapy i trasy („scena”).
   const fit = fitRoute(activity.map.summary_polyline, ROUTE_BOX);
   const showMap = background === 'map' && fit && map;
-  const out = showMap ? THEMES[theme].render(map) : null;
+  const out = showMap ? THEMES[theme].render(map, { accent }) : null;
   const text = out?.text ?? { color: '#ffffff' };
 
   return (

@@ -341,32 +341,228 @@ button.text-button {
   height: 100%;
 }
 
-.segmented {
+/* Ekran pocztówki: telefon jedna kolumna, od 900px pocztówka lewa + panel „Style” prawy. */
+.postcard-layout {
   display: flex;
-  width: min(100% - 32px, 320px);
-  padding: 4px;
-  border-radius: 12px;
-  background: var(--surface);
-  box-sizing: border-box;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  max-width: 1120px;
+  padding-bottom: 24px;
 }
 
-.segmented button {
-  flex: 1;
-  font-weight: 400;
-  border-radius: 8px;
-  background: none;
+.style-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  min-width: 0;
 }
 
-.segmented button[aria-pressed='true'] {
-  background: var(--segment-selected);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+.panel-title {
+  display: none;
+  margin: 0;
+  font-size: 17px;
   font-weight: 600;
 }
 
-.actions {
+.look-tiles {
   display: flex;
   gap: 8px;
+  width: 100%;
+  padding: 4px 16px;
+  box-sizing: border-box;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+/* Wyśrodkowane, gdy mieszczą się bez przewijania. */
+.look-tiles > :first-child {
+  margin-left: auto;
+}
+
+.look-tiles > :last-child {
+  margin-right: auto;
+}
+
+button.look-tile {
+  flex: 0 0 76px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  background: none;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.look-preview {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 12px;
+  overflow: hidden;
+  box-sizing: border-box;
+  border: 2px solid var(--separator);
+  background: var(--surface);
+}
+
+/* Kolory jak w Background.tsx (bez ziarna). */
+.look-preview.look-gradient {
+  background: linear-gradient(#1e1b4b, #f97316);
+}
+
+.look-preview.checkerboard {
+  background: conic-gradient(#3a3a3f 25%, #2c2c30 0 50%, #3a3a3f 0 75%, #2c2c30 0) 0 0 / 16px 16px;
+}
+
+.look-tile[aria-pressed='true'] {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.look-tile[aria-pressed='true'] .look-preview {
+  border-color: var(--text);
+}
+
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
   justify-content: center;
+  gap: 8px;
+  padding: 0 16px;
+}
+
+button.swatch,
+.swatch {
+  position: relative;
+  display: block;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  box-sizing: border-box;
+  border: 3px solid var(--bg);
+  box-shadow: 0 0 0 2px var(--separator);
+  cursor: pointer;
+}
+
+.swatch[aria-pressed='true'],
+.swatch[data-selected='true'] {
+  box-shadow: 0 0 0 2px var(--text);
+}
+
+.swatch-custom {
+  background: conic-gradient(#ff2a3d, #ffe62e, #39ff6a, #00f0ff, #9b5cff, #ff2bd6, #ff2a3d);
+}
+
+/* Natywny wybór koloru na całym kółku, niewidoczny; fokus pokazuje kółko. */
+.swatch-custom input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.swatch-custom:focus-within {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+.download {
+  position: relative;
+}
+
+.download > button {
+  min-width: 200px;
+}
+
+.download-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.download-menu button {
+  background: none;
+  text-align: left;
+  font-weight: 400;
+  border-radius: 8px;
+}
+
+.download-menu button:hover,
+.download-menu button:focus-visible {
+  background: var(--surface-hover);
+}
+
+@media (min-width: 900px) {
+  .postcard-layout {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 32px;
+    padding: 0 16px 24px;
+    box-sizing: border-box;
+  }
+
+  .style-panel {
+    width: 320px;
+    align-items: stretch;
+  }
+
+  .panel-title {
+    display: block;
+  }
+
+  .look-tiles {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    padding: 0;
+    overflow: visible;
+  }
+
+  .look-tiles > :first-child,
+  .look-tiles > :last-child {
+    margin: 0;
+  }
+
+  button.look-tile {
+    flex: none;
+  }
+
+  .swatches {
+    justify-content: flex-start;
+    padding: 0;
+  }
+
+  .download > button {
+    width: 100%;
+  }
+
+  /* Na komputerze menu pod przyciskiem. */
+  .download-menu {
+    bottom: auto;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    transform: none;
+  }
 }
 
 .raw-json {
