@@ -79,14 +79,15 @@ export function slotZones(layout: LayoutItem[]): Rect[] {
   return [...layout.map(({ y, size }): Rect => [0, y - 0.8 * size - 20, 1080, y + 80]), [0, 1800, 1080, 1920]];
 }
 
-// (x, y) = lewy górny róg kwadratu ikony.
-export type Icon = { x: number; y: number; size: number; flip: boolean };
+// (x, y) = lewy górny róg prostokąta ikony w x h.
+export type Icon = { x: number; y: number; w: number; h: number; flip: boolean };
 export type Placement = { dragon?: Icon; castles: Icon[]; houses: Icon[]; trees: Omit<Icon, 'flip'>[] };
-type BuildingOpts = { count: number; spacing: number; k: number; min: number; max: number };
+// aspect = h / w (np. wysoki wieżowiec), domyślnie kwadrat.
+type BuildingOpts = { count: number; spacing: number; k: number; min: number; max: number; aspect?: number };
 export type PlaceOpts = {
   routeWidth: number;
   grid?: number;
-  dragon: { min: number; max: number; minWater: number };
+  dragon?: { min: number; max: number; minWater: number };
   castles: BuildingOpts;
   houses: BuildingOpts;
   trees: { spacing: number; size: number; max: number };
@@ -99,7 +100,7 @@ export type PlaceInput = {
   exclude: Rect[];
 };
 
-const iconRect = ({ x, y, size }: { x: number; y: number; size: number }): Rect => [x, y, x + size, y + size];
+const iconRect = ({ x, y, w, h }: Omit<Icon, 'flip'>): Rect => [x, y, x + w, y + h];
 
 // Największy kwadrat wolnych komórek spełniających ok (DP, O(komórek)).
 function largestSquare(occ: OccupancyGrid, ok: (x: number, y: number) => boolean) {
@@ -125,19 +126,24 @@ export function placeIcons({ map, size, route, seed, exclude }: PlaceInput, opts
   const g = (v: number) => (grid ? snap(v, grid) : v);
   const floorG = (v: number) => (grid ? Math.floor(v / grid) * grid : v);
   const { buildings, green, water } = map.objects;
-  const occ = new OccupancyGrid(size);
+  // Komórka = siatka, żeby kwadrat smoka z largestSquare też leżał na siatce.
+  const occ = new OccupancyGrid(size, grid ?? 12);
   for (const rect of exclude) occ.markRect(rect);
-  occ.markRoute(route, opts.routeWidth / 2 + 12);
+  // Na siatce trasa jest schodkowa i odchodzi od prawdziwej o ≤ 1 komórkę, więc bufor rośnie o grid.
+  occ.markRoute(route, opts.routeWidth / 2 + 12 + (grid ?? 0));
 
   let dragon: Icon | undefined;
-  const bigWater = water.filter((w) => w.area >= opts.dragon.minWater);
-  let sq = largestSquare(occ, (x, y) => inAny(bigWater, x, y));
-  if (sq.side < opts.dragon.min) sq = largestSquare(occ, () => true);
-  if (sq.side >= opts.dragon.min) {
-    const s = floorG(Math.min(sq.side, opts.dragon.max));
-    const off = floorG((sq.side - s) / 2);
-    dragon = { x: sq.x + off, y: sq.y + off, size: s, flip: mulberry32(hashSeed(seed, 'dragon'))() < 0.5 };
-    occ.markRect(iconRect(dragon));
+  const dOpts = opts.dragon;
+  if (dOpts) {
+    const bigWater = water.filter((w) => w.area >= dOpts.minWater);
+    let sq = largestSquare(occ, (x, y) => inAny(bigWater, x, y));
+    if (sq.side < dOpts.min) sq = largestSquare(occ, () => true);
+    if (sq.side >= dOpts.min) {
+      const s = floorG(Math.min(sq.side, dOpts.max));
+      const off = floorG((sq.side - s) / 2);
+      dragon = { x: sq.x + off, y: sq.y + off, w: s, h: s, flip: mulberry32(hashSeed(seed, 'dragon'))() < 0.5 };
+      occ.markRect(iconRect(dragon));
+    }
   }
 
   const sorted = [...buildings].sort((a, b) => b.area - a.area);
@@ -146,12 +152,14 @@ export function placeIcons({ map, size, route, seed, exclude }: PlaceInput, opts
     const out: Icon[] = [];
     for (const b of sorted) {
       if (out.length >= o.count) break;
-      const s = g(Math.min(o.max, Math.max(o.min, Math.sqrt(b.area) * o.k)));
-      const jitter = s / 8;
+      const w = g(Math.min(o.max, Math.max(o.min, Math.sqrt(b.area) * o.k)));
+      const h = g(w * (o.aspect ?? 1));
+      const jitter = w / 8;
       const icon = {
-        x: g(b.x - s / 2 + (rand() * 2 - 1) * jitter),
-        y: g(b.y - s / 2 + (rand() * 2 - 1) * jitter),
-        size: s,
+        x: g(b.x - w / 2 + (rand() * 2 - 1) * jitter),
+        y: g(b.y - h / 2 + (rand() * 2 - 1) * jitter),
+        w,
+        h,
         flip: rand() < 0.5,
       };
       if (!occ.isFree(iconRect(icon)) || out.some((p) => Math.hypot(p.x - icon.x, p.y - icon.y) < o.spacing)) continue;
@@ -172,7 +180,7 @@ export function placeIcons({ map, size, route, seed, exclude }: PlaceInput, opts
     for (let cx = sp / 2; cx < size[0] && trees.length < max; cx += sp) {
       const x = g(cx + ((rand() * 2 - 1) * sp) / 3 - s / 2);
       const y = g(cy + ((rand() * 2 - 1) * sp) / 3 - s / 2);
-      const tree = { x, y, size: s };
+      const tree = { x, y, w: s, h: s };
       if (!occ.isFree(iconRect(tree)) || !inAny(green, x + s / 2, y + s / 2)) continue;
       trees.push(tree);
       occ.markRect(iconRect(tree));

@@ -40,16 +40,26 @@ const OPTS: PlaceOpts = {
   trees: { spacing: 36, size: 28, max: 400 },
 };
 
-type Box = { x: number; y: number; size: number };
+type Box = { x: number; y: number; w: number; h: number };
 const all = (p: ReturnType<typeof placeIcons>): Box[] => [
   ...(p.dragon ? [p.dragon] : []),
   ...p.castles,
   ...p.houses,
   ...p.trees,
 ];
-const overlaps = ({ x, y, size }: Box, [x0, y0, x1, y1]: Rect) => x < x1 && x0 < x + size && y < y1 && y0 < y + size;
-const distToBox = ([px, py]: [number, number], { x, y, size }: Box) =>
-  Math.hypot(Math.max(x - px, 0, px - x - size), Math.max(y - py, 0, py - y - size));
+const overlaps = ({ x, y, w, h }: Box, [x0, y0, x1, y1]: Rect) => x < x1 && x0 < x + w && y < y1 && y0 < y + h;
+const distToBox = ([px, py]: [number, number], { x, y, w, h }: Box) =>
+  Math.hypot(Math.max(x - px, 0, px - x - w), Math.max(y - py, 0, py - y - h));
+const routeDist = (icons: Box[]) => {
+  let min = Infinity;
+  for (let i = 0; i + 1 < ROUTE.length; i++) {
+    const [[ax, ay], [bx, by]] = [ROUTE[i], ROUTE[i + 1]];
+    const n = Math.hypot(bx - ax, by - ay);
+    for (let s = 0; s <= n; s++)
+      for (const icon of icons) min = Math.min(min, distToBox([ax + ((bx - ax) * s) / n, ay + ((by - ay) * s) / n], icon));
+  }
+  return min;
+};
 
 describe('pointInPolygon', () => {
   const rings = [rect(0, 0, 100, 100), rect(40, 40, 60, 60).reverse()];
@@ -76,29 +86,22 @@ describe('placeIcons', () => {
     for (const icon of icons) {
       expect(icon.x).toBeGreaterThanOrEqual(0);
       expect(icon.y).toBeGreaterThanOrEqual(0);
-      expect(icon.x + icon.size).toBeLessThanOrEqual(1080);
-      expect(icon.y + icon.size).toBeLessThanOrEqual(1920);
+      expect(icon.x + icon.w).toBeLessThanOrEqual(1080);
+      expect(icon.y + icon.h).toBeLessThanOrEqual(1920);
       for (const z of zones) expect(overlaps(icon, z)).toBe(false);
     }
     // Trasa próbkowana co 1 jednostkę; bufor = połowa grubości + 12.
-    for (let i = 0; i + 1 < ROUTE.length; i++) {
-      const [[ax, ay], [bx, by]] = [ROUTE[i], ROUTE[i + 1]];
-      const n = Math.hypot(bx - ax, by - ay);
-      for (let s = 0; s <= n; s++) {
-        const p: [number, number] = [ax + ((bx - ax) * s) / n, ay + ((by - ay) * s) / n];
-        for (const icon of icons) expect(distToBox(p, icon)).toBeGreaterThanOrEqual(OPTS.routeWidth / 2 + 12);
-      }
-    }
+    expect(routeDist(icons)).toBeGreaterThanOrEqual(OPTS.routeWidth / 2 + 12);
   });
 
   it('drzewa leżą w zieleni', () => {
-    for (const { x, y, size } of placed.trees)
-      expect(pointInPolygon([x + size / 2, y + size / 2], objects([]).green[0].rings)).toBe(true);
+    for (const { x, y, w, h } of placed.trees)
+      expect(pointInPolygon([x + w / 2, y + h / 2], objects([]).green[0].rings)).toBe(true);
   });
 
   it('zamki to największe budynki i zachowują odstęp', () => {
     expect(placed.castles).toHaveLength(4);
-    const centers = placed.castles.map(({ x, y, size }) => [x + size / 2, y + size / 2]);
+    const centers = placed.castles.map(({ x, y, w, h }) => [x + w / 2, y + h / 2]);
     // Środek ikony w obrębie drgania (size / 8) od środka budynku.
     for (const [i, b] of [BUILDINGS[0], BUILDINGS[2], BUILDINGS[4], BUILDINGS[5]].entries()) {
       expect(Math.abs(centers[i][0] - b.x)).toBeLessThanOrEqual(110 / 8);
@@ -110,20 +113,25 @@ describe('placeIcons', () => {
 
   it('smok trafia na dużą wodę, a bez miejsca go nie ma', () => {
     const d = placed.dragon!;
-    expect(d.size).toBe(260);
-    expect(pointInPolygon([d.x + d.size / 2, d.y + d.size / 2], [rect(100, 760, 1000, 1150)])).toBe(true);
+    expect([d.w, d.h]).toEqual([260, 260]);
+    expect(pointInPolygon([d.x + d.w / 2, d.y + d.h / 2], [rect(100, 760, 1000, 1150)])).toBe(true);
     // Woda za mała na smoka: szuka na całej wolnej siatce, więc nie trafia w wodę.
     const dry = placeIcons(input(1, [area(100, 760, 200, 860)]), OPTS).dragon!;
-    expect(pointInPolygon([dry.x + dry.size / 2, dry.y + dry.size / 2], [rect(100, 760, 200, 860)])).toBe(false);
+    expect(pointInPolygon([dry.x + dry.w / 2, dry.y + dry.h / 2], [rect(100, 760, 200, 860)])).toBe(false);
     const full = placeIcons({ ...input(), exclude: [[0, 0, 1080, 1920]] }, OPTS);
     expect(full.dragon).toBeUndefined();
     expect(all(full)).toEqual([]);
+    expect(placeIcons(input(), { ...OPTS, dragon: undefined }).dragon).toBeUndefined();
   });
 
-  it('z grid: 12 wszystkie x, y i size są wielokrotnościami 12', () => {
-    const icons = all(placeIcons(input(), { ...OPTS, grid: 12 }));
-    expect(icons.length).toBeGreaterThan(60);
-    for (const { x, y, size } of icons) for (const v of [x, y, size]) expect(Number.isInteger(v / 12), String(v)).toBe(true);
+  it('z grid: 24 współrzędne i wymiary na siatce 24, aspect daje wysokie ikony, bufor trasy rośnie o grid', () => {
+    const grid = { ...OPTS, grid: 24, castles: { ...OPTS.castles, min: 96, max: 96, aspect: 2 } };
+    const p = placeIcons(input(), grid);
+    const icons = all(p);
+    expect(icons.length).toBeGreaterThan(20);
+    for (const { x, y, w, h } of icons) for (const v of [x, y, w, h]) expect(Number.isInteger(v / 24), String(v)).toBe(true);
+    for (const c of p.castles) expect([c.w, c.h]).toEqual([96, 192]);
+    expect(routeDist(icons)).toBeGreaterThanOrEqual(OPTS.routeWidth / 2 + 12 + 24);
   });
 });
 

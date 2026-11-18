@@ -211,6 +211,15 @@ type MapObjects = {
 - `Postcard` dostaje prop `theme`.
 - Miniatury bez zmian (profil `THUMB`, tokeny CSS).
 
+### 8. Zmiana po przeglądzie właściciela (ikony za małe, 8-bit „za bardzo fantasy”)
+- Pixel to zwykłe miasto ze starej gry: bez smoka i zamku. Sprite'y: dom z dachem i kamienica (8x8, piksel 12 -> 96x96; większa trzecia część domów to kamienice), wieżowiec dla największych budynków (8x16 -> 96x192, `aspect` w opcjach budynków), drzewo i świerk (8x8 -> 96x96, odstęp 120, max 80). Wszystkie sprite'y mają ten sam piksel 12.
+- OpenMapTiles scala budynki kafelka w jeden multipoligon (setki pierścieni), więc `projectFeatures` dzieli warstwę `building` na poligony (pierścień o kierunku pierwszego = nowy budynek, przeciwny = otwór), a `minBuildingArea` działa na pojedynczy budynek. Bez tego `MapObjects.buildings` miało ok. 1 „budynek” na kafelek i ikon budynków prawie nie było.
+- Siatka 24 zamiast 12: `PIXEL.precision = 24`, `minBuildingArea = 576`, trasa schodkowa na 24, trasa 24 + obwódka 6, drogi 8/16/24/32, rzeki 24.
+- Ikona ma osobne `w` i `h` = kolumny/wiersze sprite'a × całkowity piksel, zawsze wielokrotność siatki; siatka zajętości ma komórkę = siatkę, więc kwadrat smoka też jest na siatce.
+- Bufor trasy przy `grid` rośnie o jedną komórkę (schodki odchodzą od trasy o ≤ 1 komórkę).
+- Smok jest opcjonalny w `PlaceOpts` (pixel go nie używa).
+- Fantasy bez zmian w wyglądzie, ikony ok. 2x: drzewa 56 (odstęp 64, max 200), zamki 128–220 (3 szt., odstęp 360), smok 280–500, domy 44–64 (20 szt., odstęp 110).
+
 ## Konsekwencje
 - Nowy motyw = jeden plik w `themes/` + wpis w `THEMES`, bez zmian w slotach i eksporcie.
 - Konwencja `currentColor` w formach slotów staje się wymagana.

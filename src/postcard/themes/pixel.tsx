@@ -4,14 +4,14 @@ import type { MapStyle } from '../mapStyle';
 import { placeIcons, staircase, type Icon } from './geometry';
 import type { MapTheme } from './index';
 
-// Motyw 8-bit: mapa i ikony na siatce 12, paleta 8 kolorów, schodkowa trasa (ADR 0005).
-const GRID = 12;
+// Motyw 8-bit: miasto ze starej gry, mapa i ikony na siatce 24, paleta 8 kolorów, schodkowa trasa (ADR 0005).
+export const GRID = 24;
 const PALETTE: Record<string, string> = {
   g: '#3e8948', // trawa
   d: '#265c42', // las
-  b: '#2b4fb0', // woda
-  t: '#8b5a3c', // budynki, pnie
-  y: '#e8c170', // drogi
+  b: '#2b4fb0', // woda, okna
+  t: '#8b5a3c', // budynki, pnie, drzwi
+  y: '#e8c170', // drogi, kamienice
   w: '#f4f4f4',
   r: '#ff004d',
   k: '#1d1d1d',
@@ -29,43 +29,42 @@ const STYLE: MapStyle = {
     mid: PALETTE.y,
     major: PALETTE.w,
   },
-  widths: { waterway: 12, path: 4, minor: 8, mid: 12, major: 16 },
+  widths: { waterway: 24, path: 8, minor: 16, mid: 24, major: 32 },
   linecap: 'square',
 };
 
 // Sprite: wiersz = string, znak = kolor z PALETTE, '.' = przezroczysty.
-const SPRITES: Record<string, string[]> = {
+export const SPRITES: Record<string, string[]> = {
   tree: ['..kkkk..', '.kggggk.', 'kggggggk', 'kggggggk', '.kggggk.', '..kttk..', '...tt...', '..kttk..'],
-  house: ['...kk...', '..krrk..', '.krrrrk.', 'krrrrrrk', '.wwwwww.', '.wwkkww.', '.wwkkww.', '.kkkkkk.'],
-  castle: [
-    '.....k......',
-    '.....krr....',
-    'k.k..k...k.k',
-    'kkk.kkkk.kkk',
-    'kwk.kwwk.kwk',
-    'kwkkkwwkkkwk',
-    'kwwwwwwwwwwk',
-    'kwkwwwwwwkwk',
-    'kwwwwkkwwwwk',
-    'kwwwkkkkwwwk',
-    'kwwwkkkkwwwk',
-    'kkkkkkkkkkkk',
-  ],
-  dragon: [
-    '......kk........',
-    '.....krrk.......',
-    '....krrrrk...kk.',
-    '...krrrrrk..krrk',
-    '..krrrrrk..krwrk',
-    'k..krrrrkkkrrrrk',
-    'rk.krrrrrrrrrkk.',
-    'krkrrrrrrrrrk...',
-    '.krrryyyyyrrk...',
-    '..kkryyyyyrk....',
-    '....krk.krk.....',
-    '....kk...kk.....',
+  pine: ['...kk...', '..kggk..', '..kggk..', '.kggggk.', '.kggggk.', 'kggggggk', 'kkkttkkk', '...tt...'],
+  house: ['...kk...', '..krrk..', '.krrrrk.', 'krrrrrrk', '.kwwwwk.', '.kwbwtk.', '.kwwwtk.', '.kkkkkk.'],
+  block: ['kkkkkkkk', 'kyyyyyyk', 'kybyybyk', 'kyyyyyyk', 'kybyybyk', 'kyyyyyyk', 'kyyttyyk', 'kkkkkkkk'],
+  tower: [
+    '...rr...',
+    '...kk...',
+    'kkkkkkkk',
+    'kwwwwwwk',
+    'kwbwwbwk',
+    'kwwwwwwk',
+    'kwbwwbwk',
+    'kwwwwwwk',
+    'kwbwwbwk',
+    'kwwwwwwk',
+    'kwbwwbwk',
+    'kwwwwwwk',
+    'kwbwwbwk',
+    'kwwwwwwk',
+    'kwwkkwwk',
+    'kkkkkkkk',
   ],
 };
+
+// Rozmiar „piksela” sprite'a, wspólny dla wszystkich (spójna grafika); wymiar ikony = kolumny/wiersze × piksel.
+export const PIXEL_SIZE: Record<string, number> = { tree: 12, pine: 12, house: 12, block: 12, tower: 12 };
+export const spriteSize = (name: string): [number, number] => [
+  SPRITES[name][0].length * PIXEL_SIZE[name],
+  SPRITES[name].length * PIXEL_SIZE[name],
+];
 
 // Poziome serie jednego znaku -> [x, y, szerokość, znak].
 export function spriteRects(rows: string[]): [number, number, number, string][] {
@@ -92,45 +91,48 @@ const symbol = (name: string) => {
   );
 };
 
-const uses = (name: string, icons: (Omit<Icon, 'flip'> & { flip?: boolean })[]) =>
-  icons.map(({ x, y, size, flip }, i) => (
-    <use
-      key={`${name}${i}`}
-      href={`#pixel-${name}`}
-      x={x}
-      y={y}
-      width={size}
-      height={size}
-      transform={flip ? `translate(${2 * x + size} 0) scale(-1 1)` : undefined}
-    />
-  ));
+const use = (name: string, { x, y, w, h, flip }: Omit<Icon, 'flip'> & { flip?: boolean }, key: string) => (
+  <use
+    key={key}
+    href={`#pixel-${name}`}
+    x={x}
+    y={y}
+    width={w}
+    height={h}
+    transform={flip ? `translate(${2 * x + w} 0) scale(-1 1)` : undefined}
+  />
+);
+
+const [TREE] = spriteSize('tree');
+const [HOUSE] = spriteSize('house');
+const [TOWER_W, TOWER_H] = spriteSize('tower');
+const fixed = (w: number) => ({ k: 1, min: w, max: w });
 
 export const pixel: MapTheme = {
   label: '8-bit',
   profile: PIXEL,
   render: (input) => {
     const icons = placeIcons(input, {
-      routeWidth: 24,
+      routeWidth: 36, // trasa 24 + obwódka 2 × 6
       grid: GRID,
-      dragon: { min: 144, max: 240, minWater: 40000 },
-      castles: { count: 4, spacing: 220, k: 2, min: 72, max: 120 },
-      houses: { count: 30, spacing: 80, k: 2, min: 36, max: 48 },
-      trees: { spacing: 36, size: 24, max: 400 },
+      castles: { count: 3, spacing: 300, ...fixed(TOWER_W), aspect: TOWER_H / TOWER_W },
+      houses: { count: 16, spacing: 144, ...fixed(HOUSE) },
+      trees: { spacing: 120, size: TREE, max: 80 },
     });
     return {
       scene: (
         <g shapeRendering="crispEdges">
           <defs>{Object.keys(SPRITES).map(symbol)}</defs>
           <MapBackground layers={input.map.layers} style={STYLE} />
-          {uses('tree', icons.trees)}
-          {uses('house', icons.houses)}
-          {uses('castle', icons.castles)}
-          {icons.dragon && uses('dragon', [icons.dragon])}
+          {icons.trees.map((t, i) => use(i % 3 ? 'tree' : 'pine', t, `t${i}`))}
+          {/* Domy idą malejąco po polu budynku: większa trzecia część to kamienice. */}
+          {icons.houses.map((h, i) => use(i < icons.houses.length / 3 ? 'block' : 'house', h, `h${i}`))}
+          {icons.castles.map((c, i) => use('tower', c, `c${i}`))}
         </g>
       ),
       route: {
         stroke: PALETTE.r,
-        width: 12,
+        width: 24,
         outline: PALETTE.k,
         outlineWidth: 6,
         crisp: true,

@@ -39,8 +39,8 @@ export const THUMB: MapProfile = {
   minBuildingArea: 0,
   objects: false,
 };
-// Motyw 8-bit: mapa przyciągnięta do siatki 12 przez samo zaokrąglanie.
-export const PIXEL: MapProfile = { ...POSTCARD, precision: 12, minBuildingArea: 144 };
+// Motyw 8-bit: mapa przyciągnięta do siatki 24 przez samo zaokrąglanie.
+export const PIXEL: MapProfile = { ...POSTCARD, precision: 24, minBuildingArea: 576 };
 
 // [x0, y0, x1, y1] w układzie płótna.
 export type Rect = [number, number, number, number];
@@ -110,9 +110,8 @@ function projectFeatures(features: MapFeature[], [width, height]: [number, numbe
     if (!key || !profile.keys.includes(key)) continue;
     const line = LINE_KEYS.has(key);
     const scale = f.tile.size / f.extent;
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    const rings: Ring[] = [];
-    for (const ring of f.geometry) {
+    // null = pierścień odrzucony po zaokrągleniu; indeksy zgodne z f.geometry.
+    const rings: (Ring | null)[] = f.geometry.map((ring) => {
       const pts: [number, number][] = [];
       for (const p of ring) {
         const x = round(f.tile.left + p.x * scale);
@@ -120,18 +119,57 @@ function projectFeatures(features: MapFeature[], [width, height]: [number, numbe
         const last = pts[pts.length - 1];
         if (last && last[0] === x && last[1] === y) continue;
         pts.push([x, y]);
-        if (x < minX) minX = x;
-        if (x > maxX) maxX = x;
-        if (y < minY) minY = y;
-        if (y > maxY) maxY = y;
       }
-      if (pts.length >= (line ? 2 : 3)) rings.push(pts);
+      return pts.length >= (line ? 2 : 3) ? pts : null;
+    });
+    // OpenMapTiles scala budynki kafelka w jeden multipoligon (setki pierścieni), więc dzielimy na budynki.
+    for (const part of key === 'building' ? polygons(f.geometry, rings) : [rings.filter((r) => r !== null)]) {
+      if (!part.length) continue;
+      const [minX, minY, maxX, maxY] = boxOf(part);
+      if (maxX < 0 || minX > width || maxY < 0 || minY > height) continue;
+      if (key === 'building' && (maxX - minX) * (maxY - minY) < profile.minBuildingArea) continue;
+      if (line && Math.hypot(maxX - minX, maxY - minY) < 1) continue;
+      out.push({ key, rings: part, box: [minX, minY, maxX, maxY] });
     }
-    if (!rings.length || maxX < 0 || minX > width || maxY < 0 || minY > height) continue;
-    if (key === 'building' && (maxX - minX) * (maxY - minY) < profile.minBuildingArea) continue;
-    if (line && Math.hypot(maxX - minX, maxY - minY) < 1) continue;
-    out.push({ key, rings, box: [minX, minY, maxX, maxY] });
   }
+  return out;
+}
+
+function boxOf(rings: Ring[]): Rect {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const r of rings)
+    for (const [x, y] of r) {
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+  return [minX, minY, maxX, maxY];
+}
+
+const signedArea = (r: Ring) => {
+  let sum = 0;
+  for (let i = 0, j = r.length - 1; i < r.length; j = i++) sum += r[j][0] * r[i][1] - r[i][0] * r[j][1];
+  return sum / 2;
+};
+
+// MVT 4.3.4.4: pierścień o kierunku pierwszego zaczyna nowy poligon, przeciwny to otwór poprzedniego.
+// Kierunek z surowych współrzędnych kafelka: zaokrąglenie do siatki może go zmienić albo wyzerować.
+function polygons(raw: MapFeature['geometry'], rings: (Ring | null)[]): Ring[][] {
+  const out: Ring[][] = [];
+  let outer = 0;
+  let current: Ring[] | null = null;
+  raw.forEach((ring, i) => {
+    const s = Math.sign(signedArea(ring.map((p): [number, number] => [p.x, p.y])));
+    if (!s) return;
+    outer ||= s;
+    const r = rings[i];
+    if (s === outer) {
+      // Odrzucony zewnętrzny pierścień: cały budynek znika razem z otworami.
+      current = r ? [r] : null;
+      if (current) out.push(current);
+    } else if (r) current?.push(r);
+  });
   return out;
 }
 
@@ -148,12 +186,7 @@ function layersFrom(projected: Projected[]): MapLayers {
 }
 
 // |suma pól ze znakiem| (shoelace): otwory w MVT mają przeciwny kierunek, więc same się odejmują.
-function ringsArea(rings: Ring[]): number {
-  let sum = 0;
-  for (const r of rings)
-    for (let i = 0, j = r.length - 1; i < r.length; j = i++) sum += r[j][0] * r[i][1] - r[i][0] * r[j][1];
-  return Math.abs(sum) / 2;
-}
+const ringsArea = (rings: Ring[]) => Math.abs(rings.reduce((sum, r) => sum + signedArea(r), 0));
 
 function objectsFrom(projected: Projected[], profile: MapProfile): MapObjects {
   const objects: MapObjects = { buildings: [], green: [], water: [] };

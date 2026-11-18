@@ -90,6 +90,12 @@ describe('buildMapLayers', () => {
     expect(layers.building).toBe('M100 100L105 100L105 105L100 105Z');
   });
 
+  it('scalony multipoligon budynków: otwór dziedzińca w d, budynek poza płótnem pominięty', () => {
+    const merged = [square(100, 100, 40)[0], square(110, 110, 10)[0].reverse(), square(2000, 2000, 20)[0]];
+    const layers = buildMapLayers([feature({ layer: 'building', type: 3, geometry: merged })], SIZE, POSTCARD);
+    expect(layers.building).toBe('M100 100L140 100L140 140L100 140ZM110 120L120 120L120 110L110 110Z');
+  });
+
   it('obiekt poza płótnem pominięty', () => {
     const layers = buildMapLayers(
       [feature({ geometry: [[{ x: 1100, y: 10 }, { x: 1200, y: 10 }]] }), feature({ geometry: [[{ x: -50, y: -9 }, { x: -1, y: -2 }]] })],
@@ -154,6 +160,23 @@ describe('buildMapObjects', () => {
     expect(water[0].area).toBe(10000 - 400);
   });
 
+  it('scalony multipoligon budynków (jak w OpenMapTiles) dzielony na osobne budynki z otworami', () => {
+    const hole = square(110, 110, 10)[0].reverse();
+    const merged = [square(100, 100, 40)[0], hole, square(300, 300, 20)[0], square(600, 600, 2)[0]];
+    const { buildings } = buildMapObjects([feature({ layer: 'building', type: 3, geometry: merged })], SIZE, POSTCARD);
+    expect(buildings).toEqual([
+      { x: 120, y: 120, area: 1600 - 100 },
+      { x: 310, y: 310, area: 400 },
+    ]);
+  });
+
+  it('PIXEL: otwór budynku, którego zewnętrzny pierścień zniknął po zaokrągleniu, nie trafia do poprzedniego', () => {
+    // 500..505 -> jeden punkt siatki 24; otwór przetrwa zaokrąglenie.
+    const merged = [square(96, 96, 192)[0], square(500, 500, 5)[0], square(400, 400, 200)[0].reverse()];
+    const { buildings } = buildMapObjects([feature({ layer: 'building', type: 3, geometry: merged })], SIZE, PIXEL);
+    expect(buildings).toEqual([{ x: 192, y: 192, area: 192 * 192 }]);
+  });
+
   it('budynek poniżej minBuildingArea pominięty', () => {
     const { buildings } = buildMapObjects(
       [feature({ layer: 'building', type: 3, geometry: square(0, 0, 3) }), feature({ layer: 'building', type: 3, geometry: square(50, 50, 5) })],
@@ -171,7 +194,7 @@ describe('buildMapObjects', () => {
     });
   });
 
-  it('PIXEL: każda liczba w d wszystkich warstw jest wielokrotnością 12', () => {
+  it('PIXEL: każda liczba w d wszystkich warstw jest wielokrotnością 24', () => {
     // Skala kafelka niecałkowita, żeby trafić w błędy zmiennoprzecinkowe przy v * (1/12).
     const tile = { ...TILE, left: 7.3, top: -3.1, size: 724.5 };
     const odd = (i: number) => [[{ x: 13 + i * 37, y: 29 + i * 53 }, { x: 401 + i * 11, y: 97 + i * 7 }, { x: 263 + i, y: 611 - i * 3 }]];
@@ -182,7 +205,7 @@ describe('buildMapObjects', () => {
     const layers = buildMapLayers(features, SIZE, PIXEL);
     const nums = Object.values(layers).flatMap((d) => d!.match(/-?[\d.e-]+/g)!.map(Number));
     expect(nums.length).toBeGreaterThan(100);
-    for (const v of nums) expect(Number.isInteger(v / 12), String(v)).toBe(true);
+    for (const v of nums) expect(Number.isInteger(v / 24), String(v)).toBe(true);
   });
 });
 

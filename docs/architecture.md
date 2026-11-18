@@ -40,7 +40,7 @@ src/
     themes/               # motywy mapy na pocztówce (ADR 0005)
       index.ts            # typy ThemeInput/ThemeOutput/MapTheme, rejestr THEMES (minimal, pixel, fantasy)
       minimal.tsx         # dotychczasowy wygląd mapy
-      pixel.tsx           # 8-bit: profil PIXEL (siatka 12), paleta 8 kolorów, sprite'y z prostokątów, schodkowa trasa
+      pixel.tsx           # 8-bit: profil PIXEL (siatka 24), paleta 8 kolorów, miejskie sprite'y z prostokątów, schodkowa trasa
       fantasy.tsx         # pergamin, drżenie feDisplacementMap (tylko mapa i ikony), woda w falach, kartusz, róża wiatrów
       geometry.ts         # czyste funkcje: pointInPolygon, OccupancyGrid, slotZones, placeIcons, snap, staircase
       geometry.test.ts

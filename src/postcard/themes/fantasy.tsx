@@ -63,15 +63,15 @@ const SYMBOLS = (
 );
 
 const uses = (name: string, icons: (Omit<Icon, 'flip'> & { flip?: boolean })[]) =>
-  icons.map(({ x, y, size, flip }, i) => (
+  icons.map(({ x, y, w, h, flip }, i) => (
     <use
       key={`${name}${i}`}
       href={`#fantasy-${name}`}
       x={x}
       y={y}
-      width={size}
-      height={size}
-      transform={flip ? `translate(${2 * x + size} 0) scale(-1 1)` : undefined}
+      width={w}
+      height={h}
+      transform={flip ? `translate(${2 * x + w} 0) scale(-1 1)` : undefined}
     />
   ));
 
@@ -148,10 +148,10 @@ export const fantasy: MapTheme = {
       { ...input, exclude: [...input.exclude, title.rect, COMPASS_RECT] },
       {
         routeWidth: 10,
-        dragon: { min: 160, max: 260, minWater: 30000 },
-        castles: { count: 4, spacing: 220, k: 3, min: 64, max: 110 },
-        houses: { count: 30, spacing: 80, k: 2.5, min: 30, max: 44 },
-        trees: { spacing: 36, size: 28, max: 400 },
+        dragon: { min: 280, max: 500, minWater: 60000 },
+        castles: { count: 3, spacing: 360, k: 5, min: 128, max: 220 },
+        houses: { count: 20, spacing: 110, k: 3.5, min: 44, max: 64 },
+        trees: { spacing: 64, size: 56, max: 200 },
       },
     );
     return {
