@@ -115,5 +115,7 @@ export function mockStreams(activity: Activity): RunStreams {
   const streams: RunStreams = { latlng, distance, time, altitude, velocity };
   const hr = activity.average_heartrate;
   if (hr) streams.heartrate = distance.map((d, i) => Math.round(hr + 25 * (grade[i] / maxGrade) + 10 * (d / D - 0.5)));
+  const cad = activity.average_cadence;
+  if (cad) streams.cadence = grade.map((g, i) => Math.round(cad + 3 * (g / maxGrade) + 2 * Math.sin(i / 7)));
   return streams;
 }

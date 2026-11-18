@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react';
 import type { Activity, RunStreams } from '../strava/api';
-import { kmSplits, series } from '../lib/chartData';
+import { bestSplits, hrBins, kmGrades, kmSplits, series, speedHr } from '../lib/chartData';
 import {
   formatCadence,
   formatDate,
@@ -14,7 +14,21 @@ import {
   formatSpeedKmh,
   formatTime,
 } from '../lib/format';
-import { AreaChart, BarsChart, LineChart, RingChart, type ChartProps } from './SlotChart';
+import {
+  AreaChart,
+  BarsChart,
+  BestChart,
+  CadenceChart,
+  GainChart,
+  GradeChart,
+  HrBinsChart,
+  LineChart,
+  RingChart,
+  ScatterChart,
+  SparkChart,
+  SpeedChart,
+  type ChartProps,
+} from './SlotChart';
 import { labelAboveY, type LabelPos, type SlotAnchor } from './SlotNumber';
 
 // Slot = co pokazać (data) + jak narysować (form). Nowe dane/formy dopisujemy tylko do rejestrów.
@@ -32,7 +46,7 @@ export type SlotData =
   | 'date'
   | 'start'
   | 'name';
-export type ChartForm = 'area' | 'line' | 'bars' | 'ring';
+export type ChartForm = 'area' | 'line' | 'bars' | 'ring' | 'speed' | 'cadence' | 'hrbins' | 'grade' | 'gain' | 'scatter' | 'best' | 'spark';
 export type SlotForm = 'number' | ChartForm;
 
 // id to klucz pozycji w układzie ('main', 'a', 'b'…), nie rodzaj danych.
@@ -76,6 +90,14 @@ export const CHARTS: Record<
   line: { data: 'heartrate', menu: 'Heart rate chart', label: 'HEART RATE', has: (s) => series(s, 'heartrate', 2).length > 0, Component: LineChart },
   bars: { data: 'pace', menu: 'Pace per km', label: 'PACE PER KM', has: (s) => kmSplits(s).length > 0, Component: BarsChart },
   ring: { data: 'heartrate', menu: 'Heart rate zones', label: 'HR ZONES', has: (s) => series(s, 'heartrate', 2).length > 0, Component: RingChart },
+  speed: { data: 'speed', menu: 'Speed chart', label: 'SPEED', has: (s) => series(s, 'velocity', 2).length > 0, Component: SpeedChart },
+  cadence: { data: 'cadence', menu: 'Cadence chart', label: 'CADENCE', has: (s) => series(s, 'cadence', 2).length > 0, Component: CadenceChart },
+  hrbins: { data: 'heartrate', menu: 'Heart rate histogram', label: 'HR SPREAD', has: (s) => hrBins(s).length > 0, Component: HrBinsChart },
+  grade: { data: 'elevation', menu: 'Grade per km', label: 'GRADE PER KM', has: (s) => kmGrades(s).length > 0, Component: GradeChart },
+  gain: { data: 'elevation', menu: 'Cumulative climb', label: 'CLIMB', has: (s) => series(s, 'altitude', 2).length > 0, Component: GainChart },
+  scatter: { data: 'pace', menu: 'Speed vs heart rate', label: 'SPEED VS HR', has: (s) => speedHr(s).length > 1, Component: ScatterChart },
+  best: { data: 'pace', menu: 'Fastest km', label: 'FASTEST KM', has: (s) => bestSplits(s).length > 0, Component: BestChart },
+  spark: { data: 'elevation', menu: 'Elevation spark', label: 'ELEVATION GAIN', has: (s) => series(s, 'altitude', 2).length > 0, Component: SparkChart },
 };
 
 export const slotMenu = (s: Slot) => (s.form === 'number' ? DATA[s.data].menu : CHARTS[s.form].menu);
@@ -101,7 +123,11 @@ export type LayoutId =
   | 'hud'
   | 'scoreboard'
   | 'splits'
-  | 'pulse';
+  | 'pulse'
+  | 'duo'
+  | 'climb'
+  | 'strip'
+  | 'table';
 
 const item = (
   id: string,
@@ -275,6 +301,47 @@ export const LAYOUTS: Record<LayoutId, { id: LayoutId; name: string; items: Layo
       item('c', 'pace', 880, 1700, 100, 'middle', 300),
     ],
   },
+  duo: {
+    id: 'duo',
+    name: 'Two charts',
+    items: [
+      item('a', 'distance', 200, 1320, 110, 'middle', 300),
+      item('b', 'time', 540, 1320, 110, 'middle', 300),
+      item('c', 'pace', 880, 1320, 110, 'middle', 300),
+      chart('left', 'speed', 60, 1420, 520, 1790),
+      chart('right', 'cadence', 560, 1420, 1020, 1790),
+    ],
+  },
+  climb: {
+    id: 'climb',
+    name: 'Climb',
+    items: [
+      chart('chart', 'grade', 60, 1200, 1020, 1470),
+      item('a', 'distance', 300, 1690, 110, 'middle', 440),
+      chart('gain', 'gain', 560, 1500, 1020, 1790),
+    ],
+  },
+  // Pasek nad polem trasy (y < 260).
+  strip: {
+    id: 'strip',
+    name: 'Top strip',
+    items: [
+      chart('chart', 'spark', 60, 40, 1020, 240),
+      item('main', 'distance', 540, 1480, 260, 'middle', 960),
+      item('a', 'time', 300, 1700, 110, 'middle', 440),
+      item('b', 'pace', 780, 1700, 110, 'middle', 440),
+    ],
+  },
+  table: {
+    id: 'table',
+    name: 'Stats & table',
+    items: [
+      item('main', 'distance', 70, 1350, 150, 'start', 440),
+      item('a', 'time', 70, 1540, 110, 'start', 440),
+      item('b', 'heartrate', 70, 1710, 110, 'start', 440),
+      chart('chart', 'best', 560, 1210, 1020, 1790),
+    ],
+  },
 };
 
 export const LAYOUT_ORDER: LayoutId[] = [
@@ -293,6 +360,10 @@ export const LAYOUT_ORDER: LayoutId[] = [
   'scoreboard',
   'splits',
   'pulse',
+  'duo',
+  'climb',
+  'strip',
+  'table',
 ];
 
 // Zmiany w slotach jednego układu: id slotu -> dane i forma.

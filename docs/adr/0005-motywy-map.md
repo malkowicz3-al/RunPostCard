@@ -41,6 +41,18 @@
   | Synthwave | Racing Sans |
   | Terminal | Press Start |
   | Ink | Teko |
+  | Handheld | Press Start |
+  | Vector Arcade | Orbitron |
+  | Dungeon | Anton |
+  | Space Shooter | Audiowide |
+  | Voxel | Rubik Mono |
+  | Night Vision | Black Ops |
+  | Kart Race | Bungee |
+  | Cyber HUD | Teko |
+  | Overworld | Righteous |
+  | Pinball | Racing Sans |
+
+- **Motywy gatunków gier** (ogólne nazwy, bez tytułów, marek i postaci): Handheld (4 odcienie zieleni LCD, siatka pikseli), Vector Arcade (cienkie świecące linie na czerni), Dungeon (płyty kamienia, winieta, trasa jak pochodnia), Space Shooter (pole gwiazd, magentowa trasa), Voxel (pikselowa trawa, deski budynków), Night Vision (luminofor, linie skanowania, szum `Grain`, winieta), Kart Race (cukierkowe kolory, trasa biało-czarna: kreska `16 8` + `Outline`), Cyber HUD (siatka, cyjan i magenta z poświatą), Overworld (pikselowa trawa i fale, przerywana trasa z konturem), Pinball (ulice w kolorach odbijaczy z poświatą, chromowana trasa). Filtry z obszarem `FILTER_AREA`, najwyżej na 3 warstwach ulic.
 
 ## Kontekst
 Etap 2 „Motywy map” (CLAUDE.md): z tych samych danych OSM co tło „Map” (ADR 0004) generujemy stylizowane mapy na pocztówce, np. zamek zamiast bloku, smok, woda w falach. Wymagania: deterministycznie (ziarno = id biegu), trasa dokładna, eksport SVG/PNG jak teraz (ADR 0002: jeden samowystarczalny SVG), miniatury listy bez zmian, bez nowych zależności.

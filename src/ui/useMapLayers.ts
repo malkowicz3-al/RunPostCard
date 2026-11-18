@@ -24,7 +24,7 @@ export function useMapLayers(
     setState((s) => ({ ...s, failed: false, loading: true }));
     loadMapLayers(projection, size, profile).then(
       (layers) => !cancelled && setState({ layers, failed: false, loading: false }),
-      // Przerwanie to nie błąd mapy (nie wyłącza Details ani tła mapy).
+      // Przerwanie to nie błąd mapy (nie wyłącza tła mapy).
       (e) => !cancelled && setState((s) => (e?.name === 'AbortError' ? { ...s, loading: false } : { failed: true, loading: false })),
     );
     return () => {

@@ -31,6 +31,7 @@ describe('normalizeStreams', () => {
       altitude: { data: [200, 205, 210] },
       heartrate: { data: [120, 130, 140] },
       velocity_smooth: { data: [3, 3.3, 3.1] },
+      cadence: { data: [84, 86, 85] },
     });
     expect(s).toEqual({
       latlng: latlng.data,
@@ -39,6 +40,7 @@ describe('normalizeStreams', () => {
       altitude: [200, 205, 210],
       heartrate: [120, 130, 140],
       velocity: [3, 3.3, 3.1],
+      cadence: [84, 86, 85],
     });
   });
 
@@ -77,7 +79,7 @@ describe('fetchStreams', () => {
     respond(200, { latlng, distance, velocity_smooth: { data: [3, 3, 3] } });
     const s = await fetchStreams(42);
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://www.strava.com/api/v3/activities/42/streams?keys=latlng,altitude,heartrate,velocity_smooth,distance,time&key_by_type=true',
+      'https://www.strava.com/api/v3/activities/42/streams?keys=latlng,altitude,heartrate,velocity_smooth,cadence,distance,time&key_by_type=true',
       { headers: { Authorization: 'Bearer tok' } },
     );
     expect(s).toEqual({ latlng: latlng.data, distance: distance.data, velocity: [3, 3, 3] });

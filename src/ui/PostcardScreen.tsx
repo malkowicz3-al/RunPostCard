@@ -10,7 +10,7 @@ import {
 import type { Activity } from '../strava/api';
 import { Postcard } from '../postcard/Postcard';
 import { ROUTE_BOX } from '../postcard/Route';
-import { CAMERA_CENTER, DEFAULT_CAMERA, MAX_ZOOM, clampCamera, keepCamera, type Camera } from '../lib/camera';
+import { CAMERA_CENTER, DEFAULT_CAMERA, clampCamera, keepCamera, type Camera } from '../lib/camera';
 import { backdropArea, nextBackdropArea, type LoadedArea } from '../lib/backdrop';
 import { exportPng, exportSvg } from '../lib/exportPng';
 import { DEFAULT_FONT, FONTS, loadFontCss, type FontId } from '../lib/fonts';
@@ -18,7 +18,7 @@ import { loadPhoto } from '../lib/photo';
 import { isoRoute } from '../lib/isoRoute';
 import { fitRoute } from '../lib/routePath';
 import { zoomRegion } from '../lib/zoomRegion';
-import { POSTCARD, POSTCARD_DETAILED } from '../lib/vectorMap';
+import { POSTCARD_DETAILED } from '../lib/vectorMap';
 import { DATA, resolveLayout, slotBox, slotMenu, swapSlot, type LayoutId, type Overrides, type SlotPick } from '../postcard/slots';
 import { THEMES, type ThemeId } from '../postcard/themes';
 import { DEFAULT_ACCENT } from '../postcard/themes/neon';
@@ -108,13 +108,12 @@ export function PostcardScreen({
   // 3D liczy się na płaskiej projekcji trasy, więc bez niej przycisk nie ma sensu.
   const has3d = !!streams?.altitude && fit !== null;
   const is3d = view === '3d' && has3d;
-  const [detailed, setDetailed] = useState(false);
-  const profile = detailed ? POSTCARD_DETAILED : POSTCARD;
+  const profile = POSTCARD_DETAILED;
   const map = useMapLayers(fit?.projection ?? null, SIZE, profile, isMap);
-  // Przy zmianie profilu podgląd zostaje na starych warstwach, ale pobieranie czeka na nowe.
   const mapMissing = isMap && !map.layers;
   const mapLoading = isMap && (!map.layers || map.loading);
   const [camera, setCamera] = useState<Camera>(DEFAULT_CAMERA);
+  const moved = camera.zoom !== 1 || camera.x !== 0 || camera.y !== 0;
   // Aktywne wskaźniki nad podglądem (1 = przesuwanie, 2 = szczypanie).
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   // Zmiany kamery z kółka i przeciągania zbieramy i stosujemy raz na klatkę (render długiego biegu jest drogi).
@@ -243,12 +242,11 @@ export function PostcardScreen({
   // Bez wczytanej mapy pocztówka ma gradient, więc podgląd też.
   const preview = previewColors(mapMissing ? 'gradient' : look, accent, photo);
 
-  // Przy błędzie szczegółowej mapy wracamy do podstawowej, przy błędzie podstawowej do gradientu.
+  // Przy błędzie mapy wracamy do gradientu.
   useEffect(() => {
     if (!map.failed) return;
     setMapFailed(true);
-    if (detailed) setDetailed(false);
-    else setLook('gradient');
+    setLook('gradient');
   }, [map.failed]);
 
   const currentSvg = () => previewRef.current?.querySelector('svg') ?? null;
@@ -317,6 +315,26 @@ export function PostcardScreen({
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
+          // Klawiatura zamiast suwaka: +/- przybliża, strzałki przesuwają (kamera jak przy przeciąganiu).
+          tabIndex={fit ? 0 : undefined}
+          aria-label={fit ? 'Postcard preview. Plus and minus zoom, arrow keys move the map.' : undefined}
+          onKeyDown={(e) => {
+            if (!fit) return;
+            const step = 60;
+            const keys: Record<string, (c: Camera) => Camera> = {
+              '+': (c) => ({ ...c, zoom: c.zoom * 1.25 }),
+              '=': (c) => ({ ...c, zoom: c.zoom * 1.25 }),
+              '-': (c) => ({ ...c, zoom: c.zoom / 1.25 }),
+              ArrowLeft: (c) => ({ ...c, x: c.x + step }),
+              ArrowRight: (c) => ({ ...c, x: c.x - step }),
+              ArrowUp: (c) => ({ ...c, y: c.y + step }),
+              ArrowDown: (c) => ({ ...c, y: c.y - step }),
+            };
+            const fn = keys[e.key];
+            if (!fn) return;
+            e.preventDefault();
+            moveCamera(fn);
+          }}
         >
           <Postcard
             activity={activity}
@@ -366,32 +384,20 @@ export function PostcardScreen({
         </div>
         <div className="style-panel">
           <h2 className="panel-title">Style</h2>
-          <LookPicker
-            polyline={activity.map.summary_polyline}
-            hasRoute={fit !== null}
-            look={look}
-            onLook={choose}
-            accent={accent}
-            onAccent={setAccent}
-            photoHref={photo}
-            onPhotoFile={choosePhoto}
-            photoBusy={photoBusy}
-          />
+          <div className="panel-pair">
+            <LookPicker
+              polyline={activity.map.summary_polyline}
+              hasRoute={fit !== null}
+              look={look}
+              onLook={choose}
+              accent={accent}
+              onAccent={setAccent}
+              photoHref={photo}
+              onPhotoFile={choosePhoto}
+              photoBusy={photoBusy}
+            />
+          </div>
           {photoError && <p className="error">Could not read this image. Try a JPEG or PNG.</p>}
-          {isMap && (
-            <div className="toggle-row">
-              <button
-                className="toggle"
-                aria-pressed={detailed}
-                onClick={() => {
-                  setMapFailed(false);
-                  setDetailed((v) => !v);
-                }}
-              >
-                Details
-              </button>
-            </div>
-          )}
           {look === 'photo' && (
             <div className="toggle-row">
               <label className="zoom-control">
@@ -407,11 +413,14 @@ export function PostcardScreen({
               </label>
             </div>
           )}
-          {fit && (
+          <p className="panel-hint">
+            Click a stat to change it.{fit && ' Drag, Ctrl + scroll or pinch to move and zoom the map.'}
+          </p>
+          {fit && (has3d || moved) && (
             <section className="panel-section">
               <h3 className="panel-heading">View</h3>
-              {has3d && (
-                <div className="toggle-row">
+              <div className="toggle-row">
+                {has3d && (
                   <div className="toggle-group" role="group" aria-label="View">
                     <button className="toggle" aria-pressed={!is3d} onClick={() => setView('flat')}>
                       Flat
@@ -420,43 +429,19 @@ export function PostcardScreen({
                       3D
                     </button>
                   </div>
-                </div>
-              )}
-              <div className="toggle-row">
-                <label className="zoom-control">
-                  Zoom
-                  <input
-                    type="range"
-                    min={1}
-                    max={MAX_ZOOM}
-                    step={0.1}
-                    value={camera.zoom}
-                    onChange={(e) => setCamera((c) => keepCamera(c, clampCamera({ ...c, zoom: Number(e.target.value) })))}
-                  />
-                </label>
-                <button className="toggle" onClick={() => setCamera((c) => keepCamera(c, DEFAULT_CAMERA))}>
-                  Reset
-                </button>
+                )}
+                {moved && (
+                  <button className="text-button" onClick={() => setCamera((c) => keepCamera(c, DEFAULT_CAMERA))}>
+                    Reset view
+                  </button>
+                )}
               </div>
             </section>
           )}
-          <FontPicker font={font} onFont={setFont} />
-          <LayoutPicker layout={layoutId} onLayout={setLayoutId} />
-          <section className="panel-section">
-            <h3 className="panel-heading">Data</h3>
-            <div className="slot-list" role="group" aria-label="Data">
-              {items.map((item) => (
-                <button
-                  key={item.slot.id}
-                  className="toggle"
-                  aria-haspopup="dialog"
-                  onClick={() => setEditing(item.slot.id)}
-                >
-                  {slotMenu(item.slot)} – change
-                </button>
-              ))}
-            </div>
-          </section>
+          <div className="panel-pair">
+            <FontPicker font={font} onFont={setFont} />
+            <LayoutPicker layout={layoutId} onLayout={setLayoutId} />
+          </div>
           <DataModal
             slot={editingItem}
             activity={activity}
@@ -474,7 +459,7 @@ export function PostcardScreen({
               Loading map…
             </p>
           )}
-          {mapFailed && <p className="error">{isMap ? 'Could not load map details.' : 'Could not load the map.'}</p>}
+          {mapFailed && <p className="error">Could not load the map.</p>}
           {exportFailed && <p className="error">Could not create the PNG.</p>}
         </div>
       </div>

@@ -27,6 +27,16 @@ import { popcomic } from './popcomic';
 import { bricks } from './bricks';
 import { arcademaze } from './arcademaze';
 import { dollhouse } from './dollhouse';
+import { handheld } from './handheld';
+import { vectorarcade } from './vectorarcade';
+import { dungeon } from './dungeon';
+import { spaceshooter } from './spaceshooter';
+import { voxel } from './voxel';
+import { nightvision } from './nightvision';
+import { kartrace } from './kartrace';
+import { cyberhud } from './cyberhud';
+import { overworld } from './overworld';
+import { pinball } from './pinball';
 
 // Motywy map na pocztówce: tylko stylistyka (ADR 0005). Nowy motyw = plik w themes/ + wpis w THEMES.
 export type ThemeId =
@@ -52,7 +62,17 @@ export type ThemeId =
   | 'popcomic'
   | 'bricks'
   | 'arcademaze'
-  | 'dollhouse';
+  | 'dollhouse'
+  | 'handheld'
+  | 'vectorarcade'
+  | 'dungeon'
+  | 'spaceshooter'
+  | 'voxel'
+  | 'nightvision'
+  | 'kartrace'
+  | 'cyberhud'
+  | 'overworld'
+  | 'pinball';
 
 export type ThemeOutput = {
   scene: ReactNode; // pod trasą: <defs>, tło, warstwy mapy
@@ -74,4 +94,5 @@ export type MapTheme = {
 export const THEMES: Record<ThemeId, MapTheme> = {
   dark, light, neon, blueprint, pencil, watercolor, vintage, riso, chalk, halftone, synthwave, terminal, ink,
   digitalrain, lightgrid, galaxy, dune, redfog, spellbook, popcomic, bricks, arcademaze, dollhouse,
+  handheld, vectorarcade, dungeon, spaceshooter, voxel, nightvision, kartrace, cyberhud, overworld, pinball,
 };

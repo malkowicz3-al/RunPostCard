@@ -25,6 +25,7 @@ export type RunStreams = {
   altitude?: number[]; // m
   heartrate?: number[]; // bpm
   velocity?: number[]; // m/s (velocity_smooth)
+  cadence?: number[]; // kroki na minutę jednej nogi (jak average_cadence)
 };
 
 export class SessionExpiredError extends Error {}
@@ -79,17 +80,19 @@ export function normalizeStreams(raw: unknown): RunStreams | null {
   const altitude = optional('altitude');
   const heartrate = optional('heartrate');
   const velocity = optional('velocity_smooth');
+  const cadence = optional('cadence');
   if (time) streams.time = time;
   if (altitude) streams.altitude = altitude;
   if (heartrate) streams.heartrate = heartrate;
   if (velocity) streams.velocity = velocity;
+  if (cadence) streams.cadence = cadence;
   return streams;
 }
 
 export async function fetchStreams(id: number): Promise<RunStreams | null> {
   return normalizeStreams(
     await stravaGet<unknown>(
-      `/activities/${id}/streams?keys=latlng,altitude,heartrate,velocity_smooth,distance,time&key_by_type=true`,
+      `/activities/${id}/streams?keys=latlng,altitude,heartrate,velocity_smooth,cadence,distance,time&key_by_type=true`,
     ),
   );
 }

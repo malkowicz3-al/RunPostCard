@@ -53,7 +53,10 @@ export function RouteThumb({
             <path key={key} d={d} fill={color} />
           );
         })}
+      {/* pathLength=1: animacja rysowania trasy w CSS (lista biegów) nie zależy od długości. */}
       <path
+        className="route-line"
+        pathLength={1}
         d={fit?.d ?? ''}
         fill="none"
         stroke={route}

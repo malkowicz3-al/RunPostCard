@@ -32,7 +32,7 @@ function contrast(a: string, b: string): number {
 }
 
 describe('THEMES', () => {
-  it('motywy w kolejności Dark, Light, Neon, Blueprint, Pencil, Watercolor, Vintage, Riso, Chalk, Halftone, Synthwave, Terminal, Ink i motywy popkultury', () => {
+  it('motywy w kolejności Dark, Light, Neon, Blueprint, Pencil, Watercolor, Vintage, Riso, Chalk, Halftone, Synthwave, Terminal, Ink i motywy popkultury oraz gier', () => {
     expect(Object.values(THEMES).map((t) => t.label)).toEqual([
       'Dark',
       'Light',
@@ -57,6 +57,16 @@ describe('THEMES', () => {
       'Bricks',
       'Arcade Maze',
       'Dollhouse',
+      'Handheld',
+      'Vector Arcade',
+      'Dungeon',
+      'Space Shooter',
+      'Voxel',
+      'Night Vision',
+      'Kart Race',
+      'Cyber HUD',
+      'Overworld',
+      'Pinball',
     ]);
   });
 
@@ -129,10 +139,18 @@ describe('THEMES', () => {
           redfog: 'redfog-fog',
           spellbook: 'spellbook-grain',
           dollhouse: 'dollhouse-gloss',
+          handheld: 'handheld-pixels',
+          dungeon: 'dungeon-dark',
+          spaceshooter: 'spaceshooter-stars',
+          nightvision: 'nightvision-noise',
+          cyberhud: 'cyberhud-grid',
         };
         if (overlays[id]) expect(refs, `${id} ${name}`).toContain(overlays[id]);
         if (id === 'arcademaze') expect(refs).toContain('arcademaze-walls');
         if (id === 'bricks') expect(refs).toContain('bricks-route');
+        if (id === 'voxel') expect(refs).toContain('voxel-planks');
+        if (id === 'overworld') expect(refs).toContain('overworld-water');
+        if (id === 'kartrace' && name === 'flat') expect(svg).toContain('stroke-dasharray="16 8"');
         if (id === 'arcademaze' && name === 'flat') expect(svg).toContain('stroke-dasharray="0 22"');
       }
     }

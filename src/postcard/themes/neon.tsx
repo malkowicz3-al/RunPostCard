@@ -2,11 +2,12 @@ import { MapBackground } from '../MapBackground';
 import type { MapStyle } from '../mapStyle';
 import { hexToRgb, mix } from '../../lib/color';
 import type { MapTheme } from './index';
+import { FILTER_AREA } from './texture';
 
 // Poświata: rozmyta kopia pod oryginałem. Obszar filtra = całe płótno, żeby blask nie był ucinany na bbox warstwy.
 export function Glow({ id, blur, strong = true }: { id: string; blur: number; strong?: boolean }) {
   return (
-    <filter id={id} filterUnits="userSpaceOnUse" x={0} y={0} width={1080} height={1920}>
+    <filter id={id} {...FILTER_AREA}>
       <feGaussianBlur in="SourceGraphic" stdDeviation={blur} result="glow" />
       <feMerge>
         <feMergeNode in="glow" />

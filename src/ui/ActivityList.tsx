@@ -1,6 +1,29 @@
+import type { CSSProperties } from 'react';
 import type { Activity } from '../strava/api';
-import { formatDate, formatDistanceKm } from '../lib/format';
+import {
+  formatDate,
+  formatDistanceKm,
+  formatDuration,
+  formatElevation,
+  formatHeartRate,
+  formatPace,
+} from '../lib/format';
 import { RouteThumb } from './RouteThumb';
+
+// Sumy dla nagłówka listy; longestId tylko przy co najmniej 2 biegach (przy jednym odznaka nic nie mówi).
+export function summarize(runs: Activity[]) {
+  let distance = 0;
+  let time = 0;
+  let elevation = 0;
+  let longest: Activity | undefined;
+  for (const a of runs) {
+    distance += a.distance;
+    time += a.moving_time;
+    elevation += a.total_elevation_gain ?? 0;
+    if (!longest || a.distance > longest.distance) longest = a;
+  }
+  return { count: runs.length, distance, time, elevation, longestId: runs.length > 1 ? longest?.id : undefined };
+}
 
 function Skeleton() {
   return (
@@ -21,6 +44,28 @@ function Skeleton() {
   );
 }
 
+function Summary({ s }: { s: ReturnType<typeof summarize> }) {
+  const items: [string, string, string][] = [
+    ['Runs', String(s.count), ''],
+    ['Distance', formatDistanceKm(s.distance), 'km'],
+    ['Moving time', formatDuration(s.time), ''],
+    ['Elevation', formatElevation(s.elevation), 'm'],
+  ];
+  return (
+    <dl className="runs-summary">
+      {items.map(([label, value, unit]) => (
+        <div key={label}>
+          <dt>{label}</dt>
+          <dd>
+            {value}
+            {unit && <span className="unit"> {unit}</span>}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 function Runs({ runs, onSelect }: { runs: Activity[]; onSelect: (activity: Activity) => void }) {
   if (runs.length === 0)
     return (
@@ -29,20 +74,35 @@ function Runs({ runs, onSelect }: { runs: Activity[]; onSelect: (activity: Activ
         <p>Runs recorded with GPS will appear here.</p>
       </div>
     );
+  const s = summarize(runs);
   return (
-    <ul className="runs">
-      {runs.map((a) => (
-        <li key={a.id}>
-          <button className="run-tile" onClick={() => onSelect(a)}>
-            <RouteThumb polyline={a.map.summary_polyline} />
-            <span className="run-name">{a.name}</span>
-            <span className="run-meta">
-              {formatDistanceKm(a.distance)} km · {formatDate(a.start_date_local)}
-            </span>
-          </button>
-        </li>
-      ))}
-    </ul>
+    <>
+      <Summary s={s} />
+      <ul className="runs">
+        {runs.map((a, i) => (
+          <li key={a.id} style={{ '--i': i } as CSSProperties}>
+            <button className="run-tile" onClick={() => onSelect(a)}>
+              <span className="run-thumb">
+                <RouteThumb polyline={a.map.summary_polyline} />
+                {a.id === s.longestId && <span className="run-badge">Longest</span>}
+              </span>
+              <span className="run-distance">
+                {formatDistanceKm(a.distance)}
+                <span className="unit"> km</span>
+              </span>
+              <span className="run-name">{a.name}</span>
+              <span className="run-stats">
+                <span>{formatPace(a.distance, a.moving_time)} /km</span>
+                <span>{formatDuration(a.moving_time)}</span>
+                <span>{formatElevation(a.total_elevation_gain)} m up</span>
+                {a.average_heartrate ? <span>{formatHeartRate(a.average_heartrate)} bpm</span> : null}
+              </span>
+              <span className="run-meta">{formatDate(a.start_date_local)}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }
 

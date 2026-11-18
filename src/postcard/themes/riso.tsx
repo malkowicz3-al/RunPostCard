@@ -2,7 +2,7 @@ import { mix } from '../../lib/color';
 import { MapBackground } from '../MapBackground';
 import type { MapStyle } from '../mapStyle';
 import type { MapTheme } from './index';
-import { Grain, Overlay } from './texture';
+import { FILTER_AREA, Grain, Overlay } from './texture';
 
 const PAPER = '#f5f0e6';
 const INK = '#0078bf';
@@ -45,7 +45,7 @@ export const riso: MapTheme = {
       <>
         <defs>
           {/* Niebieska kopia trasy przesunięta o 4 px pod różową (bez mix-blend-mode: niepewny przy SVG -> canvas). */}
-          <filter id="riso-route" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB" x={0} y={0} width={1080} height={1920}>
+          <filter id="riso-route" {...FILTER_AREA} colorInterpolationFilters="sRGB">
             <feOffset in="SourceAlpha" dx={4} dy={4} result="shift" />
             <feFlood floodColor={INK} floodOpacity={0.85} />
             <feComposite in2="shift" operator="in" result="blue" />

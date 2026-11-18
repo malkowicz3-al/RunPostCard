@@ -123,17 +123,26 @@ describe('Postcard układy', () => {
   it('wykresy ze strumieni mock; bez strumieni liczby tych samych danych', () => {
     const run = mockActivities().find((r) => r.average_heartrate)!;
     const s = mockStreams(run);
-    for (const id of ['poster', 'hud', 'scoreboard', 'splits', 'pulse'] as const) {
+    for (const id of ['poster', 'hud', 'scoreboard', 'splits', 'pulse', 'duo', 'climb', 'strip', 'table'] as const) {
       const layout = resolveLayout(id);
       const chart = layout.find((i) => i.box)!;
+      const label = `>${CHARTS[chart.slot.form as keyof typeof CHARTS].label}<`;
       const withCharts = renderToStaticMarkup(<Postcard activity={run} layout={layout} streams={s} />);
-      expect(withCharts).toContain(CHARTS[chart.slot.form as keyof typeof CHARTS].label);
+      expect(withCharts).toContain(label);
       expect(withCharts).not.toMatch(/NaN|Infinity/);
       const plain = renderToStaticMarkup(<Postcard activity={run} layout={layout} />);
-      expect(plain).not.toContain(CHARTS[chart.slot.form as keyof typeof CHARTS].label);
+      expect(plain).not.toContain(label);
       expect(plain).toContain(`>${DATA[chart.slot.data].value(run)}<`);
       expect(plain).toContain(DATA[chart.slot.data].label);
     }
+    // Każda forma na każdym biegu mock (też bez tętna i kadencji): has() decyduje, rysunek bez NaN.
+    for (const r of mockActivities())
+      for (const form of Object.keys(CHARTS) as (keyof typeof CHARTS)[]) {
+        const layout = resolveLayout('table', { chart: { data: CHARTS[form].data, form } });
+        const svg = renderToStaticMarkup(<Postcard activity={r} layout={layout} streams={mockStreams(r)} />);
+        expect(svg).not.toMatch(/NaN|Infinity/);
+        expect(svg.includes(`>${CHARTS[form].label}<`)).toBe(CHARTS[form].has(mockStreams(r)));
+      }
     // Linia tętna i pierścień w kolorach stref.
     expect(renderToStaticMarkup(<Postcard activity={run} layout={resolveLayout('hud')} streams={s} />)).toMatch(/stroke="#(3b9cff|3ccf6e|ffa630|ff4d4d|a0a7b4)"/);
   });

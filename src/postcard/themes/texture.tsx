@@ -2,13 +2,17 @@ import { hexToRgb } from '../../lib/color';
 
 // Faktury motywów stylizowanych (do <defs>). Obszar filtra = całe płótno, jak Glow w neon.tsx (działa też w podłodze 3D).
 // sRGB: inaczej (linearRGB) heks w feColorMatrix wychodzi jaśniejszy niż podany.
-const CANVAS = { filterUnits: 'userSpaceOnUse', colorInterpolationFilters: 'sRGB', x: 0, y: 0, width: 1080, height: 1920 } as const;
+// Obszar z zapasem poza płótnem: po przesunięciu kamery (i na podłodze 3D) mapa wychodzi poza 0..1080×1920,
+// a filtr ucina wszystko poza swoim obszarem. Przeglądarka i tak liczy filtr tylko w widocznej części.
+export const FILTER_AREA = { filterUnits: 'userSpaceOnUse', x: -3240, y: -3840, width: 7560, height: 9600 } as const;
+const CANVAS = { ...FILTER_AREA, colorInterpolationFilters: 'sRGB' } as const;
 
 // Ziarno: szum w kolorze color, krycie = slope·szum + offset (duży slope = progowanie, kropki druku).
 export function Grain({ id, color, frequency, slope, offset }: { id: string; color: string; frequency: number; slope: number; offset: number }) {
   const [r, g, b] = hexToRgb(color).map((c) => (c / 255).toFixed(3));
   return (
-    <filter id={id} {...CANVAS}>
+    // Ziarno leży tylko w nakładce w przestrzeni płótna, a feTurbulence wypełnia cały obszar filtra: bez zapasu.
+    <filter id={id} filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB" x={0} y={0} width={1080} height={1920}>
       <feTurbulence type="fractalNoise" baseFrequency={frequency} numOctaves={2} seed={3} />
       <feColorMatrix type="matrix" values={`0 0 0 0 ${r} 0 0 0 0 ${g} 0 0 0 0 ${b} ${slope} 0 0 0 ${offset}`} />
     </filter>
