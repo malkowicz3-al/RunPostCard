@@ -1,27 +1,18 @@
-export type SlotProps = { x: number; y: number; size: number; label: string; value: string };
+export type SlotProps = { x: number; y: number; size: number; label: string; value: string; scale?: number };
 
 // Forma "liczba": wartość z etykietą pod spodem. Kolor tylko przez currentColor (motywy, ADR 0005).
-export function SlotNumber({ x, y, size, label, value }: SlotProps) {
+// Font i grubość dziedziczone z <svg> pocztówki; scale = mnożnik rozmiaru wybranego fontu.
+export function SlotNumber({ x, y, size, label, value, scale = 1 }: SlotProps) {
   return (
     <g>
-      <text
-        x={x}
-        y={y}
-        fontSize={size}
-        fontWeight={700}
-        fontFamily="'Barlow Condensed', system-ui, sans-serif"
-        textAnchor="middle"
-        fill="currentColor"
-      >
+      <text x={x} y={y} fontSize={size} textAnchor="middle" fill="currentColor">
         {value}
       </text>
       <text
         x={x}
         y={y + 60}
-        fontSize={36}
-        fontWeight={600}
-        fontFamily="'Barlow Condensed', system-ui, sans-serif"
-        letterSpacing={4}
+        fontSize={36 * scale}
+        letterSpacing={4 * scale}
         textAnchor="middle"
         fill="currentColor"
         opacity={0.8}

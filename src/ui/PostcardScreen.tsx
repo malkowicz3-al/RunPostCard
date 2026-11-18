@@ -3,11 +3,14 @@ import type { Activity } from '../strava/api';
 import { CAMERA_CENTER, DEFAULT_CAMERA, Postcard, type Camera } from '../postcard/Postcard';
 import { ROUTE_BOX } from '../postcard/Route';
 import { exportPng, exportSvg } from '../lib/exportPng';
-import { loadFontCss } from '../lib/fonts';
+import { DEFAULT_FONT, loadFontCss, type FontId } from '../lib/fonts';
+import { loadPhoto } from '../lib/photo';
 import { fitRoute } from '../lib/routePath';
 import { POSTCARD } from '../lib/vectorMap';
+import { THEMES, type ThemeId } from '../postcard/themes';
 import { DEFAULT_ACCENT } from '../postcard/themes/neon';
 import { DownloadMenu } from './DownloadMenu';
+import { FontPicker } from './FontPicker';
 import { LookPicker, type Look } from './LookPicker';
 import { useMapLayers } from './useMapLayers';
 import { useRunStreams } from './useRunStreams';
@@ -39,7 +42,14 @@ export function PostcardScreen({
   onSessionExpired: () => void;
 }) {
   const previewRef = useRef<HTMLDivElement>(null);
-  const [fontCss, setFontCss] = useState<string>();
+  const [font, setFont] = useState<FontId>(DEFAULT_FONT);
+  // Stary CSS zostaje, dopóki nowy się nie wczyta; id mówi, dla którego fontu jest.
+  const [fontCss, setFontCss] = useState<{ id: FontId; css?: string }>();
+  const fontReady = fontCss?.id === font;
+  const [photo, setPhoto] = useState<string>();
+  const [dim, setDim] = useState(35);
+  const [photoError, setPhotoError] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
   const [exportFailed, setExportFailed] = useState(false);
   const [look, setLook] = useState<Look>('gradient');
   const [accent, setAccent] = useState(DEFAULT_ACCENT);
@@ -47,7 +57,7 @@ export function PostcardScreen({
   const [view, setView] = useState<'flat' | '3d'>('flat');
   const [showHighlights, setShowHighlights] = useState(false);
   const streams = useRunStreams(activity, onSessionExpired);
-  const isMap = look !== 'gradient' && look !== 'transparent';
+  const isMap = look in THEMES;
   const fit = useMemo(() => fitRoute(activity.map.summary_polyline, ROUTE_BOX), [activity]);
   // 3D liczy się na płaskiej projekcji trasy, więc bez niej przycisk nie ma sensu.
   const has3d = !!streams?.altitude && fit !== null;
@@ -73,8 +83,14 @@ export function PostcardScreen({
   useEffect(() => () => cancelAnimationFrame(frame.current), []);
 
   useEffect(() => {
-    loadFontCss().then(setFontCss);
-  }, []);
+    let cancelled = false;
+    loadFontCss(font).then((css) => {
+      if (!cancelled) setFontCss({ id: font, css });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [font]);
 
   useEffect(() => setCamera(DEFAULT_CAMERA), [activity, is3d]);
 
@@ -144,6 +160,19 @@ export function PostcardScreen({
     setLook(value);
   };
 
+  // Przy błędzie zostaje poprzednie zdjęcie i wygląd.
+  const choosePhoto = (file: File) => {
+    setPhotoBusy(true);
+    loadPhoto(file)
+      .then((url) => {
+        setPhoto(url);
+        choose('photo');
+        setPhotoError(false);
+      })
+      .catch(() => setPhotoError(true))
+      .finally(() => setPhotoBusy(false));
+  };
+
   return (
     <div className="screen postcard-screen">
       <div className="top-bar">
@@ -164,10 +193,20 @@ export function PostcardScreen({
         >
           <Postcard
             activity={activity}
-            fontCss={fontCss}
-            background={isMap && !mapLoading ? 'map' : look === 'transparent' ? 'transparent' : 'gradient'}
+            fontCss={fontCss?.css}
+            font={font}
+            background={
+              isMap && !mapLoading
+                ? 'map'
+                : look === 'photo' && photo
+                  ? 'photo'
+                  : look === 'transparent'
+                    ? 'transparent'
+                    : 'gradient'
+            }
             map={map.layers}
-            theme={isMap ? look : undefined}
+            photo={photo ? { href: photo, dim: dim / 100 } : undefined}
+            theme={isMap ? (look as ThemeId) : undefined}
             accent={accent}
             streams={streams}
             view={is3d ? '3d' : 'flat'}
@@ -184,7 +223,27 @@ export function PostcardScreen({
             onLook={choose}
             accent={accent}
             onAccent={setAccent}
+            photoHref={photo}
+            onPhotoFile={choosePhoto}
+            photoBusy={photoBusy}
           />
+          {photoError && <p className="error">Could not read this image. Try a JPEG or PNG.</p>}
+          {look === 'photo' && (
+            <div className="toggle-row">
+              <label className="zoom-control">
+                Dim
+                <input
+                  type="range"
+                  min={0}
+                  max={70}
+                  step={5}
+                  value={dim}
+                  onChange={(e) => setDim(Number(e.target.value))}
+                />
+              </label>
+            </div>
+          )}
+          <FontPicker font={font} onFont={setFont} />
           {streams && (
             <div className="toggle-row">
               {has3d && (
@@ -224,7 +283,7 @@ export function PostcardScreen({
               </button>
             </div>
           )}
-          <DownloadMenu disabled={mapLoading} onPng={downloadPng} onSvg={downloadSvg} />
+          <DownloadMenu disabled={mapLoading || !fontReady} onPng={downloadPng} onSvg={downloadSvg} />
           {mapLoading && (
             <p className="hint" role="status">
               Loading map…

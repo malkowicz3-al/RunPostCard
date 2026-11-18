@@ -100,12 +100,15 @@ Vercel and local Node are the officially supported setups. Other hosting platfor
 - Access tokens are kept in `sessionStorage` in your browser and disappear when the tab is closed.
 - Strava activity data is requested directly from the browser. Nothing is stored on the server, and there is no database.
 - The app requests the `activity:read` scope only, so Strava hides privacy-zone sections of the route.
+- A **Photo** background never leaves your browser. The app rescales it to the postcard size and re-saves it as JPEG, which removes EXIF metadata (including GPS location).
 
 ## Maps
 
 Route thumbnails and the **Map** postcard background are a minimalist outline (streets, buildings, water, greenery) drawn by the app as SVG from vector tiles by [OpenFreeMap](https://openfreemap.org) ([OpenMapTiles](https://openmaptiles.org) schema, [OpenStreetMap](https://www.openstreetmap.org/copyright) data). No API key or configuration is needed. The attribution "Map: OpenFreeMap © OpenMapTiles © OpenStreetMap contributors" is shown under the run list, and "© OpenMapTiles © OpenStreetMap contributors" on postcards with the map background.
 
-On the postcard screen you pick the look from a row of tiles that preview your route: **Gradient**, **Transparent** and three map themes: **Dark** (the outline above), **Light** (a light outline with a dark route and text) and **Neon** (a near-black map with glowing streets and a glowing route). Neon uses one color for the route and streets: pick pink (default), red, orange, yellow, green, cyan or violet, or any custom color. Map tiles are hidden for runs without a route. Themes only change colors, line styles and glow; they use the same map data. Thumbnails in the run list always use the minimalist outline.
+On the postcard screen you pick the look from a row of tiles that preview your route: **Gradient**, **Transparent**, **Photo** (your own image, cropped to fill the postcard, with a **Dim** slider) and three map themes: **Dark** (the outline above), **Light** (a light outline with a dark route and text) and **Neon** (a near-black map with glowing streets and a glowing route). Neon uses one color for the route and streets: pick pink (default), red, orange, yellow, green, cyan or violet, or any custom color. Map tiles are hidden for runs without a route. Themes only change colors, line styles and glow; they use the same map data. Thumbnails in the run list always use the minimalist outline.
+
+A second row of tiles picks the postcard font (six fonts, see the license notes below).
 
 **Download** opens a menu with **PNG image** and **SVG (vector)**.
 
@@ -124,5 +127,5 @@ When you open a postcard, the app makes one extra Strava request for that run on
 
 - The code is released under the MIT license.
 - The "Connect with Strava" button and the "Powered by Strava" marks (`src/assets/brand/strava/`) are the official Strava brand assets, used without modification.
-- The postcard font is Barlow Condensed Bold, under the SIL Open Font License (`public/fonts/OFL.txt`).
+- Postcard fonts (`public/fonts/`): Barlow Condensed Bold, Bebas Neue, Archivo Black, Space Grotesk and Bungee under the SIL Open Font License; Permanent Marker under the Apache License 2.0. License texts: `public/fonts/OFL.txt` (Barlow Condensed) and `public/fonts/licenses/`.
 - Map data: OpenFreeMap, © OpenMapTiles, © OpenStreetMap contributors (see **Maps** above).

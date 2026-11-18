@@ -55,3 +55,28 @@ describe('Postcard 3D i markery', () => {
     expect(renderToStaticMarkup(<Postcard activity={hills} streams={streams} />)).not.toContain('MAX HR');
   });
 });
+
+describe('Postcard zdjęcie i font', () => {
+  const photo = { href: 'data:image/jpeg;base64,AAAA', dim: 0.35 };
+
+  it('tło ze zdjęcia z przyciemnieniem, bez zewnętrznych adresów', () => {
+    const svg = renderToStaticMarkup(<Postcard activity={hills} background="photo" photo={photo} />);
+    expect(svg).toContain('data:image/jpeg');
+    expect(svg).toContain('opacity="0.35"');
+    expect(svg.replaceAll('http://www.w3.org/2000/svg', '')).not.toMatch(/https?:\/\//);
+  });
+
+  it('3D ze zdjęciem: bez podłogi mapy, zdjęcie zostaje', () => {
+    const svg = renderToStaticMarkup(
+      <Postcard activity={hills} background="photo" photo={photo} streams={streams} view="3d" />,
+    );
+    expect(svg).not.toContain('matrix(');
+    expect(svg).toContain('data:image/jpeg');
+  });
+
+  it('wybrany font zastępuje Barlow', () => {
+    const svg = renderToStaticMarkup(<Postcard activity={hills} font="bebas" />);
+    expect(svg).toContain('Bebas Neue');
+    expect(svg).not.toContain('Barlow Condensed');
+  });
+});

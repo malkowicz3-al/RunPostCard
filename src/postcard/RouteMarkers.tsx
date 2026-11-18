@@ -33,8 +33,6 @@ export function RouteMarkers({ points, items, color }: {
               x={left ? x + 22 : x - 22}
               y={y + 10}
               fontSize={30}
-              fontWeight={700}
-              fontFamily="'Barlow Condensed', system-ui, sans-serif"
               textAnchor={left ? 'start' : 'end'}
               fill={color}
               stroke="#000000"

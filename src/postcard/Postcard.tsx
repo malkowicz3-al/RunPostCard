@@ -2,17 +2,19 @@ import { useMemo } from 'react';
 import type { Activity, RunStreams } from '../strava/api';
 import { isoRoute } from '../lib/isoRoute';
 import { fitRoute } from '../lib/routePath';
+import { DEFAULT_FONT, FONTS, fontStack, type FontId } from '../lib/fonts';
 import { highlights as findHighlights } from '../lib/runHighlights';
 import { MAP_ATTRIBUTION, type MapLayers } from '../lib/vectorMap';
 import { Background } from './Background';
 import { IsoRoute } from './IsoRoute';
+import { PhotoBackground } from './PhotoBackground';
 import { Route, ROUTE_BOX } from './Route';
 import { RouteMarkers } from './RouteMarkers';
 import { StravaMark } from './StravaMark';
 import { DATA, FORMS, defaultLayout } from './slots';
 import { THEMES, type ThemeId } from './themes';
 
-export type PostcardBackground = 'gradient' | 'transparent' | 'map';
+export type PostcardBackground = 'gradient' | 'transparent' | 'map' | 'photo';
 // Kamera widoku 3D: przybliżenie wokół środka pola trasy i przesunięcie (jednostki SVG).
 export type Camera = { zoom: number; x: number; y: number };
 export const DEFAULT_CAMERA: Camera = { zoom: 1, x: 0, y: 0 };
@@ -24,8 +26,10 @@ const [CX, CY] = CAMERA_CENTER;
 export function Postcard({
   activity,
   fontCss,
+  font = DEFAULT_FONT,
   background = 'gradient',
   map,
+  photo,
   theme = 'dark',
   accent,
   streams,
@@ -35,8 +39,10 @@ export function Postcard({
 }: {
   activity: Activity;
   fontCss?: string;
+  font?: FontId;
   background?: PostcardBackground;
   map?: MapLayers;
+  photo?: { href: string; dim: number };
   theme?: ThemeId;
   accent?: string;
   streams?: RunStreams | null;
@@ -67,10 +73,18 @@ export function Postcard({
   );
   const out = showMap ? THEMES[theme].render(map, { accent }) : null;
   const text = out?.text ?? { color: '#ffffff' };
+  const { weight, scale } = FONTS[font];
 
   return (
-    <svg className="postcard" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920">
+    <svg
+      className="postcard"
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 1080 1920"
+      fontFamily={fontStack(font)}
+      fontWeight={weight}
+    >
       {fontCss && <style>{fontCss}</style>}
+      {background === 'photo' && photo && <PhotoBackground {...photo} />}
       {background === 'gradient' && <Background />}
       {iso ? (
         <g>
@@ -113,7 +127,8 @@ export function Postcard({
               key={slot.id}
               x={x}
               y={y}
-              size={size}
+              size={size * scale}
+              scale={scale}
               label={data.label}
               value={data.value(activity)}
             />
@@ -127,7 +142,7 @@ export function Postcard({
           y={1885}
           fontSize={26}
           fontWeight={700}
-          fontFamily="'Barlow Condensed', system-ui, sans-serif"
+          fontFamily="system-ui, sans-serif"
           textAnchor="end"
           fill={text.color}
           opacity={0.8}

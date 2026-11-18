@@ -67,7 +67,8 @@ src/
     color.ts              # hexToRgb, rgbToHex, mix (paleta neonu)
     color.test.ts
     exportPng.ts          # SVG -> XMLSerializer -> Blob URL -> Image -> canvas 1080x1920 -> toBlob -> pobranie
-    fonts.ts              # font pocztówki (TTF) jako data URL wstrzykiwany do <style> w SVG (img nie pobiera zewnętrznych fontów)
+    fonts.ts              # FONTS (6 fontów: plik, rodzina, grubość, skala); wybrany TTF jako data URL wstrzykiwany do <style> w SVG (img nie pobiera zewnętrznych fontów)
+    photo.ts              # loadPhoto: plik -> canvas 1080x1920 (cover, coverRect) -> JPEG data URL (bez EXIF)
     dataUrl.ts            # fetch -> data URL z cache w pamięci (font)
     runHighlights.ts      # highlights(streams) -> indeksy markerów; TRIM_M = 200 m bez markerów na początku i końcu
     runHighlights.test.ts
@@ -79,7 +80,7 @@ src/
     vectorMap.ts          # OpenFreeMap: TileJSON, kolejka ≤4, cache kafelków, dekodowanie MVT, buildMapLayers (scalone budynki dzielone na osobne poligony), profile POSTCARD/THUMB
     vectorMap.test.ts
 
-public/fonts/             # Barlow Condensed Bold (TTF) + OFL.txt
+public/fonts/             # 6 fontów TTF (Barlow Condensed, Bebas Neue, Archivo Black, Space Grotesk, Permanent Marker, Bungee) + OFL.txt i licenses/
 
 docs/
   architecture.md         # ten plik
@@ -112,6 +113,11 @@ docs/
 - **Mapa wektorowa z OpenFreeMap rysowana jako SVG** (bez klucza i bez biblioteki map): kafelki liczone z tej samej projekcji co trasa, dekodowane przez `@mapbox/vector-tile` + `pbf`, jedna ścieżka na warstwę; CARTO usunięte (ADR 0004, zastępuje 0003).
 - **Strumienie tylko dla otwartej pocztówki** (limit zapytań Stravy); markery i 3D liczone czystymi funkcjami z jednego `RunStreams`. **W 3D mapa jest podłogą**: izometria jest afiniczna na płaskim płótnie, więc ta sama scena motywu leży pod trasą w `<g transform="matrix(...)">` (`iso.matrix`), z wygaszonymi brzegami i podpisem OSM (ADR 0006).
 - **Motywy mapy tylko stylistyczne** (dark, light, neon): te same warstwy mapy, inne kolory, grubości i filtry SVG (lokalne `url(#…)`, więc eksport działa); bez ikon, bez plików graficznych i nowych zależności; miniatury listy bez zmian (ADR 0005). Neon liczony z jednego koloru `accent`.
+
+## Zdjęcie i fonty
+
+- **Zdjęcie jako tło**: `loadPhoto` przycina plik do 1080x1920 na canvasie i zwraca JPEG jako data URL; `PhotoBackground` rysuje go w SVG z czarnym prostokątem przyciemnienia. Plik nie opuszcza przeglądarki, a ponowne zakodowanie usuwa EXIF/GPS. W 3D bez podłogi mapy, trasa biała jak przy gradiencie.
+- **Fonty**: `<svg>` pocztówki ma `fontFamily` i `fontWeight` wybranego fontu, teksty je dziedziczą; rozmiar slotów × `scale` fontu (dobrana z szerokości glifów). Do eksportu osadzany jest tylko wybrany font (data URL); pobieranie jest zablokowane, dopóki się nie wczyta. Podgląd w `FontPicker` używa zwykłych `@font-face` z `/fonts/`.
 
 ## Otwarte pytania
 
