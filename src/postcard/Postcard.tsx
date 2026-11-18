@@ -1,11 +1,13 @@
 import { useMemo } from 'react';
 import type { Activity, RunStreams } from '../strava/api';
-import { isoRoute } from '../lib/isoRoute';
+import { isoRoute, type IsoRoute as IsoData } from '../lib/isoRoute';
+import type { Rect } from '../lib/mapTiles';
 import { fitRoute } from '../lib/routePath';
 import { DEFAULT_FONT, FONTS, fontStack, type FontId } from '../lib/fonts';
 import { highlights as findHighlights } from '../lib/runHighlights';
 import { MAP_ATTRIBUTION, type MapLayers } from '../lib/vectorMap';
 import { Background } from './Background';
+import { MapBackground } from './MapBackground';
 import { IsoRoute } from './IsoRoute';
 import { PhotoBackground } from './PhotoBackground';
 import { Route, ROUTE_BOX } from './Route';
@@ -36,6 +38,8 @@ export function Postcard({
   view = 'flat',
   highlights = false,
   camera = DEFAULT_CAMERA,
+  iso: givenIso,
+  refined,
 }: {
   activity: Activity;
   fontCss?: string;
@@ -49,13 +53,15 @@ export function Postcard({
   view?: 'flat' | '3d';
   highlights?: boolean;
   camera?: Camera;
+  iso?: IsoData | null; // policzone wyżej (ekran i tak go potrzebuje), inaczej liczone tutaj
+  refined?: { rect: Rect; layers: MapLayers }; // ostrzejsza mapa przybliżonego fragmentu podłogi 3D
 }) {
   // Jedna projekcja dla mapy i trasy („scena”).
   const polyline = activity.map.summary_polyline;
   const fit = useMemo(() => fitRoute(polyline, ROUTE_BOX), [polyline]);
   const iso = useMemo(
-    () => (view === '3d' && streams && fit ? isoRoute(streams, ROUTE_BOX, fit.projection) : null),
-    [view, streams, fit],
+    () => (view === '3d' && streams && fit ? (givenIso ?? isoRoute(streams, ROUTE_BOX, fit.projection)) : null),
+    [view, streams, fit, givenIso],
   );
   const is3d = !!iso;
   const showMap = background === 'map' && fit && map;
@@ -104,7 +110,27 @@ export function Postcard({
                   </mask>
                 </defs>
                 <g transform={`matrix(${iso.matrix.join(' ')})`}>
-                  <g mask="url(#iso-floor-fade)">{out.scene}</g>
+                  <g mask="url(#iso-floor-fade)">
+                    {out.scene}
+                    {/* Własne tło warstwy zakrywa mapę podstawową w prostokącie; defs motywu (filtry, wzory) są już w scene. */}
+                    {refined && (
+                      <>
+                        <defs>
+                          <clipPath id="iso-refined-clip">
+                            <rect
+                              x={refined.rect[0]}
+                              y={refined.rect[1]}
+                              width={refined.rect[2] - refined.rect[0]}
+                              height={refined.rect[3] - refined.rect[1]}
+                            />
+                          </clipPath>
+                        </defs>
+                        <g clipPath="url(#iso-refined-clip)">
+                          <MapBackground layers={refined.layers} style={THEMES[theme].style({ accent })} />
+                        </g>
+                      </>
+                    )}
+                  </g>
                 </g>
               </>
             )}

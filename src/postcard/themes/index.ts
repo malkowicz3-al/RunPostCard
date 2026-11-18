@@ -6,9 +6,10 @@ import type { StravaMarkVariant } from '../StravaMark';
 import { dark } from './dark';
 import { light } from './light';
 import { neon } from './neon';
+import { blueprint } from './blueprint';
 
 // Motywy map na pocztówce: tylko stylistyka (ADR 0005). Nowy motyw = plik w themes/ + wpis w THEMES.
-export type ThemeId = 'dark' | 'light' | 'neon';
+export type ThemeId = 'dark' | 'light' | 'neon' | 'blueprint';
 
 export type ThemeOutput = {
   scene: ReactNode; // pod trasą: <defs>, tło, warstwy mapy
@@ -25,4 +26,4 @@ export type MapTheme = {
   render: (layers: MapLayers, opts?: ThemeOptions) => ThemeOutput;
 };
 
-export const THEMES: Record<ThemeId, MapTheme> = { dark, light, neon };
+export const THEMES: Record<ThemeId, MapTheme> = { dark, light, neon, blueprint };

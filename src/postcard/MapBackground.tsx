@@ -5,7 +5,7 @@ import type { MapStyle } from './mapStyle';
 export function MapBackground({ layers, style }: { layers: MapLayers; style: MapStyle }) {
   return (
     <>
-      <rect width={1080} height={1920} fill={style.background} />
+      <rect width={1080} height={1920} fill={style.fill ?? style.background} />
       {MAP_KEYS.map((key) => {
         const d = layers[key];
         if (!d) return null;
@@ -17,6 +17,7 @@ export function MapBackground({ layers, style }: { layers: MapLayers; style: Map
             fill="none"
             stroke={style.colors[key]}
             strokeWidth={style.widths[key]}
+            strokeDasharray={style.dashes?.[key]}
             strokeLinecap="round"
             strokeLinejoin="round"
             filter={filter}

@@ -2,6 +2,12 @@
 
 > **Aktualizacja (decyzja właściciela):** motywy pixel (8-bit) i fantasy usunięte jako „za dużo”. Motywy zmieniają tylko stylistykę (kolory, linie, poświata), bez ikon: **dark** (dawny minimal, bez zmian wizualnych, domyślny), **light**, **neon** (`src/postcard/themes/`). Usunięte razem z nimi: `MapObjects`/`buildMapObjects`, profil `PIXEL`, `random.ts`, `geometry.ts` (rozmieszczanie ikon, schodkowa trasa), `shownTheme` (jeden profil `POSTCARD` dla wszystkich motywów). Zostaje podział scalonych multipoligonów budynków w `buildMapLayers` i warianty `StravaMark`. Interfejs: `MapTheme = { label, render(layers) -> { scene, route, text, mark } }`; filtry SVG lokalne, z obszarem równym płótnu. Poniższy tekst opisuje pierwotną wersję i zostaje jako historia.
 
+### Blueprint, Details
+- **Blueprint** (`themes/blueprint.tsx`): granatowe tło z siatką (`<pattern id="blueprint-grid">` w `scene`, `MapStyle.fill = 'url(#blueprint-grid)'`, `background` zostaje kolorem dla 3D i miniatur), jasnoniebieskie linie, trasa żółta `#ffb703`, tekst biały.
+- **Details** (przełącznik na ekranie pocztówki, domyślnie wyłączony): profil `POSTCARD_DETAILED` dokłada 9 kluczy: `field`, `landuse`, `industrial`, `civic`, `sport` (poligony pod wodą), `tunnel`, `rail`, `runway`, `bridge` (linie; most jako obwódka pod drogą). `POSTCARD` = `BASE_KEYS` (dawne 8), `THUMB` bez zmian. Bez nazw ulic i miejsc.
+- `MapStyle`: `colors` dla wszystkich kluczy (kompilator wymusza w każdym motywie), `dashes` (kolej `10 6`, tunel `4 4`), `fill`. Szczegóły w neonie bez poświaty. Test pilnuje kontrastu WCAG ≥ 2 kolorów szczegółów względem trasy (Dark, Light, Blueprint, Neon × każdy gotowy kolor).
+- Zmiana profilu zostawia stare warstwy w podglądzie, pobieranie czeka na nowe. Błąd szczegółowej mapy wraca do podstawowej, błąd podstawowej do gradientu.
+
 ## Kontekst
 Etap 2 „Motywy map” (CLAUDE.md): z tych samych danych OSM co tło „Map” (ADR 0004) generujemy stylizowane mapy na pocztówce, np. zamek zamiast bloku, smok, woda w falach. Wymagania: deterministycznie (ziarno = id biegu), trasa dokładna, eksport SVG/PNG jak teraz (ADR 0002: jeden samowystarczalny SVG), miniatury listy bez zmian, bez nowych zależności.
 

@@ -5,10 +5,14 @@ import { PbfWriter } from 'pbf';
 import {
   buildMapLayers,
   loadMapLayers,
+  loadRegionLayers,
   loadTile,
   loadTileJson,
   parseTileJson,
+  BASE_KEYS,
+  MAP_KEYS,
   POSTCARD,
+  POSTCARD_DETAILED,
   THUMB,
   type MapFeature,
 } from './vectorMap';
@@ -130,6 +134,62 @@ describe('buildMapLayers', () => {
     expect(buildMapLayers([feature({ geometry: [[{ x: 1, y: 1 }, { x: 1.2, y: 1.3 }]] })], SIZE, THUMB)).toEqual({});
   });
 
+  it('POSTCARD_DETAILED: klasyfikacja szczegółów', () => {
+    const cases: [Partial<MapFeature>, string[]][] = [
+      [{ cls: 'rail' }, ['rail']],
+      [{ cls: 'transit' }, ['rail']],
+      [{ cls: 'primary', brunnel: 'tunnel' }, ['tunnel']],
+      [{ cls: 'minor', brunnel: 'bridge' }, ['bridge', 'minor']],
+      [{ cls: 'secondary', brunnel: 'bridge' }, ['bridge', 'mid']],
+      [{ cls: 'path', brunnel: 'bridge' }, ['path']],
+      [{ cls: 'rail', brunnel: 'bridge' }, ['rail']],
+      [{ cls: 'transit', brunnel: 'tunnel' }, []],
+      [{ cls: 'rail', brunnel: 'tunnel' }, []],
+      [{ cls: 'ferry' }, []],
+      [{ layer: 'landuse', type: 3, cls: 'residential' }, ['landuse']],
+      [{ layer: 'landuse', type: 3, cls: 'retail' }, ['industrial']],
+      [{ layer: 'landuse', type: 3, cls: 'hospital' }, ['civic']],
+      [{ layer: 'landuse', type: 3, cls: 'pitch' }, ['sport']],
+      [{ layer: 'landuse', type: 3, cls: 'unknown' }, []],
+      [{ layer: 'landcover', type: 3, cls: 'farmland' }, ['field']],
+      [{ layer: 'landcover', type: 3, cls: 'sand' }, ['field']],
+      [{ layer: 'landcover', type: 3, cls: 'grass' }, ['green']],
+      [{ layer: 'aeroway', type: 2, cls: 'runway' }, ['runway']],
+      [{ layer: 'aeroway', type: 2, cls: 'taxiway' }, ['runway']],
+      [{ layer: 'aeroway', type: 3, cls: 'aerodrome' }, ['industrial']],
+      [{ layer: 'unknown', type: 3 }, []],
+    ];
+    for (const [f, keys] of cases) {
+      const geometry = f.type === 3 ? square(0, 0, 50) : undefined;
+      const layers = buildMapLayers([feature({ ...f, ...(geometry && { geometry }) })], SIZE, POSTCARD_DETAILED);
+      expect(Object.keys(layers).sort(), JSON.stringify(f)).toEqual(keys);
+    }
+  });
+
+  it('POSTCARD_DETAILED: warstwy w kolejności MAP_KEYS; POSTCARD i THUMB bez szczegółów', () => {
+    expect(POSTCARD_DETAILED.keys).toEqual([...MAP_KEYS]);
+    for (const p of [POSTCARD, THUMB]) expect(p.keys.every((k) => BASE_KEYS.includes(k))).toBe(true);
+    const poly = (layer: string, cls: string) => feature({ layer, type: 3, cls, geometry: square(0, 0, 50) });
+    const all = [
+      feature({ cls: 'primary', brunnel: 'bridge' }),
+      feature({ cls: 'rail' }),
+      poly('landuse', 'school'),
+      poly('water', ''),
+      poly('landcover', 'farmland'),
+      poly('building', ''),
+    ];
+    expect(Object.keys(buildMapLayers(all, SIZE, POSTCARD_DETAILED))).toEqual([
+      'field',
+      'civic',
+      'water',
+      'building',
+      'rail',
+      'bridge',
+      'major',
+    ]);
+    expect(Object.keys(buildMapLayers(all, SIZE, POSTCARD))).toEqual(['water', 'building', 'major']);
+  });
+
   it('jeden string d na klucz', () => {
     const layers = buildMapLayers([feature({}), feature({ geometry: [[{ x: 0, y: 50 }, { x: 99, y: 50 }]] })], SIZE, POSTCARD);
     expect(layers.minor).toBe('M10 10L100 10M0 50L99 50');
@@ -193,7 +253,7 @@ describe('pobieranie', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
     const urls = Array.from({ length: 10 }, (_, i) => `https://q.example/${i}`);
-    const tiles = await Promise.all([...urls, ...urls].map(loadTile));
+    const tiles = await Promise.all([...urls, ...urls].map((u) => loadTile(u)));
     expect(fetchMock).toHaveBeenCalledTimes(10);
     expect(max).toBe(4);
     expect(Object.keys(tiles[0].layers)).toEqual([]);
@@ -240,5 +300,63 @@ describe('pobieranie', () => {
     expect(decode.mock.calls.length).toBe(calls);
     expect(second.water).not.toBe(first.water);
     decode.mockRestore();
+  });
+});
+
+describe('loadRegionLayers', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  // Świat = 1024 * 2^z jednostek: przy POSTCARD (tileUnits 1024) mapa podstawowa ma zoom z, środek [500, 500].
+  const atZoom = (z: number) => geoMercator().scale((1024 * 2 ** z) / (2 * Math.PI)).translate([500, 500]);
+  const pbfCalls = (mock: ReturnType<typeof vi.fn>) => mock.mock.calls.filter(([url]) => String(url).endsWith('.pbf')).length;
+  const stubTiles = () => {
+    const fetchMock = vi.fn(async (url: string) =>
+      url.endsWith('.pbf') ? new Response(waterTile().slice().buffer as ArrayBuffer) : Response.json({ tiles: [OFM], maxzoom: 14 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    return fetchMock;
+  };
+
+  it('null, gdy mapa podstawowa ma już z14', async () => {
+    const fetchMock = stubTiles();
+    expect(await loadRegionLayers(atZoom(14), SIZE, POSTCARD, { k: 2, rect: [0, 0, 500, 500] })).toBeNull();
+    expect(pbfCalls(fetchMock)).toBe(0);
+  });
+
+  it('null, gdy fragment wymaga ponad 24 kafelków', async () => {
+    const fetchMock = stubTiles();
+    // k = 8 -> z13, kafelek 128 jednostek: całe płótno to 81 kafelków.
+    expect(await loadRegionLayers(atZoom(10), SIZE, POSTCARD, { k: 8, rect: [0, 0, 1000, 1000] })).toBeNull();
+    expect(pbfCalls(fetchMock)).toBe(0);
+  });
+
+  it('warstwy przycięte do prostokąta fragmentu', async () => {
+    const fetchMock = stubTiles();
+    // k = 2 -> z11, kafelki 512 od -12; trójkąt wody w każdym kafelku od left + 256. Ten przy x = 756 wypada poza rect.
+    const layers = await loadRegionLayers(atZoom(10), SIZE, POSTCARD, { k: 2, rect: [0, 0, 600, 400] });
+    expect(pbfCalls(fetchMock)).toBe(2);
+    expect(layers).toEqual({ water: 'M244 244L294 244L294 294L244 244Z' });
+  });
+
+  it('przerwany sygnał pomija kafelki z kolejki i nie zostawia błędów w cache', async () => {
+    const hanging = vi.fn((url: string, init?: RequestInit) =>
+      url.endsWith('.pbf')
+        ? new Promise<Response>((_, reject) => init!.signal!.addEventListener('abort', () => reject(init!.signal!.reason)))
+        : Promise.resolve(Response.json({ tiles: [OFM], maxzoom: 14 })),
+    );
+    vi.stubGlobal('fetch', hanging);
+    const controller = new AbortController();
+    // k = 4 -> z12, 16 kafelków: 4 w locie, 12 w kolejce.
+    const region = { k: 4, rect: [0, 0, 1000, 1000] as [number, number, number, number] };
+    const pending = loadRegionLayers(atZoom(10), SIZE, POSTCARD, region, controller.signal);
+    await vi.waitFor(() => expect(pbfCalls(hanging)).toBe(4));
+    controller.abort();
+    await expect(pending).rejects.toThrow();
+    expect(pbfCalls(hanging)).toBe(4);
+
+    const fetchMock = stubTiles();
+    const layers = await loadRegionLayers(atZoom(10), SIZE, POSTCARD, region);
+    expect(pbfCalls(fetchMock)).toBe(16);
+    expect(layers?.water).toBeDefined();
   });
 });

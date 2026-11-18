@@ -1,7 +1,7 @@
 import type { GeoProjection } from 'd3-geo';
 import { VectorTile } from '@mapbox/vector-tile';
 import { PbfReader } from 'pbf';
-import { mapTiles, tileUrlFrom, type Tile } from './mapTiles';
+import { mapTiles, tileUrlFrom, tileZoom, type Rect, type Region, type Tile } from './mapTiles';
 
 // Wektorowe kafelki OpenFreeMap (schemat OpenMapTiles) -> jedna ścieżka SVG na warstwę (ADR 0004).
 const TILEJSON_URL = 'https://tiles.openfreemap.org/planet';
@@ -10,12 +10,40 @@ const MAX_PARALLEL = 4; // zalecenie OpenFreeMap
 
 export const MAP_ATTRIBUTION = '© OpenMapTiles © OpenStreetMap contributors';
 
-// Kolejność rysowania od spodu.
-export const MAP_KEYS = ['water', 'waterway', 'green', 'building', 'path', 'minor', 'mid', 'major'] as const;
+// Kolejność rysowania od spodu; poligony szczegółów pod wodą, most pod drogą jako obwódka.
+export const MAP_KEYS = [
+  'field',
+  'landuse',
+  'industrial',
+  'civic',
+  'water',
+  'waterway',
+  'green',
+  'sport',
+  'building',
+  'tunnel',
+  'rail',
+  'runway',
+  'path',
+  'bridge',
+  'minor',
+  'mid',
+  'major',
+] as const;
 export type MapKey = (typeof MAP_KEYS)[number];
 export type MapLayers = Partial<Record<MapKey, string>>;
 // Linie się obrysowuje, resztę (poligony) tylko wypełnia.
-export const LINE_KEYS: ReadonlySet<MapKey> = new Set(['waterway', 'path', 'minor', 'mid', 'major']);
+export const LINE_KEYS: ReadonlySet<MapKey> = new Set([
+  'waterway',
+  'path',
+  'minor',
+  'mid',
+  'major',
+  'rail',
+  'tunnel',
+  'bridge',
+  'runway',
+]);
 
 export type MapProfile = {
   keys: MapKey[];
@@ -24,7 +52,9 @@ export type MapProfile = {
   minBuildingArea: number;
 };
 
-export const POSTCARD: MapProfile = { keys: [...MAP_KEYS], tileUnits: 1024, precision: 1, minBuildingArea: 16 };
+export const BASE_KEYS: MapKey[] = ['water', 'waterway', 'green', 'building', 'path', 'minor', 'mid', 'major'];
+export const POSTCARD: MapProfile = { keys: BASE_KEYS, tileUnits: 1024, precision: 1, minBuildingArea: 16 };
+export const POSTCARD_DETAILED: MapProfile = { ...POSTCARD, keys: [...MAP_KEYS] };
 export const THUMB: MapProfile = {
   keys: ['water', 'waterway', 'minor', 'mid', 'major'],
   tileUnits: 256,
@@ -32,8 +62,6 @@ export const THUMB: MapProfile = {
   minBuildingArea: 0,
 };
 
-// [x0, y0, x1, y1] w układzie płótna.
-type Rect = [number, number, number, number];
 type Ring = [number, number][];
 
 // type jak w MVT: 2 = linia, 3 = poligon.
@@ -59,37 +87,83 @@ const ROAD: Record<string, MapKey> = {
   primary: 'major',
 };
 
-function classify(f: Pick<MapFeature, 'layer' | 'type' | 'cls' | 'brunnel'>): MapKey | null {
+const LANDUSE: Record<string, MapKey> = {
+  residential: 'landuse',
+  suburb: 'landuse',
+  neighbourhood: 'landuse',
+  quarter: 'landuse',
+  commercial: 'industrial',
+  industrial: 'industrial',
+  retail: 'industrial',
+  quarry: 'industrial',
+  railway: 'industrial',
+  military: 'industrial',
+  school: 'civic',
+  kindergarten: 'civic',
+  university: 'civic',
+  college: 'civic',
+  library: 'civic',
+  hospital: 'civic',
+  cemetery: 'civic',
+  theme_park: 'civic',
+  zoo: 'civic',
+  pitch: 'sport',
+  stadium: 'sport',
+  playground: 'sport',
+  track: 'sport',
+  garden: 'sport',
+};
+
+const LANDCOVER: Record<string, MapKey> = { wood: 'green', grass: 'green', farmland: 'field', sand: 'field' };
+
+// Pusta lista = obiekt pomijany; most daje dwa klucze (droga + obwódka mostu).
+function classifyAll(f: Pick<MapFeature, 'layer' | 'type' | 'cls' | 'brunnel'>): MapKey[] {
+  const one = (key: MapKey | undefined | false): MapKey[] => (key ? [key] : []);
   switch (f.layer) {
     case 'water':
-      return f.type === 3 ? 'water' : null;
+      return one(f.type === 3 && 'water');
     case 'waterway':
-      return f.type === 2 ? 'waterway' : null;
+      return one(f.type === 2 && 'waterway');
     case 'park':
-      return f.type === 3 ? 'green' : null;
+      return one(f.type === 3 && 'green');
     case 'landcover':
-      return f.type === 3 && (f.cls === 'wood' || f.cls === 'grass') ? 'green' : null;
+      return one(f.type === 3 && LANDCOVER[f.cls]);
+    case 'landuse':
+      return one(f.type === 3 && LANDUSE[f.cls]);
+    case 'aeroway':
+      return one(f.type === 3 ? 'industrial' : f.type === 2 && (f.cls === 'runway' || f.cls === 'taxiway') && 'runway');
     case 'building':
-      return f.type === 3 ? 'building' : null;
-    case 'transportation':
-      return f.type === 2 && f.brunnel !== 'tunnel' ? (ROAD[f.cls] ?? null) : null;
+      return one(f.type === 3 && 'building');
+    case 'transportation': {
+      if (f.type !== 2) return [];
+      const key = f.cls === 'rail' || f.cls === 'transit' ? 'rail' : ROAD[f.cls];
+      if (!key) return [];
+      if (f.brunnel === 'tunnel') return one(key !== 'rail' && 'tunnel');
+      // Obwódka mostu tylko dla dróg; ścieżka i tor zostają bez niej.
+      return f.brunnel === 'bridge' && (key === 'minor' || key === 'mid' || key === 'major') ? [key, 'bridge'] : [key];
+    }
     default:
-      return null;
+      return [];
   }
 }
+
+const classify = (f: Pick<MapFeature, 'layer' | 'type' | 'cls' | 'brunnel'>, profile: MapProfile) =>
+  classifyAll(f).filter((key) => profile.keys.includes(key));
 
 export function buildMapLayers(
   features: MapFeature[],
   [width, height]: [number, number],
   profile: MapProfile,
+  [cx0, cy0, cx1, cy1]: Rect = [0, 0, width, height],
 ): MapLayers {
   const k = 1 / profile.precision;
   const round = (v: number) => Math.round(v * k) / k;
   const parts: Partial<Record<MapKey, string[]>> = {};
 
-  for (const f of features) {
-    const key = classify(f);
-    if (!key || !profile.keys.includes(key)) continue;
+  for (const f of features)
+    for (const key of classify(f, profile)) addFeature(f, key);
+
+  function addFeature(f: MapFeature, key: MapKey) {
     const line = LINE_KEYS.has(key);
     const scale = f.tile.size / f.extent;
     // null = pierścień odrzucony po zaokrągleniu; indeksy zgodne z f.geometry.
@@ -108,7 +182,7 @@ export function buildMapLayers(
     for (const part of key === 'building' ? polygons(f.geometry, rings) : [rings.filter((r) => r !== null)]) {
       if (!part.length) continue;
       const [minX, minY, maxX, maxY] = boxOf(part);
-      if (maxX < 0 || minX > width || maxY < 0 || minY > height) continue;
+      if (maxX < cx0 || minX > cx1 || maxY < cy0 || minY > cy1) continue;
       if (key === 'building' && (maxX - minX) * (maxY - minY) < profile.minBuildingArea) continue;
       if (line && Math.hypot(maxX - minX, maxY - minY) < 1) continue;
       const d = part.map((r) => 'M' + r.map(([x, y]) => `${x} ${y}`).join('L') + (line ? '' : 'Z')).join('');
@@ -193,11 +267,14 @@ export function loadTileJson(): Promise<TileJson> {
 let active = 0;
 const waiting: (() => void)[] = [];
 
-async function queuedFetch(url: string): Promise<ArrayBuffer> {
+async function queuedFetch(url: string, signal?: AbortSignal): Promise<ArrayBuffer> {
   if (active < MAX_PARALLEL) active++;
   else await new Promise<void>((resolve) => waiting.push(resolve));
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+    // Przerwane w kolejce: oddajemy miejsce bez zapytania.
+    signal?.throwIfAborted();
+    const timeout = AbortSignal.timeout(TIMEOUT_MS);
+    const res = await fetch(url, { signal: signal ? AbortSignal.any([signal, timeout]) : timeout });
     if (!res.ok) throw new Error(`Could not load ${url}`);
     return await res.arrayBuffer(); // 204 / puste ciało -> kafelek bez warstw
   } finally {
@@ -216,21 +293,35 @@ async function gunzip(buf: ArrayBuffer): Promise<Uint8Array> {
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
-const tileCache = new Map<string, Promise<VectorTile>>();
-
-export function loadTile(url: string): Promise<VectorTile> {
-  let tile = tileCache.get(url);
-  if (!tile) {
-    tile = queuedFetch(url)
-      .then(gunzip)
-      .then((bytes) => new VectorTile(new PbfReader(bytes)));
-    tile.catch(() => tileCache.delete(url));
-    tileCache.set(url, tile);
+// Błąd i przerwanie nie zostają w cache; przy przerwaniu wpis znika od razu, żeby kolejne wywołanie go nie przejęło.
+function cached<T>(cache: Map<string, Promise<T>>, key: string, make: () => Promise<T>, signal?: AbortSignal): Promise<T> {
+  let value = cache.get(key);
+  if (!value) {
+    const created = make();
+    const drop = () => cache.get(key) === created && cache.delete(key);
+    created.catch(drop);
+    signal?.addEventListener('abort', drop, { once: true });
+    cache.set(key, created);
+    value = created;
   }
-  return tile;
+  return value;
 }
 
-const SOURCE_LAYERS = ['water', 'waterway', 'park', 'landcover', 'building', 'transportation'];
+const tileCache = new Map<string, Promise<VectorTile>>();
+
+export function loadTile(url: string, signal?: AbortSignal): Promise<VectorTile> {
+  return cached(
+    tileCache,
+    url,
+    () =>
+      queuedFetch(url, signal)
+        .then(gunzip)
+        .then((bytes) => new VectorTile(new PbfReader(bytes))),
+    signal,
+  );
+}
+
+const SOURCE_LAYERS = ['water', 'waterway', 'park', 'landcover', 'landuse', 'aeroway', 'building', 'transportation'];
 
 type TileFeature = Omit<MapFeature, 'tile'>;
 
@@ -248,8 +339,7 @@ function tileFeatures(vt: VectorTile, profile: MapProfile): TileFeature[] {
         cls: String(f.properties.class ?? ''),
         brunnel: f.properties.brunnel as string | undefined,
       };
-      const key = classify(head);
-      if (!key || !profile.keys.includes(key)) continue;
+      if (!classify(head, profile).length) continue;
       out.push({ ...head, geometry: f.loadGeometry(), extent: layer.extent });
     }
   }
@@ -259,15 +349,9 @@ function tileFeatures(vt: VectorTile, profile: MapProfile): TileFeature[] {
 // Miniatury dzielą kafelki, więc dekodujemy każdy kafelek raz na profil.
 const featureCache = new Map<string, Promise<TileFeature[]>>();
 
-function loadTileFeatures(url: string, profile: MapProfile): Promise<TileFeature[]> {
+function loadTileFeatures(url: string, profile: MapProfile, signal?: AbortSignal): Promise<TileFeature[]> {
   const key = `${profile.keys.join()} ${url}`;
-  let features = featureCache.get(key);
-  if (!features) {
-    features = loadTile(url).then((vt) => tileFeatures(vt, profile));
-    features.catch(() => featureCache.delete(key));
-    featureCache.set(key, features);
-  }
-  return features;
+  return cached(featureCache, key, () => loadTile(url, signal).then((vt) => tileFeatures(vt, profile)), signal);
 }
 
 export async function loadMapLayers(
@@ -276,11 +360,43 @@ export async function loadMapLayers(
   profile: MapProfile,
 ): Promise<MapLayers> {
   const { template, maxZoom } = await loadTileJson();
-  const tiles = mapTiles(projection, size, profile.tileUnits, maxZoom);
-  const perTile = await Promise.all(tiles.map((t) => loadTileFeatures(tileUrlFrom(template, t), profile)));
+  return layersFromTiles(template, mapTiles(projection, size, profile.tileUnits, maxZoom), size, profile);
+}
+
+const MAX_REGION_TILES = 24;
+
+// Ostrzejsza mapa dla przybliżonego fragmentu (zoom 3D); null = nie ma czego doczytać albo za dużo kafelków.
+export async function loadRegionLayers(
+  projection: GeoProjection,
+  size: [number, number],
+  profile: MapProfile,
+  region: Region,
+  signal?: AbortSignal,
+): Promise<MapLayers | null> {
+  const { template, maxZoom } = await loadTileJson();
+  signal?.throwIfAborted();
+  const { k, rect } = region;
+  // Podstawowa mapa ma już najgęstsze kafelki (z14): nic nie zyskamy.
+  if (!(tileZoom(projection, profile.tileUnits, maxZoom, k) > tileZoom(projection, profile.tileUnits, maxZoom))) return null;
+  const tiles = mapTiles(projection, size, profile.tileUnits, maxZoom, region);
+  if (tiles.length > MAX_REGION_TILES) return null;
+  const sharper = { ...profile, precision: k > 2 ? 0.25 : 0.5, minBuildingArea: profile.minBuildingArea / k ** 2 };
+  return layersFromTiles(template, tiles, size, sharper, rect, signal);
+}
+
+async function layersFromTiles(
+  template: string,
+  tiles: Tile[],
+  size: [number, number],
+  profile: MapProfile,
+  clip?: Rect,
+  signal?: AbortSignal,
+): Promise<MapLayers> {
+  const perTile = await Promise.all(tiles.map((t) => loadTileFeatures(tileUrlFrom(template, t), profile, signal)));
   return buildMapLayers(
     perTile.flatMap((features, i) => features.map((f) => ({ ...f, tile: tiles[i] }))),
     size,
     profile,
+    clip,
   );
 }

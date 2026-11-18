@@ -36,25 +36,27 @@ src/
     IsoRoute.tsx          # widok 3D: kurtyna, cień na podłożu, trasa kolorowana nachyleniem (płaskie odcinki w kolorze trasy motywu)
     RouteMarkers.tsx      # kropki i etykiety markerów (FASTEST, MAX HR, MIN HR, HIGHEST) w punktach trasy
     Route.tsx             # <path> trasy z gotowej ścieżki + styl z motywu (kolor, grubość, filtr); ROUTE_BOX = obszar trasy na płótnie
-    MapBackground.tsx     # renderer warstw mapy: <rect> tła + jeden <path> na warstwę wg MapStyle (kolory, grubości, opcjonalny filtr; wektor inline, ADR 0004)
-    mapStyle.ts           # typ MapStyle (kolory, grubości linii, filtry warstw)
+    MapBackground.tsx     # renderer warstw mapy: <rect> tła (fill albo background) + jeden <path> na warstwę wg MapStyle (kolory, grubości, kreski, opcjonalny filtr; wektor inline, ADR 0004)
+    mapStyle.ts           # typ MapStyle (tło, opcjonalna farba tła fill, kolory wszystkich kluczy, grubości linii, kreski dashes, filtry warstw)
     SlotNumber.tsx        # forma "liczba"; kolor tylko przez currentColor (motyw ustawia color na grupie slotów)
     StravaMark.tsx        # oficjalny znak „Powered by Strava” (white/black/orange) jako <image> z data URL (import ?raw, bez modyfikacji plików)
     themes/               # motywy mapy na pocztówce, tylko stylistyka (ADR 0005)
-      index.ts            # typy ThemeOutput/MapTheme/ThemeOptions ({accent}), rejestr THEMES (dark, light, neon); style(opts) = paleta jako dane (miniatury)
-      index.test.tsx      # kolejność rejestru; każde url(#id) wskazuje element z tego samego SVG (też neon w innym kolorze); neonStyle
+      index.ts            # typy ThemeOutput/MapTheme/ThemeOptions ({accent}), rejestr THEMES (dark, light, neon, blueprint); style(opts) = paleta jako dane (miniatury)
+      index.test.tsx      # kolejność rejestru; każde url(#id) wskazuje element z tego samego SVG (też neon w innym kolorze); komplet kolorów i grubości; kontrast szczegółów z trasą; kreski kolei; neonStyle
       dark.tsx            # ciemny zarys (dotychczasowy wygląd)
       light.tsx           # jasny zarys, ciemna trasa i tekst, czarny znak Stravy
       neon.tsx            # neonStyle(accent): trasa i ulice z jednego koloru, woda stała; NEON_ACCENTS (gotowe kolory); poświaty feGaussianBlur + feMerge
+      blueprint.tsx       # granat z siatką (<pattern id="blueprint-grid">, MapStyle.fill), jasnoniebieskie linie, żółta trasa
 
   ui/
     LoginScreen.tsx       # przycisk „Connect with Strava” (oficjalny styl) + znak Strava
     ActivityList.tsx      # lista ostatnich biegów (nazwa, data, dystans) do wyboru
-    PostcardScreen.tsx    # podgląd pocztówki, stan look (gradient / transparent / motyw mapy) i accent; telefon: kolumna, ≥900px: pocztówka + panel „Style”
+    PostcardScreen.tsx    # podgląd pocztówki, stan look (gradient / transparent / motyw mapy), accent i detailed (przełącznik Details: profil POSTCARD_DETAILED; błąd -> profil podstawowy); telefon: kolumna, ≥900px: pocztówka + panel „Style”
     LookPicker.tsx        # kafelki wyglądu z podglądem trasy (aria-pressed) + kółka koloru neonu i własny kolor (<input type="color">)
     DownloadMenu.tsx      # przycisk „Download” z menu (role=menu): PNG image / SVG (vector); Escape, kliknięcie obok, fokus wraca
     RouteThumb.tsx        # miniatura trasy na zarysie mapy (profil THUMB); kolory z tokenów CSS --map-* (lista) albo z MapStyle motywu; style=null = sama trasa
-    useMapLayers.ts       # hook: projekcja -> ścieżki mapy {layers, failed}, anulowanie przy odmontowaniu
+    useMapLayers.ts       # hook: projekcja -> ścieżki mapy {layers, failed, loading}; przy zmianie profilu stare warstwy zostają do czasu nowych; anulowanie przy odmontowaniu
+    useRegionLayers.ts    # hook: region przybliżenia 3D -> ostrzejsze warstwy {refined: {rect, layers}, loading}; błąd cichy (zostaje mapa podstawowa)
     useRunStreams.ts      # hook: strumienie otwartego biegu (null = brak/ładowanie/błąd); ?mock=1 -> mockStreams
 
   assets/brand/strava/    # oficjalne zasoby Stravy (przycisk Connect, znaki Powered by), bez modyfikacji
@@ -75,9 +77,10 @@ src/
     isoRoute.ts           # izometria: Mercator, obrót 45°, Y × 0,5, podniesienie o wysokość (min. 15% pola), dopasowanie do ROUTE_BOX
     isoRoute.test.ts
     routePath.ts          # fitRoute: polyline -> d3-geo geoMercator().fitExtent -> {projection, d}; routePath = samo d
-    mapTiles.ts           # czysta funkcja: projekcja trasy + tileUnits -> kafelki XYZ pokrywające płótno; tileUrlFrom (ADR 0004)
+    zoomRegion.ts         # czysta funkcja: kamera 3D + iso.matrix -> widoczny fragment płaskiej mapy (z marginesem 15%) i poziom k = 2 albo 4
+    mapTiles.ts           # czysta funkcja: projekcja trasy + tileUnits -> kafelki XYZ pokrywające płótno; tileUrlFrom; tileZoom i opcjonalny region {k, rect} (gęstsze kafelki dla fragmentu) (ADR 0004)
     mapTiles.test.ts
-    vectorMap.ts          # OpenFreeMap: TileJSON, kolejka ≤4, cache kafelków, dekodowanie MVT, buildMapLayers (scalone budynki dzielone na osobne poligony), profile POSTCARD/THUMB
+    vectorMap.ts          # OpenFreeMap: TileJSON, kolejka ≤4, cache kafelków, dekodowanie MVT, buildMapLayers (scalone budynki dzielone na osobne poligony), profile POSTCARD (BASE_KEYS) / POSTCARD_DETAILED (wszystkie MAP_KEYS: zagospodarowanie, kolej, tunele, mosty, pasy startowe) / THUMB
     vectorMap.test.ts
 
 public/fonts/             # 20 fontów TTF (lista w README) + licenses/ (plik licencji na font, nazwa zaczyna się od rdzenia nazwy pliku fontu)
@@ -111,8 +114,8 @@ docs/
 - **Testy: Vitest**: współdzieli konfigurację Vite, zero dodatkowej konfiguracji; testy tylko dla logiki (polyline, format, stravaToken).
 - **Jednostki: tylko km** w etapie 1.
 - **Mapa wektorowa z OpenFreeMap rysowana jako SVG** (bez klucza i bez biblioteki map): kafelki liczone z tej samej projekcji co trasa, dekodowane przez `@mapbox/vector-tile` + `pbf`, jedna ścieżka na warstwę; CARTO usunięte (ADR 0004, zastępuje 0003).
-- **Strumienie tylko dla otwartej pocztówki** (limit zapytań Stravy); markery i 3D liczone czystymi funkcjami z jednego `RunStreams`. **W 3D mapa jest podłogą**: izometria jest afiniczna na płaskim płótnie, więc ta sama scena motywu leży pod trasą w `<g transform="matrix(...)">` (`iso.matrix`), z wygaszonymi brzegami i podpisem OSM (ADR 0006).
-- **Motywy mapy tylko stylistyczne** (dark, light, neon): te same warstwy mapy, inne kolory, grubości i filtry SVG (lokalne `url(#…)`, więc eksport działa); bez ikon, bez plików graficznych i nowych zależności; miniatury listy bez zmian (ADR 0005). Neon liczony z jednego koloru `accent`.
+- **Strumienie tylko dla otwartej pocztówki** (limit zapytań Stravy); markery i 3D liczone czystymi funkcjami z jednego `RunStreams`. **W 3D mapa jest podłogą**: izometria jest afiniczna na płaskim płótnie, więc ta sama scena motywu leży pod trasą w `<g transform="matrix(...)">` (`iso.matrix`), z wygaszonymi brzegami i podpisem OSM (ADR 0006). Przy zoomie ≥ 1,5 i kamerze stojącej 300 ms `zoomRegion` wyznacza widoczny fragment podłogi, `loadRegionLayers` doczytuje dla niego kafelki o poziom (lub dwa) gęstsze, a `Postcard` rysuje je nad mapą podstawową przycięte `clipPath` `iso-refined-clip` (własne tło warstwy zakrywa bazę). Pobieranie czeka na ten fragment.
+- **Motywy mapy tylko stylistyczne** (dark, light, neon, blueprint; opcjonalnie szczegóły „Details”): te same warstwy mapy, inne kolory, grubości i filtry SVG (lokalne `url(#…)`, więc eksport działa); bez ikon, bez plików graficznych i nowych zależności; miniatury listy bez zmian (ADR 0005). Neon liczony z jednego koloru `accent`.
 
 ## Zdjęcie i fonty
 

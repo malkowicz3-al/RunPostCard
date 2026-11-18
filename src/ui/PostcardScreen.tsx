@@ -5,14 +5,17 @@ import { ROUTE_BOX } from '../postcard/Route';
 import { exportPng, exportSvg } from '../lib/exportPng';
 import { DEFAULT_FONT, loadFontCss, type FontId } from '../lib/fonts';
 import { loadPhoto } from '../lib/photo';
+import { isoRoute } from '../lib/isoRoute';
 import { fitRoute } from '../lib/routePath';
-import { POSTCARD } from '../lib/vectorMap';
+import { zoomRegion } from '../lib/zoomRegion';
+import { POSTCARD, POSTCARD_DETAILED } from '../lib/vectorMap';
 import { THEMES, type ThemeId } from '../postcard/themes';
 import { DEFAULT_ACCENT } from '../postcard/themes/neon';
 import { DownloadMenu } from './DownloadMenu';
 import { FontPicker } from './FontPicker';
 import { LookPicker, type Look } from './LookPicker';
 import { useMapLayers } from './useMapLayers';
+import { useRegionLayers } from './useRegionLayers';
 import { useRunStreams } from './useRunStreams';
 
 const SIZE: [number, number] = [1080, 1920];
@@ -62,8 +65,12 @@ export function PostcardScreen({
   // 3D liczy się na płaskiej projekcji trasy, więc bez niej przycisk nie ma sensu.
   const has3d = !!streams?.altitude && fit !== null;
   const is3d = view === '3d' && has3d;
-  const map = useMapLayers(fit?.projection ?? null, SIZE, POSTCARD, isMap);
-  const mapLoading = isMap && !map.layers;
+  const [detailed, setDetailed] = useState(false);
+  const profile = detailed ? POSTCARD_DETAILED : POSTCARD;
+  const map = useMapLayers(fit?.projection ?? null, SIZE, profile, isMap);
+  // Przy zmianie profilu podgląd zostaje na starych warstwach, ale pobieranie czeka na nowe.
+  const mapMissing = isMap && !map.layers;
+  const mapLoading = isMap && (!map.layers || map.loading);
   const [camera, setCamera] = useState<Camera>(DEFAULT_CAMERA);
   // Aktywne wskaźniki nad podglądem (1 = przesuwanie, 2 = szczypanie).
   const pointers = useRef(new Map<number, { x: number; y: number }>());
@@ -81,6 +88,22 @@ export function PostcardScreen({
     });
   };
   useEffect(() => () => cancelAnimationFrame(frame.current), []);
+  // Ostrzejszą mapę doczytujemy dopiero, gdy kamera stoi (bez zapytań w trakcie przesuwania).
+  const [settled, setSettled] = useState<Camera>(DEFAULT_CAMERA);
+  useEffect(() => {
+    const t = setTimeout(() => setSettled(camera), 300);
+    return () => clearTimeout(t);
+  }, [camera]);
+  const iso = useMemo(
+    () => (is3d && streams && fit ? isoRoute(streams, ROUTE_BOX, fit.projection) : null),
+    [is3d, streams, fit],
+  );
+  const region = useMemo(
+    () => (iso && isMap ? zoomRegion(settled, iso.matrix, CAMERA_CENTER, SIZE) : null),
+    [iso, isMap, settled],
+  );
+  const zoomed = useRegionLayers(fit?.projection ?? null, region, profile, isMap && is3d);
+  const loading = mapLoading || zoomed.loading;
 
   useEffect(() => {
     let cancelled = false;
@@ -92,7 +115,11 @@ export function PostcardScreen({
     };
   }, [font]);
 
-  useEffect(() => setCamera(DEFAULT_CAMERA), [activity, is3d]);
+  // settled razem z kamerą, żeby stary zoom nie doczytywał fragmentu przez 300 ms.
+  useEffect(() => {
+    setCamera(DEFAULT_CAMERA);
+    setSettled(DEFAULT_CAMERA);
+  }, [activity, is3d]);
 
   // Kółko myszy przybliża tylko w 3D; listener nie-pasywny, żeby preventDefault blokował przewijanie strony.
   useEffect(() => {
@@ -134,11 +161,12 @@ export function PostcardScreen({
     pointers.current.delete(e.pointerId);
   };
 
-  // Przy błędzie mapy wracamy do gradientu.
+  // Przy błędzie szczegółowej mapy wracamy do podstawowej, przy błędzie podstawowej do gradientu.
   useEffect(() => {
     if (!map.failed) return;
     setMapFailed(true);
-    setLook('gradient');
+    if (detailed) setDetailed(false);
+    else setLook('gradient');
   }, [map.failed]);
 
   const currentSvg = () => previewRef.current?.querySelector('svg') ?? null;
@@ -196,7 +224,7 @@ export function PostcardScreen({
             fontCss={fontCss?.css}
             font={font}
             background={
-              isMap && !mapLoading
+              isMap && !mapMissing
                 ? 'map'
                 : look === 'photo' && photo
                   ? 'photo'
@@ -212,6 +240,8 @@ export function PostcardScreen({
             view={is3d ? '3d' : 'flat'}
             highlights={showHighlights}
             camera={camera}
+            iso={iso}
+            refined={zoomed.refined}
           />
         </div>
         <div className="style-panel">
@@ -228,6 +258,20 @@ export function PostcardScreen({
             photoBusy={photoBusy}
           />
           {photoError && <p className="error">Could not read this image. Try a JPEG or PNG.</p>}
+          {isMap && (
+            <div className="toggle-row">
+              <button
+                className="toggle"
+                aria-pressed={detailed}
+                onClick={() => {
+                  setMapFailed(false);
+                  setDetailed((v) => !v);
+                }}
+              >
+                Details
+              </button>
+            </div>
+          )}
           {look === 'photo' && (
             <div className="toggle-row">
               <label className="zoom-control">
@@ -283,13 +327,13 @@ export function PostcardScreen({
               </button>
             </div>
           )}
-          <DownloadMenu disabled={mapLoading || !fontReady} onPng={downloadPng} onSvg={downloadSvg} />
-          {mapLoading && (
+          <DownloadMenu disabled={loading || !fontReady} onPng={downloadPng} onSvg={downloadSvg} />
+          {loading && (
             <p className="hint" role="status">
               Loading map…
             </p>
           )}
-          {mapFailed && <p className="error">Could not load the map.</p>}
+          {mapFailed && <p className="error">{isMap ? 'Could not load map details.' : 'Could not load the map.'}</p>}
           {exportFailed && <p className="error">Could not create the PNG.</p>}
         </div>
       </div>

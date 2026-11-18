@@ -1,16 +1,64 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { mix } from '../../lib/color';
+import { hexToRgb, mix } from '../../lib/color';
+import { BASE_KEYS, LINE_KEYS, MAP_KEYS } from '../../lib/vectorMap';
 import { mockActivities } from '../../dev/mockActivities';
 import { Postcard } from '../Postcard';
 import { THEMES, type ThemeId } from './index';
-import { DEFAULT_ACCENT, neonStyle, visibleAccent } from './neon';
+import { DEFAULT_ACCENT, NEON_ACCENTS, neonStyle, visibleAccent } from './neon';
 
-const LAYERS = { water: 'M0 0L50 0L50 50Z', major: 'M0 100L500 100', building: 'M10 10L20 10L20 20Z' };
+const LAYERS = {
+  water: 'M0 0L50 0L50 50Z',
+  major: 'M0 100L500 100',
+  building: 'M10 10L20 10L20 20Z',
+  rail: 'M0 200L500 200',
+  landuse: 'M0 0L90 0L90 90Z',
+};
+
+const DETAIL_KEYS = MAP_KEYS.filter((k) => !BASE_KEYS.includes(k));
+
+// Kontrast WCAG 2.x (1..21).
+function contrast(a: string, b: string): number {
+  const lum = (hex: string) => {
+    const [r, g, bl] = hexToRgb(hex).map((c) => {
+      const s = c / 255;
+      return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * bl;
+  };
+  const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
 
 describe('THEMES', () => {
-  it('Dark, Light, Neon w tej kolejności', () => {
-    expect(Object.values(THEMES).map((t) => t.label)).toEqual(['Dark', 'Light', 'Neon']);
+  it('Dark, Light, Neon, Blueprint w tej kolejności', () => {
+    expect(Object.values(THEMES).map((t) => t.label)).toEqual(['Dark', 'Light', 'Neon', 'Blueprint']);
+  });
+
+  it('każdy motyw ma kolor dla każdego klucza i grubość dla każdej linii', () => {
+    for (const theme of Object.values(THEMES)) {
+      const style = theme.style();
+      for (const key of MAP_KEYS) expect(style.colors[key], `${theme.label}: ${key}`).toMatch(/^#[0-9a-f]{6}$/);
+      for (const key of LINE_KEYS) expect(style.widths[key], `${theme.label}: ${key}`).toBeGreaterThan(0);
+    }
+  });
+
+  it('szczegóły mapy odcinają się od trasy (kontrast >= 2)', () => {
+    const cases = Object.values(THEMES).flatMap((theme) =>
+      (theme === THEMES.neon ? NEON_ACCENTS.map(([c]) => c) : [undefined]).map((accent) => ({
+        name: `${theme.label} ${accent ?? ''}`,
+        style: theme.style({ accent }),
+        route: theme.render({}, { accent }).route.stroke!,
+      })),
+    );
+    for (const { name, style, route } of cases)
+      for (const key of DETAIL_KEYS)
+        expect(contrast(style.colors[key], route), `${name}: ${key}`).toBeGreaterThanOrEqual(2);
+  });
+
+  it('kolej rysowana przerywaną linią', () => {
+    const svg = renderToStaticMarkup(<svg>{THEMES.dark.render(LAYERS).scene}</svg>);
+    expect(svg).toMatch(/d="M0 200L500 200"[^>]*stroke-dasharray="10 6"/);
   });
 
   it('każde url(#id) w pocztówce wskazuje element z tego samego SVG (eksport PNG bez zewnętrznych zasobów)', () => {
@@ -21,6 +69,7 @@ describe('THEMES', () => {
       const refs = [...svg.matchAll(/url\(#([\w-]+)\)/g)].map((m) => m[1]);
       for (const ref of refs) expect(svg, `${id}: #${ref}`).toContain(`id="${ref}"`);
       if (id === 'neon') expect(refs.length).toBeGreaterThan(0);
+      if (id === 'blueprint') expect(svg).toContain('id="blueprint-grid"');
     }
   });
 

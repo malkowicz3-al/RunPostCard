@@ -49,6 +49,23 @@ describe('Postcard 3D i markery', () => {
     expect(svg).not.toContain('elevation ×');
   });
 
+  it('3D z ostrzejszą mapą: warstwa przycięta do prostokąta, id unikalne; bez niej i w płaskim brak', () => {
+    const refined = { rect: [100, 200, 600, 900] as [number, number, number, number], layers: LAYERS };
+    for (const theme of ['neon', 'blueprint'] as const) {
+      const svg = renderToStaticMarkup(
+        <Postcard activity={hills} background="map" map={LAYERS} theme={theme} streams={streams} view="3d" refined={refined} />,
+      );
+      expect(svg).toContain('id="iso-refined-clip"');
+      expect(svg).toContain('clip-path="url(#iso-refined-clip)"');
+      for (const [, ref] of svg.matchAll(/url\(#([\w-]+)\)/g)) expect(svg).toContain(`id="${ref}"`);
+      const ids = [...svg.matchAll(/id="([^"]+)"/g)].map(([, id]) => id);
+      expect(new Set(ids).size).toBe(ids.length);
+    }
+    const base = { activity: hills, background: 'map' as const, map: LAYERS, theme: 'neon' as const, streams };
+    expect(renderToStaticMarkup(<Postcard {...base} view="3d" />)).not.toContain('iso-refined-clip');
+    expect(renderToStaticMarkup(<Postcard {...base} refined={refined} />)).not.toContain('iso-refined-clip');
+  });
+
   it('widok płaski z markerami pokazuje MAX HR', () => {
     const svg = renderToStaticMarkup(<Postcard activity={hills} streams={streams} highlights />);
     expect(svg).toContain('MAX HR');

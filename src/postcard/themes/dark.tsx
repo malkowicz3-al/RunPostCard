@@ -14,8 +14,18 @@ const STYLE: MapStyle = {
     minor: '#34343b',
     mid: '#44444c',
     major: '#56565f',
+    field: '#151a17',
+    landuse: '#17171b',
+    industrial: '#1a181b',
+    civic: '#19191f',
+    sport: '#18251c',
+    rail: '#3a3a42',
+    tunnel: '#26262c',
+    bridge: '#0e0e11',
+    runway: '#2e2e36',
   },
-  widths: { waterway: 3, path: 1.2, minor: 2, mid: 3.5, major: 5 },
+  widths: { waterway: 3, path: 1.2, minor: 2, mid: 3.5, major: 5, rail: 1.5, tunnel: 1.5, bridge: 8, runway: 8 },
+  dashes: { rail: '10 6', tunnel: '4 4' },
 };
 
 export const dark: MapTheme = {

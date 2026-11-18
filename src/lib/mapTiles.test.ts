@@ -1,6 +1,6 @@
 import { geoMercator } from 'd3-geo';
 import { describe, expect, it } from 'vitest';
-import { mapTiles, tileUrlFrom } from './mapTiles';
+import { mapTiles, tileUrlFrom, tileZoom } from './mapTiles';
 
 // Projekcja, w której świat ma `world` jednostek, a punkt [lng, lat] trafia w (px, py).
 const projectionAt = (world: number, [lng, lat]: [number, number], [px, py]: [number, number]) => {
@@ -80,6 +80,21 @@ describe('mapTiles', () => {
     const [px, py] = p([lng, lat])!;
     expect(Math.abs(tile.left + (gx % 1) * tile.size - px)).toBeLessThan(0.5);
     expect(Math.abs(tile.top + (gy % 1) * tile.size - py)).toBeLessThan(0.5);
+  });
+
+  it('region: k = 2 daje zoom o 1 większy i kafelki tylko wokół prostokąta, nadal w jednostkach płótna', () => {
+    const p = projectionAt(1024 * 2 ** 12, KRAKOW, [540, 960]);
+    expect(tileZoom(p, 1024)).toBe(12);
+    expect(tileZoom(p, 1024, 14, 2)).toBe(13);
+    expect(tileZoom(p, 1024, 12, 4)).toBe(12);
+    const rect: [number, number, number, number] = [300, 400, 700, 900];
+    const tiles = mapTiles(p, [1080, 1920], 1024, 14, { k: 2, rect });
+    expect(tiles.every((t) => t.z === 13 && t.size === 512)).toBe(true);
+    for (let x = 300; x <= 700; x += 10)
+      for (let y = 400; y <= 900; y += 10)
+        expect(tiles.some((t) => x >= t.left && x <= t.left + t.size && y >= t.top && y <= t.top + t.size)).toBe(true);
+    // Żaden kafelek nie leży całkiem poza prostokątem.
+    expect(tiles.every((t) => t.left < 700 && t.left + t.size > 300 && t.top < 900 && t.top + t.size > 400)).toBe(true);
   });
 
   it('tileUrlFrom podstawia z, x, y', () => {
