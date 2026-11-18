@@ -14,6 +14,7 @@ export function useRegionLayers(
   region: Region | null,
   profile: MapProfile,
   enabled: boolean,
+  load = loadRegionLayers, // musi być stała (zależność efektu)
 ): RegionState {
   const [state, setState] = useState<RegionState>({ loading: false });
 
@@ -27,12 +28,13 @@ export function useRegionLayers(
     const { signal } = controller;
     // Poprzednie warstwy zostają w trakcie ładowania (mają własny prostokąt, więc są wciąż poprawne).
     setState((s) => ({ ...s, loading: true }));
-    loadRegionLayers(projection, SIZE, profile, region, signal).then(
+    load(projection, SIZE, profile, region, signal).then(
       (layers) => !signal.aborted && setState({ refined: layers ? { rect: region.rect, layers } : undefined, loading: false }),
-      () => !signal.aborted && setState({ loading: false }),
+      // Błąd zostawia poprzednie ostrzejsze warstwy.
+      () => !signal.aborted && setState((s) => ({ ...s, loading: false })),
     );
     return () => controller.abort();
-  }, [projection, region, profile, enabled]);
+  }, [projection, region, profile, enabled, load]);
 
   return state;
 }

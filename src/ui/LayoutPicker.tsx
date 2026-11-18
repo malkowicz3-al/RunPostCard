@@ -1,6 +1,7 @@
 import type { Activity } from '../strava/api';
 import { ROUTE_BOX } from '../postcard/Route';
 import { DATA, LAYOUT_ORDER, LAYOUTS, fitted, slotBox, type LayoutId } from '../postcard/slots';
+import { Select } from './Select';
 
 // Przykładowy bieg tylko do miniatur: rozmiary prostokątów zależą od długości wartości.
 const SAMPLE: Activity = {
@@ -41,6 +42,22 @@ function Mini({ id }: { id: LayoutId }) {
         const box = slotBox(item, value, 1);
         const top = item.y - 0.75 * fitted(item, value, 1).size;
         const pos = item.labelPos ?? 'below';
+        // Slot z box (wykres albo liczba w nim; slotBox zwraca wtedy box): tylko ramka prostokąta.
+        if (item.box) {
+          return (
+            <rect
+              key={item.slot.id}
+              x={box.x0 / 10}
+              y={box.y0 / 10}
+              width={(box.x1 - box.x0) / 10}
+              height={(box.y1 - box.y0) / 10}
+              rx={2}
+              fill="none"
+              stroke="currentColor"
+              opacity={0.7}
+            />
+          );
+        }
         return (
           <g key={item.slot.id} fill="currentColor">
             <rect
@@ -67,17 +84,20 @@ function Mini({ id }: { id: LayoutId }) {
   );
 }
 
+const OPTIONS = LAYOUT_ORDER.map((id) => ({ id, label: LAYOUTS[id].name }));
+
 export function LayoutPicker({ layout, onLayout }: { layout: LayoutId; onLayout: (id: LayoutId) => void }) {
   return (
-    <div className="look-tiles" role="group" aria-label="Layout">
-      {LAYOUT_ORDER.map((id) => (
-        <button key={id} className="look-tile" aria-pressed={layout === id} onClick={() => onLayout(id)}>
-          <span className="look-preview layout-mini">
-            <Mini id={id} />
-          </span>
-          <span className="look-label">{LAYOUTS[id].name}</span>
-        </button>
-      ))}
-    </div>
+    <section className="panel-section">
+      <h3 className="panel-heading">Layout</h3>
+      <Select
+        label="Layout"
+        className="layout-select"
+        value={layout}
+        options={OPTIONS}
+        onChange={onLayout}
+        preview={(id) => <Mini id={id} />}
+      />
+    </section>
   );
 }

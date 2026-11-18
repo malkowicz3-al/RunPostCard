@@ -32,7 +32,7 @@ function contrast(a: string, b: string): number {
 }
 
 describe('THEMES', () => {
-  it('motywy w kolejności Dark, Light, Neon, Blueprint, Pencil, Watercolor, Vintage, Riso, Chalk, Halftone, Synthwave, Terminal, Ink', () => {
+  it('motywy w kolejności Dark, Light, Neon, Blueprint, Pencil, Watercolor, Vintage, Riso, Chalk, Halftone, Synthwave, Terminal, Ink i motywy popkultury', () => {
     expect(Object.values(THEMES).map((t) => t.label)).toEqual([
       'Dark',
       'Light',
@@ -47,6 +47,16 @@ describe('THEMES', () => {
       'Synthwave',
       'Terminal',
       'Ink',
+      'Digital Rain',
+      'Light Grid',
+      'Galaxy',
+      'Desert',
+      'Red Fog',
+      'Spellbook',
+      'Pop Comic',
+      'Bricks',
+      'Arcade Maze',
+      'Dollhouse',
     ]);
   });
 
@@ -81,13 +91,14 @@ describe('THEMES', () => {
     expect(svg).toMatch(/d="M0 200L500 200"[^>]*stroke-dasharray="10 6"/);
   });
 
-  it('każde url(#id) w pocztówce (płaskiej, 3D i 3D z ostrzejszą mapą) wskazuje element z tego SVG, id unikalne', () => {
+  it('każde url(#id) w pocztówce (płaskiej, 3D i obu z ostrzejszą mapą) wskazuje element z tego SVG, id unikalne', () => {
     const hills = mockActivities().find((r) => r.name === 'Hill repeats')!;
     const streams = mockStreams(hills);
     const refined = { rect: [100, 200, 600, 900] as [number, number, number, number], layers: LAYERS };
     for (const id of Object.keys(THEMES) as ThemeId[]) {
       const variants = {
         flat: <Postcard activity={hills} background="map" map={LAYERS} theme={id} />,
+        'flat-refined': <Postcard activity={hills} background="map" map={LAYERS} theme={id} refined={refined} />,
         '3d': <Postcard activity={hills} background="map" map={LAYERS} theme={id} streams={streams} view="3d" />,
         refined: (
           <Postcard activity={hills} background="map" map={LAYERS} theme={id} streams={streams} view="3d" refined={refined} />
@@ -111,6 +122,18 @@ describe('THEMES', () => {
         if (id === 'terminal') expect(refs, `${id} ${name}`).toContain('terminal-scanlines');
         if (id === 'halftone') expect(refs).toContain('halftone-building');
         if (id === 'synthwave') expect(refs).toContain('synthwave-sky');
+        const overlays: Partial<Record<ThemeId, string>> = {
+          digitalrain: 'digitalrain-rain',
+          galaxy: 'galaxy-stars',
+          dune: 'dune-grain',
+          redfog: 'redfog-fog',
+          spellbook: 'spellbook-grain',
+          dollhouse: 'dollhouse-gloss',
+        };
+        if (overlays[id]) expect(refs, `${id} ${name}`).toContain(overlays[id]);
+        if (id === 'arcademaze') expect(refs).toContain('arcademaze-walls');
+        if (id === 'bricks') expect(refs).toContain('bricks-route');
+        if (id === 'arcademaze' && name === 'flat') expect(svg).toContain('stroke-dasharray="0 22"');
       }
     }
   });

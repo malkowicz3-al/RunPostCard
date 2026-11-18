@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react';
-import type { Activity } from '../strava/api';
+import type { Activity, RunStreams } from '../strava/api';
+import { kmSplits, series } from '../lib/chartData';
 import {
   formatCadence,
   formatDate,
@@ -13,7 +14,8 @@ import {
   formatSpeedKmh,
   formatTime,
 } from '../lib/format';
-import { labelAboveY, SlotNumber, type LabelPos, type SlotAnchor, type SlotProps } from './SlotNumber';
+import { AreaChart, BarsChart, LineChart, RingChart, type ChartProps } from './SlotChart';
+import { labelAboveY, type LabelPos, type SlotAnchor } from './SlotNumber';
 
 // Slot = co pokazać (data) + jak narysować (form). Nowe dane/formy dopisujemy tylko do rejestrów.
 export type SlotData =
@@ -30,7 +32,8 @@ export type SlotData =
   | 'date'
   | 'start'
   | 'name';
-export type SlotForm = 'number';
+export type ChartForm = 'area' | 'line' | 'bars' | 'ring';
+export type SlotForm = 'number' | ChartForm;
 
 // id to klucz pozycji w układzie ('main', 'a', 'b'…), nie rodzaj danych.
 export type Slot = { id: string; data: SlotData; form: SlotForm };
@@ -45,6 +48,7 @@ export type LayoutItem = {
   maxW: number;
   labelPos?: LabelPos;
   labelSize?: number;
+  box?: Box; // tylko sloty z box przyjmują wykresy; pola liczby wylicza z niego numberIn
 };
 
 export const DATA: Record<SlotData, { label: string; menu: string; value: (a: Activity) => string }> = {
@@ -63,9 +67,24 @@ export const DATA: Record<SlotData, { label: string; menu: string; value: (a: Ac
   name: { label: 'RUN', menu: 'Run name', value: (a) => formatName(a.name) },
 };
 
-export const FORMS: Record<SlotForm, ComponentType<SlotProps>> = {
-  number: SlotNumber,
+// Wykres = forma dla jednych danych; bez strumieni (has = false) slot pokazuje liczbę tych danych.
+export const CHARTS: Record<
+  ChartForm,
+  { data: SlotData; menu: string; label: string; has: (s: RunStreams) => boolean; Component: ComponentType<ChartProps> }
+> = {
+  area: { data: 'elevation', menu: 'Elevation profile', label: 'ELEVATION', has: (s) => series(s, 'altitude', 2).length > 0, Component: AreaChart },
+  line: { data: 'heartrate', menu: 'Heart rate chart', label: 'HEART RATE', has: (s) => series(s, 'heartrate', 2).length > 0, Component: LineChart },
+  bars: { data: 'pace', menu: 'Pace per km', label: 'PACE PER KM', has: (s) => kmSplits(s).length > 0, Component: BarsChart },
+  ring: { data: 'heartrate', menu: 'Heart rate zones', label: 'HR ZONES', has: (s) => series(s, 'heartrate', 2).length > 0, Component: RingChart },
 };
+
+export const slotMenu = (s: Slot) => (s.form === 'number' ? DATA[s.data].menu : CHARTS[s.form].menu);
+
+// Wykres do narysowania w slocie albo null (wtedy liczba tych samych danych).
+export function chartFor(item: LayoutItem, streams: RunStreams | null | undefined) {
+  const { form } = item.slot;
+  return form !== 'number' && item.box && streams && CHARTS[form].has(streams) ? CHARTS[form] : null;
+}
 
 export type LayoutId =
   | 'classic'
@@ -77,7 +96,12 @@ export type LayoutId =
   | 'minimal'
   | 'magazine'
   | 'corners'
-  | 'bigPair';
+  | 'bigPair'
+  | 'poster'
+  | 'hud'
+  | 'scoreboard'
+  | 'splits'
+  | 'pulse';
 
 const item = (
   id: string,
@@ -89,6 +113,22 @@ const item = (
   maxW: number,
   labelPos?: LabelPos,
 ): LayoutItem => ({ slot: { id, data, form: 'number' }, x, y, size, anchor, maxW, ...(labelPos && { labelPos }) });
+
+// Liczba z etykietą pod spodem, wyśrodkowana w box (z zapasem na skalę fontu do 1.1).
+export function numberIn(box: Box): Pick<LayoutItem, 'x' | 'y' | 'size' | 'anchor' | 'maxW'> {
+  return {
+    x: (box.x0 + box.x1) / 2,
+    y: box.y1 - 78,
+    size: Math.min(220, (box.y1 - box.y0 - 90) / 0.85),
+    anchor: 'middle',
+    maxW: box.x1 - box.x0 - 40,
+  };
+}
+
+const chart = (id: string, form: ChartForm, x0: number, y0: number, x1: number, y1: number): LayoutItem => {
+  const box = { x0, y0, x1, y1 };
+  return { slot: { id, data: CHARTS[form].data, form }, box, ...numberIn(box) };
+};
 
 export const LAYOUTS: Record<LayoutId, { id: LayoutId; name: string; items: LayoutItem[] }> = {
   classic: {
@@ -189,6 +229,52 @@ export const LAYOUTS: Record<LayoutId, { id: LayoutId; name: string; items: Layo
       item('a', 'time', 540, 1690, 240, 'middle', 960),
     ],
   },
+  // Wykresy pod polem trasy (y >= 1200) i nad znakiem Stravy (y < 1820).
+  poster: {
+    id: 'poster',
+    name: 'Poster',
+    items: [item('main', 'distance', 540, 1440, 220, 'middle', 960), chart('chart', 'area', 60, 1530, 1020, 1800)],
+  },
+  hud: {
+    id: 'hud',
+    name: 'HUD',
+    items: [
+      item('a', 'distance', 60, 150, 80, 'start', 460),
+      item('b', 'time', 1020, 150, 80, 'end', 460),
+      chart('chart', 'line', 60, 1210, 1020, 1480),
+      item('c', 'pace', 60, 1640, 100, 'start', 440),
+      item('d', 'heartrate', 1020, 1640, 100, 'end', 440),
+    ],
+  },
+  scoreboard: {
+    id: 'scoreboard',
+    name: 'Scoreboard',
+    items: [
+      item('a', 'distance', 200, 1320, 110, 'middle', 300),
+      item('b', 'time', 540, 1320, 110, 'middle', 300),
+      item('c', 'heartrate', 880, 1320, 110, 'middle', 300),
+      chart('chart', 'bars', 60, 1420, 1020, 1790),
+    ],
+  },
+  splits: {
+    id: 'splits',
+    name: 'Split sheet',
+    items: [
+      chart('chart', 'bars', 60, 1200, 1020, 1600),
+      item('a', 'distance', 300, 1700, 100, 'middle', 440),
+      item('b', 'time', 780, 1700, 100, 'middle', 440),
+    ],
+  },
+  pulse: {
+    id: 'pulse',
+    name: 'Pulse',
+    items: [
+      chart('chart', 'ring', 60, 1210, 1020, 1580),
+      item('a', 'distance', 200, 1700, 100, 'middle', 300),
+      item('b', 'time', 540, 1700, 100, 'middle', 300),
+      item('c', 'pace', 880, 1700, 100, 'middle', 300),
+    ],
+  },
 };
 
 export const LAYOUT_ORDER: LayoutId[] = [
@@ -202,28 +288,38 @@ export const LAYOUT_ORDER: LayoutId[] = [
   'magazine',
   'corners',
   'bigPair',
+  'poster',
+  'hud',
+  'scoreboard',
+  'splits',
+  'pulse',
 ];
 
-// Zmiany danych w slotach jednego układu: id slotu -> dane.
-export type Overrides = Partial<Record<string, SlotData>>;
+// Zmiany w slotach jednego układu: id slotu -> dane i forma.
+export type SlotPick = { data: SlotData; form: SlotForm };
+export type Overrides = Partial<Record<string, SlotPick>>;
 
 export function resolveLayout(id: LayoutId, overrides?: Overrides): LayoutItem[] {
   return LAYOUTS[id].items.map((i) => {
-    const data = overrides?.[i.slot.id];
-    return data ? { ...i, slot: { ...i.slot, data } } : i;
+    const o = overrides?.[i.slot.id];
+    return o ? { ...i, slot: { ...i.slot, ...o } } : i;
   });
 }
 
 export const defaultLayout = resolveLayout('classic');
 
-// Dane już pokazane w innym slocie zamieniają się miejscami, żeby nic się nie powtarzało.
-export function swapSlot(items: LayoutItem[], slotId: string, data: SlotData): Overrides {
-  const map: Overrides = Object.fromEntries(items.map((i) => [i.slot.id, i.slot.data]));
+const same = (a: SlotPick, b: SlotPick) => a.data === b.data && a.form === b.form;
+
+// Para już pokazana w innym slocie zamienia się miejscami, żeby nic się nie powtarzało. Wyjątek: tamten slot
+// bez box nie przyjmie wypieranego wykresu, więc wtedy bez zamiany (powtórzenie dopuszczone).
+export function swapSlot(items: LayoutItem[], slotId: string, pick: SlotPick): Overrides {
+  const map: Overrides = Object.fromEntries(items.map((i) => [i.slot.id, { data: i.slot.data, form: i.slot.form }]));
+  const self = items.find((i) => i.slot.id === slotId);
   const target = map[slotId];
-  if (!target || target === data) return map;
-  const other = items.find((i) => i.slot.data === data);
-  if (other) map[other.slot.id] = target;
-  map[slotId] = data;
+  if (!self || !target || same(target, pick) || (pick.form !== 'number' && !self.box)) return map;
+  const other = items.find((i) => i.slot.id !== slotId && same(i.slot, pick));
+  if (other && (target.form === 'number' || other.box)) map[other.slot.id] = target;
+  map[slotId] = pick;
   return map;
 }
 
@@ -256,7 +352,9 @@ export function fitted(item: LayoutItem, value: string, scale: number) {
 export type Box = { x0: number; y0: number; x1: number; y1: number };
 
 // Prostokąt zajęty przez wartość i etykietę (szacunek); dla nakładki, miniatur i testów geometrii.
+// Slot z box zajmuje cały box (wykres albo liczba w nim).
 export function slotBox(item: LayoutItem, value: string, scale: number): Box {
+  if (item.box) return item.box;
   const { size, labelSize, labelWidth } = fitted(item, value, scale);
   const pos = item.labelPos ?? 'below';
   const w = Math.max(est(value) * size, pos === 'none' ? 0 : labelWidth);

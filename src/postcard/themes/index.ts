@@ -17,6 +17,16 @@ import { halftone } from './halftone';
 import { synthwave } from './synthwave';
 import { terminal } from './terminal';
 import { ink } from './ink';
+import { digitalrain } from './digitalrain';
+import { lightgrid } from './lightgrid';
+import { galaxy } from './galaxy';
+import { dune } from './dune';
+import { redfog } from './redfog';
+import { spellbook } from './spellbook';
+import { popcomic } from './popcomic';
+import { bricks } from './bricks';
+import { arcademaze } from './arcademaze';
+import { dollhouse } from './dollhouse';
 
 // Motywy map na pocztówce: tylko stylistyka (ADR 0005). Nowy motyw = plik w themes/ + wpis w THEMES.
 export type ThemeId =
@@ -32,7 +42,17 @@ export type ThemeId =
   | 'halftone'
   | 'synthwave'
   | 'terminal'
-  | 'ink';
+  | 'ink'
+  | 'digitalrain'
+  | 'lightgrid'
+  | 'galaxy'
+  | 'dune'
+  | 'redfog'
+  | 'spellbook'
+  | 'popcomic'
+  | 'bricks'
+  | 'arcademaze'
+  | 'dollhouse';
 
 export type ThemeOutput = {
   scene: ReactNode; // pod trasą: <defs>, tło, warstwy mapy
@@ -51,4 +71,7 @@ export type MapTheme = {
   render: (layers: MapLayers, opts?: ThemeOptions) => ThemeOutput;
 };
 
-export const THEMES: Record<ThemeId, MapTheme> = { dark, light, neon, blueprint, pencil, watercolor, vintage, riso, chalk, halftone, synthwave, terminal, ink };
+export const THEMES: Record<ThemeId, MapTheme> = {
+  dark, light, neon, blueprint, pencil, watercolor, vintage, riso, chalk, halftone, synthwave, terminal, ink,
+  digitalrain, lightgrid, galaxy, dune, redfog, spellbook, popcomic, bricks, arcademaze, dollhouse,
+};

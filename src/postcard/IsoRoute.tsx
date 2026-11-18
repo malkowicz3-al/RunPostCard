@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { IsoRoute as Iso } from '../lib/isoRoute';
+import { scaleDash } from './Route';
 
 const DOWNHILL = '#5ab4ff';
 const UPHILL = '#ff9a3d';
@@ -13,11 +14,13 @@ export function IsoRoute({
   iso,
   flat = '#ffffff',
   filter,
+  dash,
   zoom = 1,
 }: {
   iso: Iso;
   flat?: string;
   filter?: string;
+  dash?: string; // stroke-dasharray trasy motywu
   zoom?: number;
 }) {
   const { curtain, shadow, runs, top, bottom } = useMemo(() => {
@@ -44,6 +47,7 @@ export function IsoRoute({
     return { curtain, shadow, runs, top, bottom };
   }, [iso, flat]);
 
+  const dashed = scaleDash(dash, zoom);
   return (
     <g>
       <defs>
@@ -57,7 +61,7 @@ export function IsoRoute({
       <path d={shadow} fill="none" stroke="#000000" strokeOpacity={0.2} strokeWidth={6 / zoom} strokeLinecap="round" strokeLinejoin="round" />
       <g filter={filter}>
         {runs.map((r, i) => (
-          <path key={i} d={r.d} fill="none" stroke={r.color} strokeWidth={7 / zoom} strokeLinecap="round" strokeLinejoin="round" />
+          <path key={i} d={r.d} fill="none" stroke={r.color} strokeWidth={7 / zoom} strokeDasharray={dashed} strokeLinecap="round" strokeLinejoin="round" />
         ))}
       </g>
     </g>

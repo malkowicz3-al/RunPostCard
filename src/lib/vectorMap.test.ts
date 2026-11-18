@@ -5,6 +5,7 @@ import { PbfWriter } from 'pbf';
 import {
   buildMapLayers,
   loadMapLayers,
+  loadAreaLayers,
   loadRegionLayers,
   loadTile,
   loadTileJson,
@@ -270,6 +271,27 @@ describe('pobieranie', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it('przerwanie jednego z dwóch wywołań nie przerywa wspólnego pobierania', async () => {
+    let finish!: () => void;
+    const fetchMock = vi.fn(
+      (_url: string, init?: RequestInit) =>
+        new Promise<Response>((resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => reject(init.signal!.reason));
+          finish = () => resolve(new Response(null, { status: 204 }));
+        }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const first = new AbortController();
+    const a = loadTile('https://s.example/1', first.signal);
+    const b = loadTile('https://s.example/1', new AbortController().signal);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    first.abort();
+    await expect(a).rejects.toThrow();
+    finish();
+    await expect(b).resolves.toBeDefined();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('błąd TileJSON nie zostaje w cache, sukces tak', async () => {
     const fetchMock = vi
       .fn()
@@ -358,5 +380,39 @@ describe('loadRegionLayers', () => {
     const layers = await loadRegionLayers(atZoom(10), SIZE, POSTCARD, region);
     expect(pbfCalls(fetchMock)).toBe(16);
     expect(layers?.water).toBeDefined();
+  });
+});
+
+describe('loadAreaLayers', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  const atZoom = (z: number) => geoMercator().scale((1024 * 2 ** z) / (2 * Math.PI)).translate([500, 500]);
+  const stubTiles = () => {
+    const fetchMock = vi.fn(async (url: string) =>
+      url.endsWith('.pbf') ? new Response(waterTile().slice().buffer as ArrayBuffer) : Response.json({ tiles: [OFM], maxzoom: 14 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    return fetchMock;
+  };
+  const pbfZooms = (mock: ReturnType<typeof vi.fn>) =>
+    mock.mock.calls.map(([url]) => String(url)).filter((u) => u.endsWith('.pbf')).map((u) => Number(u.split('/').at(-3)));
+
+  it('mały obszar: ten sam poziom kafelków co pocztówka', async () => {
+    const fetchMock = stubTiles();
+    expect((await loadAreaLayers(atZoom(10), SIZE, POSTCARD, [-500, -500, 1500, 1500]))?.water).toBeDefined();
+    expect(new Set(pbfZooms(fetchMock))).toEqual(new Set([10]));
+  });
+
+  it('ponad 32 kafelki: poziom niżej', async () => {
+    const fetchMock = stubTiles();
+    // z10: 9x9 = 81 kafelków; z9 (kafelek 2048): 5x5 = 25.
+    await loadAreaLayers(atZoom(10), SIZE, POSTCARD, [-4000, -4000, 4000, 4000]);
+    expect(pbfZooms(fetchMock)).toEqual(Array(25).fill(9));
+  });
+
+  it('null, gdy za dużo kafelków nawet dwa poziomy niżej', async () => {
+    const fetchMock = stubTiles();
+    expect(await loadAreaLayers(atZoom(10), SIZE, POSTCARD, [-20000, -20000, 20000, 20000])).toBeNull();
+    expect(pbfZooms(fetchMock)).toEqual([]);
   });
 });

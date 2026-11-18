@@ -336,10 +336,41 @@ button.text-button {
   background: conic-gradient(#3a3a3f 25%, #2c2c30 0 50%, #3a3a3f 0 75%, #2c2c30 0) 0 0 / 32px 32px;
 }
 
-/* 3D: przeciąganie przesuwa kamerę, więc jeden palec nie przewija strony. */
+/* Przeciąganie przesuwa kamerę (płasko i 3D), więc jeden palec nie przewija strony. */
 .postcard-frame.pannable {
   touch-action: none;
   cursor: grab;
+}
+
+/* Płasko przy zoomie 1: palec przewija stronę, szczypanie dalej przychodzi jako zdarzenia wskaźnika. */
+.postcard-frame.pannable.scrolls-page {
+  touch-action: pan-y;
+}
+
+/* Mapa na cały ekran pod pocztówką (MapBackdrop, ADR 0007): poza eksportem, za całym układem. */
+.postcard-screen {
+  position: relative;
+  isolation: isolate;
+}
+
+.map-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.has-backdrop .postcard-frame {
+  outline: 2px solid rgba(255, 255, 255, 0.85);
+}
+
+/* Bez backdrop-filter: rozmycie nad dużym SVG jest drogie. */
+.has-backdrop .style-panel {
+  padding: 16px 0;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
 }
 
 .postcard {
@@ -395,46 +426,34 @@ button.slot-hit[data-active='true'] {
   font-weight: 600;
 }
 
-.look-tiles {
-  display: flex;
-  gap: 8px;
-  width: 100%;
-  padding: 4px 16px;
-  box-sizing: border-box;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-/* Wyśrodkowane, gdy mieszczą się bez przewijania. */
-.look-tiles > :first-child {
-  margin-left: auto;
-}
-
-.look-tiles > :last-child {
-  margin-right: auto;
-}
-
-button.look-tile {
-  flex: 0 0 76px;
+/* Panel w kategoriach: mały nagłówek nad każdą listą. */
+.panel-section {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 0;
-  background: none;
-  font-size: 13px;
-  font-weight: 400;
+  gap: 8px;
+  width: 100%;
+}
+
+.panel-heading {
+  width: calc(100% - 32px);
+  max-width: 320px;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   color: var(--text-secondary);
 }
 
 .look-preview {
   display: block;
   width: 100%;
-  aspect-ratio: 1;
-  border-radius: 12px;
+  height: 100%;
+  border-radius: 8px;
   overflow: hidden;
   box-sizing: border-box;
-  border: 2px solid var(--separator);
+  border: 1px solid var(--separator);
   background: var(--surface);
 }
 
@@ -445,17 +464,6 @@ button.look-tile {
 
 .look-preview.checkerboard {
   background: conic-gradient(#3a3a3f 25%, #2c2c30 0 50%, #3a3a3f 0 75%, #2c2c30 0) 0 0 / 16px 16px;
-}
-
-.look-preview.layout-mini {
-  aspect-ratio: 9 / 16;
-  color: var(--text);
-}
-
-.layout-mini svg {
-  display: block;
-  width: 100%;
-  height: 100%;
 }
 
 .slot-list {
@@ -530,6 +538,25 @@ dialog.data-modal::backdrop {
   border-radius: 8px;
 }
 
+/* Wykresy są szerokie i niskie (box slotu), więc podgląd ok. 3,5:1. */
+.data-option.chart {
+  grid-template-columns: 1fr 168px;
+}
+
+.data-preview.wide {
+  width: 168px;
+  aspect-ratio: 3.5 / 1;
+}
+
+.data-group-title {
+  margin: 8px 8px 4px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+}
+
 .font-sample {
   display: grid;
   place-items: center;
@@ -538,24 +565,25 @@ dialog.data-modal::backdrop {
   background: var(--surface);
 }
 
-.font-picker {
+/* Własna lista rozwijana (Select.tsx): przycisk z podglądem wybranej opcji. */
+.select {
   position: relative;
   width: calc(100% - 32px);
   max-width: 320px;
 }
 
-button.font-picker-button {
+button.select-button {
   display: flex;
   align-items: center;
   gap: 12px;
   width: 100%;
-  min-height: 52px;
-  padding: 0 16px;
+  min-height: 56px;
+  padding: 6px 16px 6px 8px;
   border: 2px solid var(--separator);
   text-align: left;
 }
 
-.font-picker-name {
+.select-button .select-label {
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -563,12 +591,8 @@ button.font-picker-button {
   white-space: nowrap;
 }
 
-.font-picker-sample {
-  font-size: 22px;
-  line-height: 1;
-}
-
-.font-picker-chevron {
+.select-chevron {
+  flex: none;
   width: 8px;
   height: 8px;
   border-right: 2px solid var(--text-secondary);
@@ -576,13 +600,13 @@ button.font-picker-button {
   transform: translateY(-2px) rotate(45deg);
 }
 
-.font-list {
+.select-list {
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
   right: 0;
   z-index: 2;
-  max-height: 320px;
+  max-height: 340px;
   overflow-y: auto;
   padding: 4px;
   border-radius: 12px;
@@ -591,12 +615,12 @@ button.font-picker-button {
 }
 
 /* Za mało miejsca pod przyciskiem: lista otwiera się w górę. */
-.font-list.up {
+.select-list.up {
   top: auto;
   bottom: calc(100% + 8px);
 }
 
-.font-group {
+.select-group {
   padding: 8px 12px 4px;
   font-size: 12px;
   font-weight: 600;
@@ -605,51 +629,83 @@ button.font-picker-button {
   color: var(--text-secondary);
 }
 
-.font-option {
+.select-option {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
   min-height: 44px;
-  padding: 0 12px;
+  padding: 4px 8px;
   border-radius: 8px;
-  font-size: 18px;
   cursor: pointer;
 }
 
-.font-option:hover,
-.font-option:focus {
+.select-option:hover,
+.select-option:focus {
   background: var(--surface-hover);
   outline: none;
 }
 
-.font-option:focus-visible {
+.select-option:focus-visible {
   outline: 2px solid var(--text);
   outline-offset: -2px;
 }
 
-.font-option[aria-selected='true'] {
+.select-option[aria-selected='true'] {
   background: var(--segment-selected);
   box-shadow: inset 0 0 0 2px var(--separator);
 }
 
-.font-option-sample {
+.select-preview {
+  flex: none;
+  display: block;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.select-preview svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Miniatura układu w proporcjach pocztówki. */
+.layout-select .select-preview {
+  width: 27px;
+  height: 48px;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px var(--separator);
+  color: var(--text);
+}
+
+/* Font: nazwa w swoim kroju, próbka liczby po prawej. */
+.font-select .select-option {
+  font-size: 18px;
+}
+
+.font-select .select-option .select-label {
+  flex: 1;
+}
+
+.font-select .select-preview {
+  order: 1;
+  width: auto;
+  height: auto;
   font-size: 15px;
   color: var(--text-secondary);
+}
+
+/* Próbka w przycisku mała i stała: szeroki font (np. Press Start) nie zabiera miejsca na nazwę. */
+.font-select .select-button .select-preview {
+  font-size: 13px;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .look-photo {
   background-size: cover;
   background-position: center;
-}
-
-.look-tile[aria-pressed='true'] {
-  color: var(--text);
-  font-weight: 600;
-}
-
-.look-tile[aria-pressed='true'] .look-preview {
-  border-color: var(--text);
 }
 
 .toggle-row {
@@ -782,27 +838,21 @@ button.swatch,
     align-items: stretch;
   }
 
+  .has-backdrop .style-panel {
+    padding: 16px;
+    box-sizing: border-box;
+  }
+
   .panel-title {
     display: block;
   }
 
-  .look-tiles {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    padding: 0;
-    overflow: visible;
+  .panel-section {
+    align-items: stretch;
   }
 
-  .look-tiles > :first-child,
-  .look-tiles > :last-child {
-    margin: 0;
-  }
-
-  button.look-tile {
-    flex: none;
-  }
-
-  .font-picker {
+  .panel-heading,
+  .select {
     width: 100%;
     max-width: none;
   }

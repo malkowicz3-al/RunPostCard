@@ -24,6 +24,13 @@ describe('zoomRegion', () => {
     expect(zoomRegion({ zoom: 4, x: 5000, y: 0 }, ID, C, SIZE)).toBeNull();
   });
 
+  it('parametr floor: widok płaski przycina do całego płótna, nie do podłogi 3D', () => {
+    // y: 720 + (s − 720 + 1000) / 2 dla s ∈ [−288, 2208] -> [716, 1964], przycięte do 1920.
+    const r = zoomRegion({ zoom: 2, x: 0, y: -1000 }, ID, C, SIZE, 0.15, [0, 0, 1080, 1920])!;
+    expect(r.rect[1]).toBe(716);
+    expect(r.rect[3]).toBe(1920);
+  });
+
   it('macierz izometrii: każdy punkt podłogi widoczny na płótnie leży w prostokącie', () => {
     const a = 1.2 / Math.SQRT2;
     const b = 1.2 / (2 * Math.SQRT2);

@@ -1,11 +1,20 @@
+import type { Rect } from '../lib/mapTiles';
 import { LINE_KEYS, MAP_KEYS, type MapLayers } from '../lib/vectorMap';
 import type { MapStyle } from './mapStyle';
 
 // Tło "map": prostokąt tła i po jednej ścieżce na warstwę (wektor inline, więc eksport działa bez data URL).
-export function MapBackground({ layers, style }: { layers: MapLayers; style: MapStyle }) {
+export function MapBackground({
+  layers,
+  style,
+  rect: [x0, y0, x1, y1] = [0, 0, 1080, 1920],
+}: {
+  layers: MapLayers;
+  style: MapStyle;
+  rect?: Rect;
+}) {
   return (
     <>
-      <rect width={1080} height={1920} fill={style.fill ?? style.background} />
+      <rect x={x0} y={y0} width={x1 - x0} height={y1 - y0} fill={style.fill ?? style.background} />
       {MAP_KEYS.map((key) => {
         const d = layers[key];
         if (!d) return null;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { moveIndex } from './FontPicker';
+import { moveIndex } from './Select';
 
 describe('moveIndex', () => {
   it('strzałki przesuwają bez zawijania, Home/End skaczą na brzegi', () => {

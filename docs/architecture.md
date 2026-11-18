@@ -31,10 +31,9 @@ src/
   
   postcard/
     slots.ts              # model slotu {id, data, form}, rejestr danych (data -> etykieta + wartość z Activity), domyślny układ 9:16
-    Postcard.tsx          # jeden <svg viewBox="0 0 1080 1920">: tło, trasa, sloty, znak Strava; ten sam SVG idzie do eksportu
+    Postcard.tsx          # jeden <svg viewBox="0 0 1080 1920">: tło, trasa, sloty, znak Strava, podpis mapy (pionowo przy prawej krawędzi, ATTRIBUTION_AT, 18 px, krycie 0.6); ten sam SVG idzie do eksportu
     Background.tsx        # gradient + ziarno przez filtr feTurbulence (kod, bez obrazków)
     IsoRoute.tsx          # widok 3D: kurtyna, cień na podłożu, trasa kolorowana nachyleniem (płaskie odcinki w kolorze trasy motywu)
-    RouteMarkers.tsx      # kropki i etykiety markerów (FASTEST, MAX HR, MIN HR, HIGHEST) w punktach trasy
     Route.tsx             # <path> trasy z gotowej ścieżki + styl z motywu (kolor, grubość, filtr); ROUTE_BOX = obszar trasy na płótnie
     MapBackground.tsx     # renderer warstw mapy: <rect> tła (fill albo background) + jeden <path> na warstwę wg MapStyle (kolory, grubości, kreski, opcjonalny filtr; wektor inline, ADR 0004)
     mapStyle.ts           # typ MapStyle (tło, opcjonalna farba tła fill, kolory wszystkich kluczy, grubości linii, kreski dashes, filtry warstw)
@@ -57,6 +56,9 @@ src/
     RouteThumb.tsx        # miniatura trasy na zarysie mapy (profil THUMB); kolory z tokenów CSS --map-* (lista) albo z MapStyle motywu; style=null = sama trasa
     useMapLayers.ts       # hook: projekcja -> ścieżki mapy {layers, failed, loading}; przy zmianie profilu stare warstwy zostają do czasu nowych; anulowanie przy odmontowaniu
     useRegionLayers.ts    # hook: region przybliżenia 3D -> ostrzejsze warstwy {refined: {rect, layers}, loading}; błąd cichy (zostaje mapa podstawowa)
+    Select.tsx            # ogólna lista rozwijana z podglądem opcji (listbox, klawiatura, grupy); FontPicker/LookPicker/LayoutPicker na niej
+    DataModal.tsx         # okno zmiany danych slotu: grupy Numbers/Charts, podgląd w foncie i kolorach
+    MapBackdrop.tsx       # mapa motywu na cały ekran pod panelem, przygaszona poza ramką (bez filtrów motywu); nie trafia do eksportu
     useRunStreams.ts      # hook: strumienie otwartego biegu (null = brak/ładowanie/błąd); ?mock=1 -> mockStreams
 
   assets/brand/strava/    # oficjalne zasoby Stravy (przycisk Connect, znaki Powered by), bez modyfikacji
@@ -72,8 +74,12 @@ src/
     fonts.ts              # FONTS (20 fontów: plik, rodzina, grubość, skala, grupa); wybrany TTF jako data URL wstrzykiwany do <style> w SVG (img nie pobiera zewnętrznych fontów)
     photo.ts              # loadPhoto: plik -> canvas 1080x1920 (cover, coverRect) -> JPEG data URL (bez EXIF)
     dataUrl.ts            # fetch -> data URL z cache w pamięci (font)
-    runHighlights.ts      # highlights(streams) -> indeksy markerów; TRIM_M = 200 m bez markerów na początku i końcu
-    runHighlights.test.ts
+    camera.ts             # Camera, DEFAULT_CAMERA, MAX_ZOOM, CAMERA_CENTER (środek ROUTE_BOX), cameraTransform (napis transform), clampCamera(c, view) (płaski: płótno zawsze przykrywa ramkę)
+    chartData.ts          # dane wykresów ze strumieni: series, kmSplits, zoneShare, HR_ZONES (ADR 0007)
+    chartData.test.ts
+    backdrop.ts           # tło ekranu: backdropViewBox (ekran -> jednostki pocztówki), backdropArea (obszar mapy do pobrania)
+    backdrop.test.ts
+    camera.test.ts
     isoRoute.ts           # izometria: Mercator, obrót 45°, Y × 0,5, podniesienie o wysokość (min. 15% pola), dopasowanie do ROUTE_BOX
     isoRoute.test.ts
     routePath.ts          # fitRoute: polyline -> d3-geo geoMercator().fitExtent -> {projection, d}; routePath = samo d
@@ -96,7 +102,7 @@ docs/
 2. Wymiana kodu: przeglądarka -> `POST /api/strava/token {code}` -> (Vercel: `api/strava/token.ts` | lokalnie: wtyczka w `vite.config.ts`) -> `server/stravaToken.ts` (+ `STRAVA_CLIENT_SECRET`) -> `POST https://www.strava.com/oauth/token` -> `{access_token, refresh_token, expires_at, athlete}` -> `sessionStorage`.
 3. Odświeżanie: gdy `expires_at` mija, przeglądarka -> `POST /api/strava/token {refresh_token}` -> ten sam moduł.
 4. Dane: przeglądarka -> `GET https://www.strava.com/api/v3/athlete/activities?per_page=30` z `Authorization: Bearer` (bez backendu). Lista zawiera `map.summary_polyline`, `distance`, `moving_time`, `average_heartrate`, `start_date_local` – wystarcza na etap 1, bez pobierania streamów.
-5. Strumienie (tylko otwarta pocztówka, ADR 0006): przeglądarka -> `GET /activities/{id}/streams?keys=latlng,altitude,heartrate,velocity_smooth,distance,time&key_by_type=true` -> `normalizeStreams` -> `RunStreams` w stanie `PostcardScreen` (bez cache). Z tego samego źródła: `highlights` (markery, indeksy w strumieniu) i `isoRoute` (widok 3D). Błąd = pocztówka bez markerów i bez 3D.
+5. Strumienie (tylko otwarta pocztówka, ADR 0006): przeglądarka -> `GET /activities/{id}/streams?keys=latlng,altitude,heartrate,velocity_smooth,distance,time&key_by_type=true` -> `normalizeStreams` -> `RunStreams` w stanie `PostcardScreen` (bez cache). Z tego źródła liczy się `isoRoute` (widok 3D). Błąd = pocztówka bez 3D. Markery (Highlights) usunięte (ADR 0007).
 6. Render: Activity -> sloty (`slots.ts`) + trasa (`polyline.ts` -> `Route.tsx`) -> `<svg>` -> `exportPng.ts` -> plik PNG.
 7. Wylogowanie: przeglądarka -> `POST https://www.strava.com/oauth/deauthorize` z tokenem -> czyszczenie `sessionStorage`.
 
@@ -114,7 +120,7 @@ docs/
 - **Testy: Vitest**: współdzieli konfigurację Vite, zero dodatkowej konfiguracji; testy tylko dla logiki (polyline, format, stravaToken).
 - **Jednostki: tylko km** w etapie 1.
 - **Mapa wektorowa z OpenFreeMap rysowana jako SVG** (bez klucza i bez biblioteki map): kafelki liczone z tej samej projekcji co trasa, dekodowane przez `@mapbox/vector-tile` + `pbf`, jedna ścieżka na warstwę; CARTO usunięte (ADR 0004, zastępuje 0003).
-- **Strumienie tylko dla otwartej pocztówki** (limit zapytań Stravy); markery i 3D liczone czystymi funkcjami z jednego `RunStreams`. **W 3D mapa jest podłogą**: izometria jest afiniczna na płaskim płótnie, więc ta sama scena motywu leży pod trasą w `<g transform="matrix(...)">` (`iso.matrix`), z wygaszonymi brzegami i podpisem OSM (ADR 0006). Przy zoomie ≥ 1,5 i kamerze stojącej 300 ms `zoomRegion` wyznacza widoczny fragment podłogi, `loadRegionLayers` doczytuje dla niego kafelki o poziom (lub dwa) gęstsze, a `Postcard` rysuje je nad mapą podstawową przycięte `clipPath` `iso-refined-clip` (własne tło warstwy zakrywa bazę). Pobieranie czeka na ten fragment.
+- **Strumienie tylko dla otwartej pocztówki** (limit zapytań Stravy); 3D liczone czystymi funkcjami z jednego `RunStreams`. **W 3D mapa jest podłogą**: izometria jest afiniczna na płaskim płótnie, więc ta sama scena motywu leży pod trasą w `<g transform="matrix(...)">` (`iso.matrix`), z wygaszonymi brzegami i podpisem OSM (ADR 0006). Przy zoomie ≥ 1,5 i kamerze stojącej 300 ms `zoomRegion` wyznacza widoczny fragment podłogi, `loadRegionLayers` doczytuje dla niego kafelki o poziom (lub dwa) gęstsze, a `Postcard` rysuje je nad mapą podstawową przycięte `clipPath` `refined-clip` (własne tło warstwy zakrywa bazę). Pobieranie czeka na ten fragment.
 - **Motywy mapy tylko stylistyczne** (dark, light, neon, blueprint; opcjonalnie szczegóły „Details”): te same warstwy mapy, inne kolory, grubości i filtry SVG (lokalne `url(#…)`, więc eksport działa); bez ikon, bez plików graficznych i nowych zależności; miniatury listy bez zmian (ADR 0005). Neon liczony z jednego koloru `accent`.
 
 ## Zdjęcie i fonty

@@ -8,8 +8,9 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import type { Activity } from '../strava/api';
-import { CAMERA_CENTER, DEFAULT_CAMERA, Postcard, type Camera } from '../postcard/Postcard';
+import { Postcard } from '../postcard/Postcard';
 import { ROUTE_BOX } from '../postcard/Route';
+import { CAMERA_CENTER, DEFAULT_CAMERA, MAX_ZOOM, clampCamera, keepCamera, type Camera } from '../lib/camera';
 import { exportPng, exportSvg } from '../lib/exportPng';
 import { DEFAULT_FONT, FONTS, loadFontCss, type FontId } from '../lib/fonts';
 import { loadPhoto } from '../lib/photo';
@@ -17,7 +18,7 @@ import { isoRoute } from '../lib/isoRoute';
 import { fitRoute } from '../lib/routePath';
 import { zoomRegion } from '../lib/zoomRegion';
 import { POSTCARD, POSTCARD_DETAILED } from '../lib/vectorMap';
-import { DATA, resolveLayout, slotBox, swapSlot, type LayoutId, type Overrides, type SlotData } from '../postcard/slots';
+import { DATA, resolveLayout, slotBox, slotMenu, swapSlot, type LayoutId, type Overrides, type SlotPick } from '../postcard/slots';
 import { THEMES, type ThemeId } from '../postcard/themes';
 import { DEFAULT_ACCENT } from '../postcard/themes/neon';
 import { DataModal } from './DataModal';
@@ -25,26 +26,14 @@ import { DownloadMenu } from './DownloadMenu';
 import { FontPicker } from './FontPicker';
 import { LayoutPicker } from './LayoutPicker';
 import { LookPicker, type Look } from './LookPicker';
+import { MapBackdrop } from './MapBackdrop';
 import { useMapLayers } from './useMapLayers';
 import { useRegionLayers } from './useRegionLayers';
 import { useRunStreams } from './useRunStreams';
 
 const SIZE: [number, number] = [1080, 1920];
-const MAX_ZOOM = 4;
-
-const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
-const HALF_BOX: [number, number] = [(ROUTE_BOX[1][0] - ROUTE_BOX[0][0]) / 2, (ROUTE_BOX[1][1] - ROUTE_BOX[0][1]) / 2];
-// Środek trasy nie wychodzi poza płótno, a przy zoomie każdy punkt pola trasy da się przesunąć na środek.
-export const clampCamera = ({ zoom, x, y }: Camera): Camera => {
-  const z = clamp(zoom, 1, MAX_ZOOM);
-  const lx = Math.max(CAMERA_CENTER[0], HALF_BOX[0] * z);
-  const ly = HALF_BOX[1] * z;
-  return {
-    zoom: z,
-    x: clamp(x, -lx, Math.max(SIZE[0] - CAMERA_CENTER[0], lx)),
-    y: clamp(y, -Math.max(CAMERA_CENTER[1], ly), Math.max(SIZE[1] - CAMERA_CENTER[1], ly)),
-  };
-};
+const IDENTITY: [number, number, number, number, number, number] = [1, 0, 0, 1, 0, 0];
+const CANVAS: [number, number, number, number] = [0, 0, 1080, 1920];
 
 type Point = { x: number; y: number };
 
@@ -102,7 +91,6 @@ export function PostcardScreen({
   const [accent, setAccent] = useState(DEFAULT_ACCENT);
   const [mapFailed, setMapFailed] = useState(false);
   const [view, setView] = useState<'flat' | '3d'>('flat');
-  const [showHighlights, setShowHighlights] = useState(false);
   const [layoutId, setLayoutId] = useState<LayoutId>('classic');
   const [overrides, setOverrides] = useState<Partial<Record<LayoutId, Overrides>>>({});
   const [editing, setEditing] = useState<string | null>(null);
@@ -118,6 +106,7 @@ export function PostcardScreen({
   // 3D liczy się na płaskiej projekcji trasy, więc bez niej przycisk nie ma sensu.
   const has3d = !!streams?.altitude && fit !== null;
   const is3d = view === '3d' && has3d;
+  const camView = is3d ? '3d' : 'flat';
   const [detailed, setDetailed] = useState(false);
   const profile = detailed ? POSTCARD_DETAILED : POSTCARD;
   const map = useMapLayers(fit?.projection ?? null, SIZE, profile, isMap);
@@ -137,7 +126,7 @@ export function PostcardScreen({
       frame.current = 0;
       const fns = queued.current;
       queued.current = [];
-      setCamera((c) => fns.reduce((acc, f) => clampCamera(f(acc)), c));
+      setCamera((c) => keepCamera(c, fns.reduce((acc, f) => clampCamera(f(acc), camView), c)));
     });
   };
   useEffect(() => () => cancelAnimationFrame(frame.current), []);
@@ -151,11 +140,17 @@ export function PostcardScreen({
     () => (is3d && streams && fit ? isoRoute(streams, ROUTE_BOX, fit.projection) : null),
     [is3d, streams, fit],
   );
+  // Płasko: macierz jednostkowa i całe płótno jako podłoga.
   const region = useMemo(
-    () => (iso && isMap ? zoomRegion(settled, iso.matrix, CAMERA_CENTER, SIZE) : null),
+    () =>
+      !isMap
+        ? null
+        : iso
+          ? zoomRegion(settled, iso.matrix, CAMERA_CENTER, SIZE)
+          : zoomRegion(settled, IDENTITY, CAMERA_CENTER, SIZE, 0.15, CANVAS),
     [iso, isMap, settled],
   );
-  const zoomed = useRegionLayers(fit?.projection ?? null, region, profile, isMap && is3d);
+  const zoomed = useRegionLayers(fit?.projection ?? null, region, profile, isMap);
   const loading = mapLoading || zoomed.loading;
 
   useEffect(() => {
@@ -174,17 +169,20 @@ export function PostcardScreen({
     setSettled(DEFAULT_CAMERA);
   }, [activity, is3d]);
 
-  // Kółko myszy przybliża tylko w 3D; listener nie-pasywny, żeby preventDefault blokował przewijanie strony.
+  // Płasko przy zoomie 1 nie ma czego przesuwać: kółko i palec przewijają stronę (ctrl+kółko i szczypanie nadal przybliżają).
+  const scrollsPage = !is3d && camera.zoom <= 1;
+  // Listener nie-pasywny, żeby preventDefault blokował przewijanie strony; is3d w zależnościach, bo zmienia ograniczenie kamery.
   useEffect(() => {
     const el = previewRef.current;
-    if (!is3d || !el) return;
+    if (!el) return;
     const onWheel = (e: WheelEvent) => {
+      if (!fit || (scrollsPage && !e.ctrlKey)) return;
       e.preventDefault();
       moveCamera((c) => ({ ...c, zoom: c.zoom * Math.exp(-e.deltaY * 0.002) }));
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
-  }, [is3d]);
+  }, [is3d, fit, scrollsPage]);
 
   useEffect(() => setEditing(null), [activity]);
 
@@ -195,7 +193,6 @@ export function PostcardScreen({
     if (pointers.current.size > 0) multiTouch.current = true;
     const hit = (e.target as Element).closest?.('[data-slot]');
     tap.current = { x: e.clientX, y: e.clientY, id: hit?.getAttribute('data-slot') ?? null };
-    if (!is3d) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
   };
@@ -219,9 +216,9 @@ export function PostcardScreen({
   };
 
   const onPointerUp = (e: ReactPointerEvent) => {
-    // W 3D ramka przechwytuje wskaźnik, więc klik może nie dojść do przycisku slotu; dotknięcie łapiemy tutaj.
+    // Ramka przechwytuje wskaźnik, więc klik może nie dojść do przycisku slotu; dotknięcie łapiemy tutaj.
     const id = tap.current?.id;
-    if (e.type === 'pointerup' && is3d && id && opens(e)) setEditing(id);
+    if (e.type === 'pointerup' && id && opens(e)) setEditing(id);
     pointers.current.delete(e.pointerId);
     if (pointers.current.size === 0) multiTouch.current = false;
   };
@@ -231,8 +228,8 @@ export function PostcardScreen({
     if (opens(e, e.detail === 0)) setEditing(id);
   };
 
-  const pick = (data: SlotData) => {
-    if (editing) setOverrides((o) => ({ ...o, [layoutId]: swapSlot(items, editing, data) }));
+  const pick = (p: SlotPick) => {
+    if (editing) setOverrides((o) => ({ ...o, [layoutId]: swapSlot(items, editing, p) }));
     setEditing(null);
   };
   const scale = FONTS[font].scale;
@@ -280,8 +277,23 @@ export function PostcardScreen({
       .finally(() => setPhotoBusy(false));
   };
 
+  // Tło ekranu tylko przy motywie mapy, płasko i po wczytaniu mapy pocztówki (ADR 0007).
+  const backdrop = isMap && !is3d && !mapMissing && fit !== null;
+
   return (
-    <div className="screen postcard-screen">
+    <div className={`screen postcard-screen${backdrop ? ' has-backdrop' : ''}`}>
+      {backdrop && fit && (
+        <MapBackdrop
+          frameRef={previewRef}
+          projection={fit.projection}
+          route={fit.d}
+          theme={look as ThemeId}
+          accent={accent}
+          profile={profile}
+          camera={camera}
+          settled={settled}
+        />
+      )}
       <div className="top-bar">
         <button className="text-button" aria-label="Back to runs" onClick={onBack}>
           ‹ Runs
@@ -291,7 +303,7 @@ export function PostcardScreen({
       <div className="postcard-layout">
         {/* Szachownica tylko na otoczce podglądu, żeby nie trafiła do eksportu. */}
         <div
-          className={`postcard-frame${look === 'transparent' ? ' checkerboard' : ''}${is3d ? ' pannable' : ''}`}
+          className={`postcard-frame${look === 'transparent' ? ' checkerboard' : ''}${fit ? ' pannable' : ''}${scrollsPage ? ' scrolls-page' : ''}`}
           ref={previewRef}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
@@ -317,7 +329,6 @@ export function PostcardScreen({
             accent={accent}
             streams={streams}
             view={is3d ? '3d' : 'flat'}
-            highlights={showHighlights}
             camera={camera}
             iso={iso}
             refined={zoomed.refined}
@@ -333,7 +344,7 @@ export function PostcardScreen({
                 aria-haspopup="dialog"
                 data-slot={item.slot.id}
                 data-active={editing === item.slot.id}
-                aria-label={`${DATA[item.slot.data].menu} – change`}
+                aria-label={`${slotMenu(item.slot)} – change`}
                 style={{
                   left: `${b.x0 / 10.8}%`,
                   top: `${b.y0 / 19.2}%`,
@@ -388,59 +399,56 @@ export function PostcardScreen({
               </label>
             </div>
           )}
-          <FontPicker font={font} onFont={setFont} />
-          <LayoutPicker layout={layoutId} onLayout={setLayoutId} />
-          <div className="slot-list" role="group" aria-label="Data">
-            {items.map((item) => (
-              <button
-                key={item.slot.id}
-                className="toggle"
-                aria-haspopup="dialog"
-                onClick={() => setEditing(item.slot.id)}
-              >
-                {DATA[item.slot.data].menu} – change
-              </button>
-            ))}
-          </div>
-          {streams && (
-            <div className="toggle-row">
+          {fit && (
+            <section className="panel-section">
+              <h3 className="panel-heading">View</h3>
               {has3d && (
-                <div className="toggle-group" role="group" aria-label="View">
-                  <button className="toggle" aria-pressed={!is3d} onClick={() => setView('flat')}>
-                    Flat
-                  </button>
-                  <button className="toggle" aria-pressed={is3d} onClick={() => setView('3d')}>
-                    3D
-                  </button>
+                <div className="toggle-row">
+                  <div className="toggle-group" role="group" aria-label="View">
+                    <button className="toggle" aria-pressed={!is3d} onClick={() => setView('flat')}>
+                      Flat
+                    </button>
+                    <button className="toggle" aria-pressed={is3d} onClick={() => setView('3d')}>
+                      3D
+                    </button>
+                  </div>
                 </div>
               )}
-              <button
-                className="toggle"
-                aria-pressed={showHighlights}
-                onClick={() => setShowHighlights((v) => !v)}
-              >
-                Highlights
-              </button>
-            </div>
+              <div className="toggle-row">
+                <label className="zoom-control">
+                  Zoom
+                  <input
+                    type="range"
+                    min={1}
+                    max={MAX_ZOOM}
+                    step={0.1}
+                    value={camera.zoom}
+                    onChange={(e) => setCamera((c) => keepCamera(c, clampCamera({ ...c, zoom: Number(e.target.value) }, camView)))}
+                  />
+                </label>
+                <button className="toggle" onClick={() => setCamera((c) => keepCamera(c, DEFAULT_CAMERA))}>
+                  Reset
+                </button>
+              </div>
+            </section>
           )}
-          {is3d && (
-            <div className="toggle-row">
-              <label className="zoom-control">
-                Zoom
-                <input
-                  type="range"
-                  min={1}
-                  max={MAX_ZOOM}
-                  step={0.1}
-                  value={camera.zoom}
-                  onChange={(e) => setCamera((c) => clampCamera({ ...c, zoom: Number(e.target.value) }))}
-                />
-              </label>
-              <button className="toggle" onClick={() => setCamera(DEFAULT_CAMERA)}>
-                Reset
-              </button>
+          <FontPicker font={font} onFont={setFont} />
+          <LayoutPicker layout={layoutId} onLayout={setLayoutId} />
+          <section className="panel-section">
+            <h3 className="panel-heading">Data</h3>
+            <div className="slot-list" role="group" aria-label="Data">
+              {items.map((item) => (
+                <button
+                  key={item.slot.id}
+                  className="toggle"
+                  aria-haspopup="dialog"
+                  onClick={() => setEditing(item.slot.id)}
+                >
+                  {slotMenu(item.slot)} – change
+                </button>
+              ))}
             </div>
-          )}
+          </section>
           <DataModal
             slot={editingItem}
             activity={activity}
@@ -448,6 +456,7 @@ export function PostcardScreen({
             scale={scale}
             color={preview.color}
             bg={preview.bg}
+            streams={streams}
             onPick={pick}
             onClose={() => setEditing(null)}
           />

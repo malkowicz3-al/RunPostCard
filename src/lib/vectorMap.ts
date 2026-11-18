@@ -293,28 +293,53 @@ async function gunzip(buf: ArrayBuffer): Promise<Uint8Array> {
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
-// Błąd i przerwanie nie zostają w cache; przy przerwaniu wpis znika od razu, żeby kolejne wywołanie go nie przejęło.
-function cached<T>(cache: Map<string, Promise<T>>, key: string, make: () => Promise<T>, signal?: AbortSignal): Promise<T> {
-  let value = cache.get(key);
-  if (!value) {
-    const created = make();
-    const drop = () => cache.get(key) === created && cache.delete(key);
-    created.catch(drop);
-    signal?.addEventListener('abort', drop, { once: true });
+type Shared<T> = { promise: Promise<T>; controller: AbortController; users: number; settled: boolean };
+
+// Wspólne pobieranie nie zależy od sygnału jednego wywołującego: każdy przerywa tylko swoje oczekiwanie,
+// a pobieranie zatrzymuje dopiero ostatni. Błąd i przerwanie nie zostają w cache.
+function cached<T>(
+  cache: Map<string, Shared<T>>,
+  key: string,
+  make: (signal: AbortSignal) => Promise<T>,
+  signal?: AbortSignal,
+): Promise<T> {
+  if (signal?.aborted) return Promise.reject(signal.reason);
+  let entry = cache.get(key);
+  if (!entry) {
+    const controller = new AbortController();
+    const created: Shared<T> = { promise: make(controller.signal), controller, users: 0, settled: false };
+    created.promise.then(
+      () => (created.settled = true),
+      () => cache.get(key) === created && cache.delete(key),
+    );
     cache.set(key, created);
-    value = created;
+    entry = created;
   }
-  return value;
+  const shared = entry;
+  shared.users++;
+  // Bez sygnału wywołujący czeka zawsze, więc wspólne pobieranie nigdy nie zostanie przerwane.
+  if (!signal) return shared.promise;
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => {
+      reject(signal.reason);
+      if (--shared.users > 0 || shared.settled) return;
+      // Wpis znika od razu, żeby kolejne wywołanie nie przejęło przerwanego pobierania.
+      if (cache.get(key) === shared) cache.delete(key);
+      shared.controller.abort(signal.reason);
+    };
+    signal.addEventListener('abort', onAbort, { once: true });
+    shared.promise.then(resolve, reject).finally(() => signal.removeEventListener('abort', onAbort));
+  });
 }
 
-const tileCache = new Map<string, Promise<VectorTile>>();
+const tileCache = new Map<string, Shared<VectorTile>>();
 
 export function loadTile(url: string, signal?: AbortSignal): Promise<VectorTile> {
   return cached(
     tileCache,
     url,
-    () =>
-      queuedFetch(url, signal)
+    (shared) =>
+      queuedFetch(url, shared)
         .then(gunzip)
         .then((bytes) => new VectorTile(new PbfReader(bytes))),
     signal,
@@ -347,11 +372,11 @@ function tileFeatures(vt: VectorTile, profile: MapProfile): TileFeature[] {
 }
 
 // Miniatury dzielą kafelki, więc dekodujemy każdy kafelek raz na profil.
-const featureCache = new Map<string, Promise<TileFeature[]>>();
+const featureCache = new Map<string, Shared<TileFeature[]>>();
 
 function loadTileFeatures(url: string, profile: MapProfile, signal?: AbortSignal): Promise<TileFeature[]> {
   const key = `${profile.keys.join()} ${url}`;
-  return cached(featureCache, key, () => loadTile(url, signal).then((vt) => tileFeatures(vt, profile)), signal);
+  return cached(featureCache, key, (shared) => loadTile(url, shared).then((vt) => tileFeatures(vt, profile)), signal);
 }
 
 export async function loadMapLayers(
@@ -382,6 +407,28 @@ export async function loadRegionLayers(
   if (tiles.length > MAX_REGION_TILES) return null;
   const sharper = { ...profile, precision: k > 2 ? 0.25 : 0.5, minBuildingArea: profile.minBuildingArea / k ** 2 };
   return layersFromTiles(template, tiles, size, sharper, rect, signal);
+}
+
+const MAX_AREA_TILES = 32;
+
+// Mapa tła ekranu dla prostokąta (także poza płótnem). Najpierw poziom kafelków pocztówki (bez szwu),
+// przy zbyt wielu kafelkach o poziom lub dwa rzadziej; null = za dużo nawet wtedy.
+export async function loadAreaLayers(
+  projection: GeoProjection,
+  size: [number, number],
+  profile: MapProfile,
+  rect: Rect,
+  signal?: AbortSignal,
+): Promise<MapLayers | null> {
+  const { template, maxZoom } = await loadTileJson();
+  signal?.throwIfAborted();
+  for (const k of [1, 0.5, 0.25]) {
+    const tiles = mapTiles(projection, size, profile.tileUnits, maxZoom, { k, rect });
+    if (tiles.length > MAX_AREA_TILES) continue;
+    const coarser = { ...profile, precision: profile.precision / k, minBuildingArea: profile.minBuildingArea / k ** 2 };
+    return layersFromTiles(template, tiles, size, coarser, rect, signal);
+  }
+  return null;
 }
 
 async function layersFromTiles(

@@ -11,6 +11,7 @@ export function zoomRegion(
   [cx, cy]: [number, number],
   [w, h]: [number, number],
   margin = 0.15,
+  floor: Rect = FLOOR, // widok płaski: całe płótno
 ): Region | null {
   // Próg 1,5: od tego zoomu mapTiles (round log2) wybiera kafelki o poziom gęstsze.
   const det = a * d - c * b;
@@ -25,10 +26,10 @@ export function zoomRegion(
       ys.push((a * py - b * px) / det);
     }
   const rect: Rect = [
-    Math.max(FLOOR[0], Math.min(...xs)),
-    Math.max(FLOOR[1], Math.min(...ys)),
-    Math.min(FLOOR[2], Math.max(...xs)),
-    Math.min(FLOOR[3], Math.max(...ys)),
+    Math.max(floor[0], Math.min(...xs)),
+    Math.max(floor[1], Math.min(...ys)),
+    Math.min(floor[2], Math.max(...xs)),
+    Math.min(floor[3], Math.max(...ys)),
   ];
   if (rect[0] >= rect[2] || rect[1] >= rect[3]) return null;
   return { k: 2 ** Math.round(Math.log2(zoom)), rect };

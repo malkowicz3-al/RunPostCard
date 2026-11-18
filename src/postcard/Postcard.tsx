@@ -1,29 +1,24 @@
 import { useMemo } from 'react';
 import type { Activity, RunStreams } from '../strava/api';
+import { DEFAULT_CAMERA, cameraTransform, type Camera } from '../lib/camera';
 import { isoRoute, type IsoRoute as IsoData } from '../lib/isoRoute';
 import type { Rect } from '../lib/mapTiles';
 import { fitRoute } from '../lib/routePath';
 import { DEFAULT_FONT, FONTS, fontStack, type FontId } from '../lib/fonts';
-import { highlights as findHighlights } from '../lib/runHighlights';
 import { MAP_ATTRIBUTION, type MapLayers } from '../lib/vectorMap';
 import { Background } from './Background';
 import { MapBackground } from './MapBackground';
 import { IsoRoute } from './IsoRoute';
 import { PhotoBackground } from './PhotoBackground';
 import { Route, ROUTE_BOX } from './Route';
-import { RouteMarkers } from './RouteMarkers';
 import { StravaMark } from './StravaMark';
-import { DATA, FORMS, defaultLayout, fitted, type LayoutItem } from './slots';
+import { SlotNumber } from './SlotNumber';
+import { DATA, chartFor, defaultLayout, fitted, type LayoutItem } from './slots';
 import { THEMES, type ThemeId } from './themes';
 
 export type PostcardBackground = 'gradient' | 'transparent' | 'map' | 'photo';
-// Kamera widoku 3D: przybliżenie wokół środka pola trasy i przesunięcie (jednostki SVG).
-export type Camera = { zoom: number; x: number; y: number };
-export const DEFAULT_CAMERA: Camera = { zoom: 1, x: 0, y: 0 };
-
-const [[bx0, by0], [bx1, by1]] = ROUTE_BOX;
-export const CAMERA_CENTER: [number, number] = [(bx0 + bx1) / 2, (by0 + by1) / 2];
-const [CX, CY] = CAMERA_CENTER;
+// Podpis mapy pionowo przy prawej krawędzi: początek linii bazowej, tekst biegnie w górę.
+const ATTRIBUTION_AT: [number, number] = [1056, 1890];
 
 export function Postcard({
   activity,
@@ -36,7 +31,6 @@ export function Postcard({
   accent,
   streams,
   view = 'flat',
-  highlights = false,
   camera = DEFAULT_CAMERA,
   iso: givenIso,
   refined,
@@ -52,10 +46,9 @@ export function Postcard({
   accent?: string;
   streams?: RunStreams | null;
   view?: 'flat' | '3d';
-  highlights?: boolean;
   camera?: Camera;
   iso?: IsoData | null; // policzone wyżej (ekran i tak go potrzebuje), inaczej liczone tutaj
-  refined?: { rect: Rect; layers: MapLayers }; // ostrzejsza mapa przybliżonego fragmentu podłogi 3D
+  refined?: { rect: Rect; layers: MapLayers }; // ostrzejsza mapa przybliżonego fragmentu (płasko lub podłoga 3D)
   layout?: LayoutItem[];
 }) {
   // Jedna projekcja dla mapy i trasy („scena”).
@@ -65,23 +58,28 @@ export function Postcard({
     () => (view === '3d' && streams && fit ? (givenIso ?? isoRoute(streams, ROUTE_BOX, fit.projection)) : null),
     [view, streams, fit, givenIso],
   );
-  const is3d = !!iso;
   const showMap = background === 'map' && fit && map;
-  const items = useMemo(() => (highlights && streams ? findHighlights(streams) : []), [highlights, streams]);
-  // Markery płaskie: strumień latlng tą samą projekcją co trasa; indeksy jak w strumieniu.
-  const flatPoints = useMemo(
-    () => (!is3d && fit && streams ? streams.latlng.map(([lat, lng]) => fit.projection([lng, lat])) : []),
-    [is3d, fit, streams],
-  );
-  const { zoom, x: panX, y: panY } = camera;
-  // Markery poza grupą kamery (stały rozmiar kropek i podpisów), więc punkty liczymy tą samą matematyką.
-  const isoPoints = useMemo(
-    () => iso?.points.map(([x, y]): [number, number] => [CX + zoom * (x - CX) + panX, CY + zoom * (y - CY) + panY]) ?? [],
-    [iso, zoom, panX, panY],
-  );
   const out = showMap ? THEMES[theme].render(map, { accent }) : null;
   const text = out?.text ?? { color: '#ffffff' };
   const { weight, scale } = FONTS[font];
+  // Własne tło warstwy zakrywa mapę podstawową w prostokącie; defs motywu (filtry, wzory) są już w scene.
+  const refinedMap = out && refined && (
+    <>
+      <defs>
+        <clipPath id="refined-clip">
+          <rect
+            x={refined.rect[0]}
+            y={refined.rect[1]}
+            width={refined.rect[2] - refined.rect[0]}
+            height={refined.rect[3] - refined.rect[1]}
+          />
+        </clipPath>
+      </defs>
+      <g clipPath="url(#refined-clip)">
+        <MapBackground layers={refined.layers} style={THEMES[theme].style({ accent })} />
+      </g>
+    </>
+  );
 
   return (
     <svg
@@ -97,7 +95,7 @@ export function Postcard({
       {iso ? (
         <g>
           {out && <rect width={1080} height={1920} fill={THEMES[theme].style({ accent }).background} />}
-          <g transform={`translate(${CX * (1 - zoom) + panX} ${CY * (1 - zoom) + panY}) scale(${zoom})`}>
+          <g transform={cameraTransform(camera)}>
             {out && (
               <>
                 {/* Podłoga 3D: ta sama mapa co w widoku płaskim, przekształcona macierzą izometrii; brzegi wygaszone. */}
@@ -114,24 +112,7 @@ export function Postcard({
                 <g transform={`matrix(${iso.matrix.join(' ')})`}>
                   <g mask="url(#iso-floor-fade)">
                     {out.scene}
-                    {/* Własne tło warstwy zakrywa mapę podstawową w prostokącie; defs motywu (filtry, wzory) są już w scene. */}
-                    {refined && (
-                      <>
-                        <defs>
-                          <clipPath id="iso-refined-clip">
-                            <rect
-                              x={refined.rect[0]}
-                              y={refined.rect[1]}
-                              width={refined.rect[2] - refined.rect[0]}
-                              height={refined.rect[3] - refined.rect[1]}
-                            />
-                          </clipPath>
-                        </defs>
-                        <g clipPath="url(#iso-refined-clip)">
-                          <MapBackground layers={refined.layers} style={THEMES[theme].style({ accent })} />
-                        </g>
-                      </>
-                    )}
+                    {refinedMap}
                   </g>
                 </g>
               </>
@@ -139,25 +120,45 @@ export function Postcard({
           </g>
           {/* Faktura papieru w przestrzeni płótna (jak w widoku płaskim), nie na pochylonej i powiększanej podłodze. */}
           {out?.overlay}
-          <g transform={`translate(${CX * (1 - zoom) + panX} ${CY * (1 - zoom) + panY}) scale(${zoom})`}>
-            <IsoRoute iso={iso} flat={out?.route.stroke} filter={out?.route.filter} zoom={zoom} />
+          <g transform={cameraTransform(camera)}>
+            <IsoRoute iso={iso} flat={out?.route.stroke} filter={out?.route.filter} dash={out?.route.dash} zoom={camera.zoom} />
           </g>
         </g>
       ) : (
         <g>
-          {out?.scene}
+          <g transform={cameraTransform(camera)}>
+            {out?.scene}
+            {refinedMap}
+          </g>
           {out?.overlay}
-          {fit && <Route {...out?.route} d={fit.d} />}
+          {fit && (
+            <g transform={cameraTransform(camera)}>
+              <Route {...out?.route} d={fit.d} zoom={camera.zoom} />
+            </g>
+          )}
         </g>
       )}
-      {items.length > 0 && <RouteMarkers points={iso ? isoPoints : flatPoints} items={items} color={text.color} />}
       <g color={text.color} filter={text.filter}>
         {layout.map((item) => {
-          const Form = FORMS[item.slot.form];
           const value = DATA[item.slot.data].value(activity);
+          const chart = chartFor(item, streams);
+          // chartFor sprawdza box i streams.
+          if (chart) {
+            return (
+              <chart.Component
+                key={item.slot.id}
+                box={item.box!}
+                streams={streams!}
+                activity={activity}
+                label={chart.label}
+                value={value}
+                scale={scale}
+              />
+            );
+          }
           const { size, labelSize, label } = fitted(item, value, scale);
           return (
-            <Form
+            <SlotNumber
               key={item.slot.id}
               x={item.x}
               y={item.y}
@@ -175,14 +176,12 @@ export function Postcard({
       <StravaMark x={60} y={1820} variant={out?.mark} />
       {out && (
         <text
-          x={1020}
-          y={1885}
-          fontSize={26}
-          fontWeight={700}
+          transform={`translate(${ATTRIBUTION_AT.join(' ')}) rotate(-90)`}
+          fontSize={18}
+          fontWeight={600}
           fontFamily="system-ui, sans-serif"
-          textAnchor="end"
           fill={text.color}
-          opacity={0.8}
+          opacity={0.6}
         >
           {MAP_ATTRIBUTION}
         </text>

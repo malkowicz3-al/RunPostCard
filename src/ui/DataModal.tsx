@@ -1,11 +1,12 @@
 import { useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from 'react';
-import type { Activity } from '../strava/api';
+import type { Activity, RunStreams } from '../strava/api';
 import { FONTS, fontStack, type FontId } from '../lib/fonts';
 import { SlotNumber } from '../postcard/SlotNumber';
-import { DATA, fitted, type LayoutItem, type SlotData } from '../postcard/slots';
-import { moveIndex } from './FontPicker';
+import { CHARTS, DATA, fitted, slotMenu, type ChartForm, type LayoutItem, type SlotData, type SlotPick } from '../postcard/slots';
+import { moveIndex } from './Select';
 
-const IDS = Object.keys(DATA) as SlotData[];
+const NUMBERS: SlotPick[] = (Object.keys(DATA) as SlotData[]).map((data) => ({ data, form: 'number' }));
+const CHART_FORMS = Object.keys(CHARTS) as ChartForm[];
 
 type Props = {
   slot: LayoutItem | null;
@@ -14,7 +15,8 @@ type Props = {
   scale: number;
   color: string;
   bg: CSSProperties;
-  onPick: (data: SlotData) => void;
+  streams?: RunStreams | null;
+  onPick: (pick: SlotPick) => void;
   onClose: () => void;
 };
 
@@ -23,11 +25,17 @@ export function DataModal(props: Props) {
   return props.slot ? <Dialog key={props.slot.slot.id} {...props} slot={props.slot} /> : null;
 }
 
-function Dialog({ slot, activity, font, scale, color, bg, onPick, onClose }: Props & { slot: LayoutItem }) {
+function Dialog({ slot, activity, font, scale, color, bg, streams, onPick, onClose }: Props & { slot: LayoutItem }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
-  const current = slot.slot.data;
-  const [active, setActive] = useState(() => IDS.indexOf(current));
+  const current = slot.slot;
+  const box = slot.box;
+  // Wykresy tylko w slotach z box i tylko te, na które są strumienie.
+  const charts: SlotPick[] =
+    box && streams ? CHART_FORMS.filter((f) => CHARTS[f].has(streams)).map((form) => ({ data: CHARTS[form].data, form })) : [];
+  const options = [...NUMBERS, ...charts];
+  const isCurrent = (o: SlotPick) => o.data === current.data && o.form === current.form;
+  const [active, setActive] = useState(() => Math.max(0, options.findIndex(isCurrent)));
 
   // showModal nie istnieje w jsdom i przy renderze na serwerze. Okno znika przez odmontowanie (bez close()),
   // więc fokus sami oddajemy elementowi, który je otworzył.
@@ -45,9 +53,9 @@ function Dialog({ slot, activity, font, scale, color, bg, onPick, onClose }: Pro
   const onKey = (e: ReactKeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      return onPick(IDS[active]);
+      return onPick(options[active]);
     }
-    const next = moveIndex(e.key, active, IDS.length);
+    const next = moveIndex(e.key, active, options.length);
     if (next === null) return;
     e.preventDefault();
     setActive(next);
@@ -62,45 +70,73 @@ function Dialog({ slot, activity, font, scale, color, bg, onPick, onClose }: Pro
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <h2 id={titleId} className="data-modal-title">
-        Change: {DATA[current].menu}
+        Change: {slotMenu(current)}
       </h2>
       <div className="data-list" role="listbox" aria-label="Data" onKeyDown={onKey}>
-        {IDS.map((d, i) => {
-          const value = DATA[d].value(activity);
-          // Podgląd jak w slocie pocztówki, dopasowany do szerokości miniatury.
-          const preview: LayoutItem = { slot: { id: 'preview', data: d, form: 'number' }, x: 120, y: 50, size: 64, anchor: 'middle', maxW: 220 };
-          const { size, labelSize, label } = fitted(preview, value, scale);
-          return (
-            <div
-              key={d}
-              data-index={i}
-              role="option"
-              tabIndex={i === active ? 0 : -1}
-              aria-selected={d === current}
-              aria-label={`${DATA[d].menu}: ${value}`}
-              className="data-option"
-              onClick={() => onPick(d)}
-              onFocus={() => setActive(i)}
-            >
-              <span>{DATA[d].menu}</span>
-              <svg
-                viewBox="0 0 240 120"
-                className="data-preview"
-                style={bg}
-                color={color}
-                fontFamily={fontStack(font)}
-                fontWeight={FONTS[font].weight}
-                aria-hidden="true"
-              >
-                <SlotNumber x={120} y={50} size={size} scale={scale} labelSize={labelSize} label={label} value={value} />
-              </svg>
-            </div>
-          );
-        })}
+        {(
+          [
+            ['Numbers', NUMBERS],
+            ['Charts', charts],
+          ] as const
+        ).map(
+          ([group, list], g) =>
+            list.length > 0 && (
+              <div key={group} role="group" aria-label={group}>
+                <p className="data-group-title">{group}</p>
+                {list.map((o, j) => {
+                  const i = g === 0 ? j : NUMBERS.length + j;
+                  const value = DATA[o.data].value(activity);
+                  const chart = o.form === 'number' ? null : CHARTS[o.form];
+                  const props = {
+                    className: chart ? 'data-preview wide' : 'data-preview',
+                    style: bg,
+                    color,
+                    fontFamily: fontStack(font),
+                    fontWeight: FONTS[font].weight,
+                    'aria-hidden': true,
+                  } as const;
+                  return (
+                    <div
+                      key={`${o.form}:${o.data}`}
+                      data-index={i}
+                      role="option"
+                      tabIndex={i === active ? 0 : -1}
+                      aria-selected={isCurrent(o)}
+                      aria-label={chart ? chart.menu : `${DATA[o.data].menu}: ${value}`}
+                      className={chart ? 'data-option chart' : 'data-option'}
+                      onClick={() => onPick(o)}
+                      onFocus={() => setActive(i)}
+                    >
+                      <span>{chart ? chart.menu : DATA[o.data].menu}</span>
+                      {chart && box && streams ? (
+                        // Ten sam wykres co na pocztówce, viewBox = box slotu.
+                        <svg viewBox={`${box.x0} ${box.y0} ${box.x1 - box.x0} ${box.y1 - box.y0}`} {...props}>
+                          <chart.Component box={box} streams={streams} activity={activity} label={chart.label} value={value} scale={scale} />
+                        </svg>
+                      ) : (
+                        <svg viewBox="0 0 240 120" {...props}>
+                          <NumberPreview data={o.data} value={value} scale={scale} />
+                        </svg>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ),
+        )}
       </div>
       <form method="dialog" className="toggle-row">
         <button className="toggle">Cancel</button>
       </form>
     </dialog>
   );
+}
+
+// Podgląd jak w slocie pocztówki, dopasowany do szerokości miniatury. est() szacuje szerokość dla wąskiego fontu,
+// szerszy (mniejsza skala) zajmuje ok. 1/scale więcej, więc granica rośnie i maleje ze skalą; 0.9 to zapas.
+function NumberPreview({ data, value, scale }: { data: SlotData; value: string; scale: number }) {
+  const maxW = 220 * scale * 0.9;
+  const preview: LayoutItem = { slot: { id: 'preview', data, form: 'number' }, x: 120, y: 50, size: 64, anchor: 'middle', maxW };
+  const { size, labelSize, label } = fitted(preview, value, scale);
+  return <SlotNumber x={120} y={50} size={size} scale={scale} labelSize={labelSize} label={label} value={value} />;
 }

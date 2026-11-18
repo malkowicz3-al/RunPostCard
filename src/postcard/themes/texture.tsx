@@ -95,3 +95,34 @@ export function Dots({ id, background, color, r, gap = 6 }: { id: string; backgr
     </pattern>
   );
 }
+
+// Obrys pod kreską (np. czarny kontur trasy komiksowej): pogrubiony kształt w kolorze color pod oryginałem.
+export function Outline({ id, color, radius }: { id: string; color: string; radius: number }) {
+  return (
+    <filter id={id} {...CANVAS}>
+      <feMorphology in="SourceAlpha" operator="dilate" radius={radius} result="wide" />
+      <feFlood floodColor={color} />
+      <feComposite operator="in" in2="wide" result="outline" />
+      <feMerge>
+        <feMergeNode in="outline" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  );
+}
+
+// Podwójna linia (ściany labiryntu): zwężony środek kreski w kolorze color na oryginale.
+// Filtr zamiast drugiej ścieżki, bo ostrzejszy fragment 3D rysuje samo MapBackground.
+export function Inline({ id, color, radius }: { id: string; color: string; radius: number }) {
+  return (
+    <filter id={id} {...CANVAS}>
+      <feMorphology in="SourceAlpha" operator="erode" radius={radius} result="core" />
+      <feFlood floodColor={color} />
+      <feComposite operator="in" in2="core" result="inner" />
+      <feMerge>
+        <feMergeNode in="SourceGraphic" />
+        <feMergeNode in="inner" />
+      </feMerge>
+    </filter>
+  );
+}
