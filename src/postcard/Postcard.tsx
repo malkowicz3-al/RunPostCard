@@ -96,20 +96,6 @@ export function Postcard({
             )}
             <IsoRoute iso={iso} flat={out?.route.stroke} filter={out?.route.filter} zoom={zoom} />
           </g>
-          {iso.exaggeration > 1.05 && (
-            <text
-              x={990}
-              y={290}
-              fontSize={26}
-              fontWeight={700}
-              fontFamily="'Barlow Condensed', system-ui, sans-serif"
-              textAnchor="end"
-              fill={text.color}
-              opacity={0.7}
-            >
-              elevation ×{iso.exaggeration.toFixed(1)}
-            </text>
-          )}
         </g>
       ) : (
         <g>

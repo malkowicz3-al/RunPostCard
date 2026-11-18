@@ -8,7 +8,7 @@ export type IsoRoute = {
   points: [number, number][]; // trasa podniesiona o wysokość, w układzie płótna
   ground: [number, number][]; // ta sama trasa na podłożu (cień, dół kurtyny)
   slope: Slope[]; // klasa nachylenia odcinka i -> i+1 (kolor), bez krótkich wysp
-  exaggeration: number; // >1 = przewyższenie wzmocnione (podpis "elevation ×N")
+  exaggeration: number; // >1 = przewyższenie wzmocnione (najwyżej ×3)
   matrix: [number, number, number, number, number, number]; // SVG matrix: płaskie płótno -> podłoże 3D (mapa)
 };
 

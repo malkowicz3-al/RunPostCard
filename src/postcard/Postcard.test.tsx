@@ -46,10 +46,7 @@ describe('Postcard 3D i markery', () => {
     for (const [, ref] of svg.matchAll(/url\(#([\w-]+)\)/g)) expect(svg).toContain(`id="${ref}"`);
     const ids = [...svg.matchAll(/id="([^"]+)"/g)].map(([, id]) => id);
     expect(new Set(ids).size).toBe(ids.length);
-    const label = svg.match(/<text[^>]* y="([\d.]+)"[^>]*>elevation ×/);
-    expect(label).not.toBeNull();
-    expect(Number(label![1])).toBeGreaterThanOrEqual(ROUTE_BOX[0][1]);
-    expect(Number(label![1])).toBeLessThan(ROUTE_BOX[0][1] + 100);
+    expect(svg).not.toContain('elevation ×');
   });
 
   it('widok płaski z markerami pokazuje MAX HR', () => {
