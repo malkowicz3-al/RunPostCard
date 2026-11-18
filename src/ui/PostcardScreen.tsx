@@ -5,7 +5,7 @@ import { ROUTE_BOX } from '../postcard/Route';
 import { exportPng, exportSvg } from '../lib/exportPng';
 import { loadFontCss } from '../lib/fonts';
 import { fitRoute } from '../lib/routePath';
-import { POSTCARD } from '../lib/vectorMap';
+import { THEMES, shownTheme, type ThemeId } from '../postcard/themes';
 import { useMapLayers } from './useMapLayers';
 
 const BACKGROUNDS: [PostcardBackground, string][] = [
@@ -21,9 +21,20 @@ export function PostcardScreen({ activity, onBack }: { activity: Activity; onBac
   const [exportFailed, setExportFailed] = useState(false);
   const [background, setBackground] = useState<PostcardBackground>('gradient');
   const [mapFailed, setMapFailed] = useState(false);
+  const [theme, setTheme] = useState<ThemeId>('minimal');
+  const [renderedTheme, setRenderedTheme] = useState<ThemeId>('minimal');
   const fit = useMemo(() => fitRoute(activity.map.summary_polyline, ROUTE_BOX), [activity]);
-  const map = useMapLayers(fit?.projection ?? null, SIZE, POSTCARD, background === 'map');
-  const mapLoading = background === 'map' && !map.layers;
+  const map = useMapLayers(fit?.projection ?? null, SIZE, THEMES[theme].profile, background === 'map');
+  const mapData = useMemo(
+    () => (map.layers && map.objects ? { layers: map.layers, objects: map.objects } : undefined),
+    [map.layers, map.objects],
+  );
+  // Przy zmianie motywu rysujemy poprzedni na starych danych, aż przyjdą dane nowego profilu (bez migotania).
+  const shown = shownTheme(theme, renderedTheme, map.profile);
+  if (shown !== renderedTheme) setRenderedTheme(shown);
+  const mapLoading = background === 'map' && !mapData;
+  // Nie eksportujemy starego motywu, gdy nowy jeszcze się ładuje.
+  const exportBlocked = mapLoading || (background === 'map' && shown !== theme);
 
   useEffect(() => {
     loadFontCss().then(setFontCss);
@@ -72,7 +83,8 @@ export function PostcardScreen({ activity, onBack }: { activity: Activity; onBac
           activity={activity}
           fontCss={fontCss}
           background={mapLoading ? 'gradient' : background}
-          map={map.layers}
+          map={mapData}
+          theme={shown}
         />
       </div>
       <div className="segmented" role="group" aria-label="Background">
@@ -83,11 +95,20 @@ export function PostcardScreen({ activity, onBack }: { activity: Activity; onBac
           </button>
         ))}
       </div>
+      {background === 'map' && (
+        <div className="segmented" role="group" aria-label="Map theme">
+          {(Object.keys(THEMES) as ThemeId[]).map((id) => (
+            <button key={id} aria-pressed={theme === id} onClick={() => setTheme(id)}>
+              {THEMES[id].label}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="actions">
-        <button className="primary" onClick={downloadPng} disabled={mapLoading}>
+        <button className="primary" onClick={downloadPng} disabled={exportBlocked}>
           Download PNG
         </button>
-        <button aria-label="Download SVG" onClick={downloadSvg} disabled={mapLoading}>
+        <button aria-label="Download SVG" onClick={downloadSvg} disabled={exportBlocked}>
           SVG
         </button>
       </div>

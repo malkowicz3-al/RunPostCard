@@ -4,7 +4,7 @@ Otwarta aplikacja webowa, która z wybranego biegu ze Stravy generuje „pocztó
 (Folder nazywał się `ShowRunPic`; właściciel zmienia go na `RunPostcard` ręcznie po sesji.)
 
 ## Status
-Etap 1 w trakcie domykania (logowanie, lista kafelków z trasami, pocztówka 9:16, PNG i SVG, tło gradient/przezroczyste, tryb jasny/ciemny, tryby dev `?mock=1` i `?debug=1`). Zrobione też: font Barlow Condensed, oficjalne znaki Stravy. Zostało w etapie 1: wektorowy zarys mapy (tło pocztówki i kafelki).
+Etap 1 w trakcie domykania (logowanie, lista kafelków z trasami, pocztówka 9:16, PNG i SVG, tło gradient/przezroczyste, tryb jasny/ciemny, tryby dev `?mock=1` i `?debug=1`). Zrobione też: font Barlow Condensed, oficjalne znaki Stravy, wektorowy zarys mapy (tło pocztówki i kafelki). Etap 1 zamknięty; w toku etap 2 (motywy map).
 Na razie bez wdrożenia na Vercel: aplikacja działa tylko lokalnie (`npm run dev`).
 
 ## Model projektu
@@ -45,10 +45,11 @@ Wymiana kodu OAuth na token i jego odświeżanie wymagają sekretu aplikacji, wi
 
 ## Etapy
 1. Logowanie Stravą, lista biegów, wybór, domyślna pocztówka (gradient, trasa, 4 statystyki, 9:16), pobranie PNG, znak Strava. Dodane przez właściciela: mapa jako tło pocztówki i w kafelkach.
-2. Presety stylu i fontów, tryby tła (przezroczyste/gradient/zdjęcie), proporcje 4:5 i 1:1, przycięcie trasy, udostępnianie na telefonie.
-3. Sloty z konfigurowalnymi danymi i formami (np. tętno, tempo, przewyższenie, tempo na km; liczba, wykres liniowy, słupki, pierścień…). Najpierw agent badawczy proponuje formy wizualizacji, potem coder je implementuje.
-4. Przesuwanie, skalowanie i transformacja elementów myszą i dotykiem.
-5. Dalszy rozwój presetów i stylistyki.
+2. Motywy map (dodane przez właściciela): z prawdziwych danych mapy generowane kodem w SVG stylizowane mapy na pocztówce, np. zamek zamiast bloku, smok, woda w falach. Najpierw architektura motywów + 8-bit i fantasy/pergamin (w klimacie sag fantasy, bez marek), potem mapa skarbów, neon/sci-fi, akwarela. Deterministyczne (ziarno = id biegu), trasa dokładna, eksport jak teraz; miniatury listy zostają minimalistyczne. Generowanie AI (model obrazu, własny płatny klucz, drugi backend): ewentualnie później jako opcja.
+3. Presety stylu i fontów, tryby tła (przezroczyste/gradient/zdjęcie), proporcje 4:5 i 1:1, przycięcie trasy, udostępnianie na telefonie.
+4. Sloty z konfigurowalnymi danymi i formami (np. tętno, tempo, przewyższenie, tempo na km; liczba, wykres liniowy, słupki, pierścień…). Najpierw agent badawczy proponuje formy wizualizacji, potem coder je implementuje.
+5. Przesuwanie, skalowanie i transformacja elementów myszą i dotykiem.
+6. Dalszy rozwój presetów i stylistyki.
 
 ## Do sprawdzenia (nie potwierdzone)
 - Pełny tekst API Agreement/Policy Stravy: czy zezwala na publiczne repo z gotową integracją; zasada „dane tylko dla właściciela” (znana tylko ze wtórnych streszczeń); wytyczne „Powered by Strava”.

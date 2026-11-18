@@ -8,7 +8,7 @@ export type Box = [[number, number], [number, number]];
 export function fitRoute(
   polyline: string,
   box: Box,
-): { projection: GeoProjection; d: string } | null {
+): { projection: GeoProjection; d: string; points: [number, number][] } | null {
   const points = decodePolyline(polyline);
   if (points.length < 2) return null;
 
@@ -22,7 +22,12 @@ export function fitRoute(
     },
   };
   const projection = geoMercator().fitExtent(box, line);
-  return { projection, d: geoPath(projection)(line) ?? '' };
+  return {
+    projection,
+    d: geoPath(projection)(line) ?? '',
+    // Mercator rzutuje każdy punkt (null tylko dla biegunów).
+    points: points.map(([lat, lng]) => projection([lng, lat])!),
+  };
 }
 
 export function routePath(polyline: string, box: Box): string | null {

@@ -1,6 +1,6 @@
 export type SlotProps = { x: number; y: number; size: number; label: string; value: string };
 
-// Forma "liczba": wartość z etykietą pod spodem.
+// Forma "liczba": wartość z etykietą pod spodem. Kolor tylko przez currentColor (motywy, ADR 0005).
 export function SlotNumber({ x, y, size, label, value }: SlotProps) {
   return (
     <g>
@@ -11,7 +11,7 @@ export function SlotNumber({ x, y, size, label, value }: SlotProps) {
         fontWeight={700}
         fontFamily="'Barlow Condensed', system-ui, sans-serif"
         textAnchor="middle"
-        fill="#ffffff"
+        fill="currentColor"
       >
         {value}
       </text>
@@ -23,7 +23,7 @@ export function SlotNumber({ x, y, size, label, value }: SlotProps) {
         fontFamily="'Barlow Condensed', system-ui, sans-serif"
         letterSpacing={4}
         textAnchor="middle"
-        fill="#ffffff"
+        fill="currentColor"
         opacity={0.8}
       >
         {label}

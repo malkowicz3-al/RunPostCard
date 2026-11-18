@@ -1,24 +1,31 @@
 import type { MapKey } from '../lib/vectorMap';
 
-// Styl mapy pocztówki w jednym miejscu (pod przyszłe presety). Kolory pełne: nakładanie się nie zmienia odcienia.
-export const MAP_BACKGROUND = '#121215';
-
-export const MAP_COLORS: Record<MapKey, string> = {
-  water: '#16232f',
-  waterway: '#16232f',
-  green: '#161f19',
-  building: '#1c1c21',
-  path: '#2c2c32',
-  minor: '#34343b',
-  mid: '#44444c',
-  major: '#56565f',
+// Styl warstw mapy; background i colors mogą być url(#…) (gradient, wzór).
+export type MapStyle = {
+  background: string;
+  colors: Record<MapKey, string>;
+  widths: Partial<Record<MapKey, number>>; // grubość obrysu linii (jednostki płótna 1080x1920)
+  linecap?: 'round' | 'square';
 };
 
-// Grubość obrysu linii (jednostki płótna 1080x1920).
-export const MAP_WIDTHS: Partial<Record<MapKey, number>> = {
-  waterway: 3,
-  path: 1.2,
-  minor: 2,
-  mid: 3.5,
-  major: 5,
+// Motyw "minimal". Kolory pełne: nakładanie się nie zmienia odcienia.
+export const MINIMAL: MapStyle = {
+  background: '#121215',
+  colors: {
+    water: '#16232f',
+    waterway: '#16232f',
+    green: '#161f19',
+    building: '#1c1c21',
+    path: '#2c2c32',
+    minor: '#34343b',
+    mid: '#44444c',
+    major: '#56565f',
+  },
+  widths: {
+    waterway: 3,
+    path: 1.2,
+    minor: 2,
+    mid: 3.5,
+    major: 5,
+  },
 };

@@ -105,6 +105,8 @@ Vercel and local Node are the officially supported setups. Other hosting platfor
 
 Route thumbnails and the **Map** postcard background are a minimalist outline (streets, buildings, water, greenery) drawn by the app as SVG from vector tiles by [OpenFreeMap](https://openfreemap.org) ([OpenMapTiles](https://openmaptiles.org) schema, [OpenStreetMap](https://www.openstreetmap.org/copyright) data). No API key or configuration is needed. The attribution "Map: OpenFreeMap © OpenMapTiles © OpenStreetMap contributors" is shown under the run list, and "© OpenMapTiles © OpenStreetMap contributors" on postcards with the map background.
 
+With the Map background you can pick a map theme: **Minimal** (the outline above), **8-bit** (pixel grid, limited palette, stepped route) or **Fantasy** (parchment, castles, trees, a dragon, a compass rose and a banner with the run name). Themes are generated from the same map data and placed the same way every time for a given run. All theme icons are drawn in code, so there are no extra image files or licenses. Route thumbnails always use the minimalist outline.
+
 - Your browser downloads the tiles directly from `tiles.openfreemap.org` (served through Cloudflare), so OpenFreeMap and Cloudflare can see the area of your run (approximate location).
 - With the map background, the postcard shows the surroundings of the start and finish of your run, which may reveal where you live. Strava privacy zones still apply to the route.
 - OpenFreeMap is a free external service without an SLA; its terms and availability are outside this project's control. The app sends at most 4 tile requests at a time.

@@ -4,10 +4,12 @@ import { VectorTileFeature } from '@mapbox/vector-tile';
 import { PbfWriter } from 'pbf';
 import {
   buildMapLayers,
+  buildMapObjects,
   loadMapLayers,
   loadTile,
   loadTileJson,
   parseTileJson,
+  PIXEL,
   POSTCARD,
   THUMB,
   type MapFeature,
@@ -123,6 +125,67 @@ describe('buildMapLayers', () => {
   });
 });
 
+describe('buildMapObjects', () => {
+  it('kwadratowy budynek: środek bbox i pole', () => {
+    const { buildings } = buildMapObjects([feature({ layer: 'building', type: 3, geometry: square(100, 200, 40) })], SIZE, POSTCARD);
+    expect(buildings).toEqual([{ x: 120, y: 220, area: 1600 }]);
+  });
+
+  it('przesunięcie i skala kafelka stosowane do pierścieni zieleni i wody', () => {
+    const tile = { ...TILE, left: 100, top: 50, size: 500 };
+    const objects = buildMapObjects(
+      [
+        feature({ layer: 'park', type: 3, tile, extent: 1000, geometry: square(0, 0, 100) }),
+        feature({ layer: 'water', type: 3, tile, extent: 1000, geometry: square(200, 200, 100) }),
+      ],
+      SIZE,
+      POSTCARD,
+    );
+    expect(objects.green[0].rings).toEqual([[[100, 50], [150, 50], [150, 100], [100, 100]]]);
+    expect(objects.green[0].box).toEqual([100, 50, 150, 100]);
+    expect(objects.water[0].rings[0][0]).toEqual([200, 150]);
+    expect(objects.water[0].area).toBe(2500);
+  });
+
+  it('pole wielokąta z otworem = zewnętrzny minus otwór', () => {
+    // Otwór w przeciwnym kierunku niż pierścień zewnętrzny (jak w MVT).
+    const hole = square(20, 20, 20)[0].reverse();
+    const { water } = buildMapObjects([feature({ layer: 'water', type: 3, geometry: [square(0, 0, 100)[0], hole] })], SIZE, POSTCARD);
+    expect(water[0].area).toBe(10000 - 400);
+  });
+
+  it('budynek poniżej minBuildingArea pominięty', () => {
+    const { buildings } = buildMapObjects(
+      [feature({ layer: 'building', type: 3, geometry: square(0, 0, 3) }), feature({ layer: 'building', type: 3, geometry: square(50, 50, 5) })],
+      SIZE,
+      POSTCARD,
+    );
+    expect(buildings).toEqual([{ x: 52.5, y: 52.5, area: 25 }]);
+  });
+
+  it('THUMB -> puste obiekty', () => {
+    expect(buildMapObjects([feature({ layer: 'water', type: 3, geometry: square(0, 0, 50) })], SIZE, THUMB)).toEqual({
+      buildings: [],
+      green: [],
+      water: [],
+    });
+  });
+
+  it('PIXEL: każda liczba w d wszystkich warstw jest wielokrotnością 12', () => {
+    // Skala kafelka niecałkowita, żeby trafić w błędy zmiennoprzecinkowe przy v * (1/12).
+    const tile = { ...TILE, left: 7.3, top: -3.1, size: 724.5 };
+    const odd = (i: number) => [[{ x: 13 + i * 37, y: 29 + i * 53 }, { x: 401 + i * 11, y: 97 + i * 7 }, { x: 263 + i, y: 611 - i * 3 }]];
+    const features = [
+      ...Array.from({ length: 20 }, (_, i) => feature({ tile, extent: 1000, geometry: odd(i) })),
+      ...Array.from({ length: 20 }, (_, i) => feature({ layer: 'water', type: 3, tile, extent: 1000, geometry: odd(i) })),
+    ];
+    const layers = buildMapLayers(features, SIZE, PIXEL);
+    const nums = Object.values(layers).flatMap((d) => d!.match(/-?[\d.e-]+/g)!.map(Number));
+    expect(nums.length).toBeGreaterThan(100);
+    for (const v of nums) expect(Number.isInteger(v / 12), String(v)).toBe(true);
+  });
+});
+
 const OFM = 'https://tiles.openfreemap.org/planet/v1/{z}/{x}/{y}.pbf';
 
 describe('parseTileJson', () => {
@@ -221,11 +284,11 @@ describe('pobieranie', () => {
     const first = await loadMapLayers(projection(), [100, 100], THUMB);
     const calls = decode.mock.calls.length;
     expect(calls).toBeGreaterThan(0);
-    expect(first.water).toBeDefined();
+    expect(first.layers.water).toBeDefined();
     // Inna projekcja tego samego kafelka: ten sam obiekt, ale inne położenie na płótnie.
     const second = await loadMapLayers(geoMercator().scale(50).translate([60, 50]), [100, 100], THUMB);
     expect(decode.mock.calls.length).toBe(calls);
-    expect(second.water).not.toBe(first.water);
+    expect(second.layers.water).not.toBe(first.layers.water);
     decode.mockRestore();
   });
 });
