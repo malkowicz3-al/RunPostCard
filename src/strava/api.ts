@@ -6,7 +6,13 @@ export type Activity = {
   sport_type: string;
   distance: number;
   moving_time: number;
+  elapsed_time?: number;
+  total_elevation_gain?: number; // m
   average_heartrate?: number;
+  max_heartrate?: number;
+  average_speed?: number; // m/s
+  max_speed?: number; // m/s
+  average_cadence?: number; // kroki na minutę jednej nogi
   start_date_local: string;
   map: { summary_polyline: string };
 };

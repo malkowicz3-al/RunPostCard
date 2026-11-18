@@ -46,26 +46,44 @@ function route(shape: keyof typeof SHAPES): string {
   return encodePolyline(points);
 }
 
-const RUNS: { name: string; shape: keyof typeof SHAPES; km: number; minutes: number; hr?: number; date: string }[] = [
-  { name: 'Morning loop', shape: 'loop', km: 5.0, minutes: 27, hr: 152, date: '2026-11-10T07:12:00Z' },
-  { name: 'Intervals at the park', shape: 'zigzag', km: 8.2, minutes: 40, hr: 168, date: '2026-11-12T17:30:00Z' },
-  { name: 'Long run by the river', shape: 'line', km: 20.1, minutes: 120, hr: 141, date: '2026-11-14T09:00:00Z' },
-  { name: 'Lunch 🏃🏻‍♀️ figure eight', shape: 'eight', km: 3.1, minutes: 19, date: '2026-11-15T12:45:00Z' },
-  { name: 'Hill repeats', shape: 'zigzag', km: 6.4, minutes: 38, hr: 161, date: '2026-11-16T18:05:00Z' },
-  { name: 'A very long title to check how the tile wraps onto two lines', shape: 'loop', km: 12.0, minutes: 66, hr: 135, date: '2026-11-17T06:50:00Z' },
+const RUNS: {
+  name: string;
+  shape: keyof typeof SHAPES;
+  km: number;
+  minutes: number;
+  hr?: number;
+  elev: number;
+  cad?: number;
+  date: string;
+}[] = [
+  { name: 'Morning loop', shape: 'loop', km: 5.0, minutes: 27, hr: 152, elev: 32, cad: 86, date: '2026-11-10T07:12:00Z' },
+  { name: 'Intervals at the park', shape: 'zigzag', km: 8.2, minutes: 40, hr: 168, elev: 18, cad: 89, date: '2026-11-12T17:30:00Z' },
+  { name: 'Long run by the river', shape: 'line', km: 20.1, minutes: 120, hr: 141, elev: 64, cad: 84, date: '2026-11-14T09:00:00Z' },
+  { name: 'Lunch 🏃🏻‍♀️ figure eight', shape: 'eight', km: 3.1, minutes: 19, elev: 7, date: '2026-11-15T12:45:00Z' },
+  { name: 'Hill repeats', shape: 'zigzag', km: 6.4, minutes: 38, hr: 161, elev: 240, cad: 85, date: '2026-11-16T18:05:00Z' },
+  { name: 'A very long title to check how the tile wraps onto two lines', shape: 'loop', km: 12.0, minutes: 66, hr: 135, elev: 41, cad: 87, date: '2026-11-17T06:50:00Z' },
 ];
 
 export function mockActivities(): Activity[] {
-  return RUNS.map((r, i) => ({
-    id: 1000000001 + i,
-    name: r.name,
-    sport_type: 'Run',
-    distance: r.km * 1000,
-    moving_time: r.minutes * 60,
-    average_heartrate: r.hr,
-    start_date_local: r.date,
-    map: { summary_polyline: route(r.shape) },
-  }));
+  return RUNS.map((r, i) => {
+    const speed = (r.km * 1000) / (r.minutes * 60);
+    return {
+      id: 1000000001 + i,
+      name: r.name,
+      sport_type: 'Run',
+      distance: r.km * 1000,
+      moving_time: r.minutes * 60,
+      elapsed_time: r.minutes * 60 + 90,
+      total_elevation_gain: r.elev,
+      average_heartrate: r.hr,
+      max_heartrate: r.hr && r.hr + 20,
+      average_speed: speed,
+      max_speed: speed * 1.3,
+      average_cadence: r.cad,
+      start_date_local: r.date,
+      map: { summary_polyline: route(r.shape) },
+    };
+  });
 }
 
 function haversine([lat1, lng1]: [number, number], [lat2, lng2]: [number, number]): number {

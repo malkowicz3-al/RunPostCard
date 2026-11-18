@@ -19,6 +19,12 @@
   - `MapStyle.fills` to wzór wypełnienia poligonu; `colors` zostają heksami dla miniatur i testu kontrastu.
   - `ThemeOutput.overlay` to faktura papieru. Jest rysowana nad mapą w przestrzeni płótna, także w 3D, czyli nad podłogą i ostrzejszym fragmentem, a pod trasą.
   - Zniekształcające filtry dostają tylko drogi (Pencil) i plamy (Watercolor).
+- **Kolejne motywy:**
+  - Chalk: tablica, kreda z drżeniem, żółta trasa.
+  - Halftone: gazeta, raster kropek `Dots`, czerwona trasa.
+  - Synthwave: gradient nieba przez `MapStyle.fill`, poświata `Glow` z `neon.tsx`.
+  - Terminal: fosfor, linie skanowania jako `overlay`, bursztynowa trasa.
+  - Ink: sumi-e, rozmyte plamy tuszu, cynobrowa trasa.
 - **Font motywu:** `MapTheme.font`. Kliknięcie kafelka motywu ustawia jego font, który można potem zmienić:
 
   | Motyw | Font |
@@ -30,6 +36,11 @@
   | Watercolor | Pacifico |
   | Vintage | Lobster |
   | Riso | Bungee |
+  | Chalk | Marker |
+  | Halftone | Anton |
+  | Synthwave | Racing Sans |
+  | Terminal | Press Start |
+  | Ink | Teko |
 
 ## Kontekst
 Etap 2 „Motywy map” (CLAUDE.md): z tych samych danych OSM co tło „Map” (ADR 0004) generujemy stylizowane mapy na pocztówce, np. zamek zamiast bloku, smok, woda w falach. Wymagania: deterministycznie (ziarno = id biegu), trasa dokładna, eksport SVG/PNG jak teraz (ADR 0002: jeden samowystarczalny SVG), miniatury listy bez zmian, bez nowych zależności.

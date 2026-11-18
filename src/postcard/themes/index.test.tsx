@@ -32,7 +32,7 @@ function contrast(a: string, b: string): number {
 }
 
 describe('THEMES', () => {
-  it('motywy w kolejności Dark, Light, Neon, Blueprint, Pencil, Watercolor, Vintage, Riso', () => {
+  it('motywy w kolejności Dark, Light, Neon, Blueprint, Pencil, Watercolor, Vintage, Riso, Chalk, Halftone, Synthwave, Terminal, Ink', () => {
     expect(Object.values(THEMES).map((t) => t.label)).toEqual([
       'Dark',
       'Light',
@@ -42,6 +42,11 @@ describe('THEMES', () => {
       'Watercolor',
       'Vintage',
       'Riso',
+      'Chalk',
+      'Halftone',
+      'Synthwave',
+      'Terminal',
+      'Ink',
     ]);
   });
 
@@ -101,7 +106,11 @@ describe('THEMES', () => {
         if (id === 'vintage') expect(refs).toContain('vintage-water');
         if (id === 'riso') expect(refs).toContain('riso-route');
         // Nakładka papieru (overlay) jest też w 3D i nad ostrzejszym fragmentem.
-        if (['pencil', 'watercolor', 'vintage', 'riso'].includes(id)) expect(refs, `${id} ${name}`).toContain(`${id}-grain`);
+        if (['pencil', 'watercolor', 'vintage', 'riso', 'chalk', 'halftone', 'ink'].includes(id))
+          expect(refs, `${id} ${name}`).toContain(`${id}-grain`);
+        if (id === 'terminal') expect(refs, `${id} ${name}`).toContain('terminal-scanlines');
+        if (id === 'halftone') expect(refs).toContain('halftone-building');
+        if (id === 'synthwave') expect(refs).toContain('synthwave-sky');
       }
     }
   });

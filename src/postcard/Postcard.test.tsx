@@ -4,6 +4,7 @@ import { mockActivities, mockStreams } from '../dev/mockActivities';
 import { MAP_ATTRIBUTION } from '../lib/vectorMap';
 import { Postcard } from './Postcard';
 import { ROUTE_BOX } from './Route';
+import { DATA, resolveLayout } from './slots';
 
 const LAYERS = { water: 'M0 0L50 0L50 50Z', major: 'M0 100L500 100' };
 const hills = mockActivities().find((r) => r.name === 'Hill repeats')!;
@@ -95,5 +96,21 @@ describe('Postcard zdjęcie i font', () => {
     const svg = renderToStaticMarkup(<Postcard activity={hills} font="bebas" />);
     expect(svg).toContain('Bebas Neue');
     expect(svg).not.toContain('Barlow Condensed');
+  });
+});
+
+describe('Postcard układy', () => {
+  it('z układem i bez: wartości w SVG, bez nakładki i zewnętrznych adresów; układ zmienia pozycje', () => {
+    const plain = renderToStaticMarkup(<Postcard activity={hills} />);
+    const corners = renderToStaticMarkup(<Postcard activity={hills} layout={resolveLayout('corners', { a: 'cadence' })} />);
+    for (const svg of [plain, corners]) {
+      for (const bad of ['slot-hit', '<button', '<dialog', 'data-active']) expect(svg).not.toContain(bad);
+      expect(svg.replaceAll('http://www.w3.org/2000/svg', '')).not.toMatch(/https?:\/\//);
+    }
+    expect(plain).toContain(`>${DATA.distance.value(hills)}<`);
+    expect(corners).toContain(`>${DATA.cadence.value(hills)}<`);
+    expect(corners).toContain('CADENCE (SPM)');
+    expect(plain).toContain('x="540"');
+    expect(corners).not.toContain('x="540"');
   });
 });

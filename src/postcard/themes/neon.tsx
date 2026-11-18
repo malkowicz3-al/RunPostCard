@@ -4,7 +4,7 @@ import { hexToRgb, mix } from '../../lib/color';
 import type { MapTheme } from './index';
 
 // Poświata: rozmyta kopia pod oryginałem. Obszar filtra = całe płótno, żeby blask nie był ucinany na bbox warstwy.
-function Glow({ id, blur, strong = true }: { id: string; blur: number; strong?: boolean }) {
+export function Glow({ id, blur, strong = true }: { id: string; blur: number; strong?: boolean }) {
   return (
     <filter id={id} filterUnits="userSpaceOnUse" x={0} y={0} width={1080} height={1920}>
       <feGaussianBlur in="SourceGraphic" stdDeviation={blur} result="glow" />

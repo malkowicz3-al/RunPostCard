@@ -6,6 +6,9 @@ describe('redactActivities', () => {
     id: 1,
     name: 'Morning loop',
     distance: 5000,
+    max_heartrate: 180,
+    average_cadence: 86,
+    total_elevation_gain: 42,
     start_latlng: [52.1, 21.0],
     end_latlng: [52.2, 21.1],
     map: { id: 'a1', summary_polyline: 'abcdef', polyline: 'abc' },
@@ -24,6 +27,9 @@ describe('redactActivities', () => {
     expect(out.name).toBe('Morning loop');
     expect(out.distance).toBe(5000);
     expect(out.map.id).toBe('a1');
+    expect(out.max_heartrate).toBe(180);
+    expect(out.average_cadence).toBe(86);
+    expect(out.total_elevation_gain).toBe(42);
     expect(raw.map.summary_polyline).toBe('abcdef');
     expect(raw.start_latlng).toEqual([52.1, 21.0]);
   });

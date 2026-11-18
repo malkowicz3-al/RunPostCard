@@ -13,7 +13,7 @@ import { PhotoBackground } from './PhotoBackground';
 import { Route, ROUTE_BOX } from './Route';
 import { RouteMarkers } from './RouteMarkers';
 import { StravaMark } from './StravaMark';
-import { DATA, FORMS, defaultLayout } from './slots';
+import { DATA, FORMS, defaultLayout, fitted, type LayoutItem } from './slots';
 import { THEMES, type ThemeId } from './themes';
 
 export type PostcardBackground = 'gradient' | 'transparent' | 'map' | 'photo';
@@ -40,6 +40,7 @@ export function Postcard({
   camera = DEFAULT_CAMERA,
   iso: givenIso,
   refined,
+  layout = defaultLayout,
 }: {
   activity: Activity;
   fontCss?: string;
@@ -55,6 +56,7 @@ export function Postcard({
   camera?: Camera;
   iso?: IsoData | null; // policzone wyżej (ekran i tak go potrzebuje), inaczej liczone tutaj
   refined?: { rect: Rect; layers: MapLayers }; // ostrzejsza mapa przybliżonego fragmentu podłogi 3D
+  layout?: LayoutItem[];
 }) {
   // Jedna projekcja dla mapy i trasy („scena”).
   const polyline = activity.map.summary_polyline;
@@ -150,18 +152,22 @@ export function Postcard({
       )}
       {items.length > 0 && <RouteMarkers points={iso ? isoPoints : flatPoints} items={items} color={text.color} />}
       <g color={text.color} filter={text.filter}>
-        {defaultLayout.map(({ slot, x, y, size }) => {
-          const Form = FORMS[slot.form];
-          const data = DATA[slot.data];
+        {layout.map((item) => {
+          const Form = FORMS[item.slot.form];
+          const value = DATA[item.slot.data].value(activity);
+          const { size, labelSize, label } = fitted(item, value, scale);
           return (
             <Form
-              key={slot.id}
-              x={x}
-              y={y}
-              size={size * scale}
+              key={item.slot.id}
+              x={item.x}
+              y={item.y}
+              size={size}
               scale={scale}
-              label={data.label}
-              value={data.value(activity)}
+              anchor={item.anchor}
+              labelPos={item.labelPos}
+              labelSize={labelSize}
+              label={label}
+              value={value}
             />
           );
         })}

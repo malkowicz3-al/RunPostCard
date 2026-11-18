@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  EMPTY,
+  formatCadence,
+  formatElapsed,
+  formatElevation,
+  formatName,
+  formatSpeedKmh,
+  formatTime,
   formatDate,
   formatDistanceKm,
   formatDuration,
@@ -48,5 +55,34 @@ describe('formatHeartRate', () => {
   });
   it('zaokrągla tętno', () => {
     expect(formatHeartRate(151.6)).toBe('152');
+  });
+});
+
+describe('nowe dane slotów', () => {
+  it('formatują wartości', () => {
+    expect(formatElapsed(3725)).toBe('1:02:05');
+    expect(formatElevation(123.6)).toBe('124');
+    expect(formatElevation(0)).toBe('0');
+    expect(formatSpeedKmh(3.05)).toBe('11.0');
+    expect(formatCadence(86.4)).toBe('173');
+    expect(formatTime('2026-11-15T07:05:00Z')).toBe('07:05');
+  });
+  it('brak, 0 albo NaN daje myślnik', () => {
+    for (const v of [undefined, NaN, 0]) {
+      expect(formatElapsed(v)).toBe(EMPTY);
+      expect(formatSpeedKmh(v)).toBe(EMPTY);
+      expect(formatCadence(v)).toBe(EMPTY);
+    }
+    expect(formatElevation(undefined)).toBe(EMPTY);
+    expect(formatElevation(NaN)).toBe(EMPTY);
+    expect(formatTime('nope')).toBe(EMPTY);
+    expect(formatDate('')).toBe(EMPTY);
+  });
+  it('nazwa: przycięta do 28 znaków z wielokropkiem, pusta daje myślnik', () => {
+    expect(formatName('  Morning loop ')).toBe('Morning loop');
+    const long = formatName('A very long title to check how the tile wraps');
+    expect(Array.from(long).length).toBeLessThanOrEqual(28);
+    expect(long.endsWith('…')).toBe(true);
+    expect(formatName('   ')).toBe(EMPTY);
   });
 });

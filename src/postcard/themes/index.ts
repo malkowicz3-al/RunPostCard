@@ -12,9 +12,27 @@ import { pencil } from './pencil';
 import { watercolor } from './watercolor';
 import { vintage } from './vintage';
 import { riso } from './riso';
+import { chalk } from './chalk';
+import { halftone } from './halftone';
+import { synthwave } from './synthwave';
+import { terminal } from './terminal';
+import { ink } from './ink';
 
 // Motywy map na pocztówce: tylko stylistyka (ADR 0005). Nowy motyw = plik w themes/ + wpis w THEMES.
-export type ThemeId = 'dark' | 'light' | 'neon' | 'blueprint' | 'pencil' | 'watercolor' | 'vintage' | 'riso';
+export type ThemeId =
+  | 'dark'
+  | 'light'
+  | 'neon'
+  | 'blueprint'
+  | 'pencil'
+  | 'watercolor'
+  | 'vintage'
+  | 'riso'
+  | 'chalk'
+  | 'halftone'
+  | 'synthwave'
+  | 'terminal'
+  | 'ink';
 
 export type ThemeOutput = {
   scene: ReactNode; // pod trasą: <defs>, tło, warstwy mapy
@@ -33,4 +51,4 @@ export type MapTheme = {
   render: (layers: MapLayers, opts?: ThemeOptions) => ThemeOutput;
 };
 
-export const THEMES: Record<ThemeId, MapTheme> = { dark, light, neon, blueprint, pencil, watercolor, vintage, riso };
+export const THEMES: Record<ThemeId, MapTheme> = { dark, light, neon, blueprint, pencil, watercolor, vintage, riso, chalk, halftone, synthwave, terminal, ink };

@@ -55,6 +55,18 @@ describe('mockStreams', () => {
     expect(mockStreams(runs[0]).heartrate).toHaveLength(mockStreams(runs[0]).latlng.length);
   });
 
+  it('nowe pola są w mocku; bieg bez tętna nie ma też max tętna ani kadencji', () => {
+    for (const run of runs) {
+      expect(run.elapsed_time).toBeGreaterThan(run.moving_time);
+      expect(run.total_elevation_gain).toBeGreaterThan(0);
+      expect(run.max_speed!).toBeGreaterThan(run.average_speed!);
+    }
+    const noHr = runs.find((r) => !r.average_heartrate)!;
+    expect(noHr.max_heartrate).toBeUndefined();
+    expect(noHr.average_cadence).toBeUndefined();
+    expect(runs[0].max_heartrate).toBe(172);
+  });
+
   it('Hill repeats ma kilka wzgórz', () => {
     const alt = mockStreams(runs.find((r) => r.name === 'Hill repeats')!).altitude!;
     const peaks = alt.filter((a, i) => i > 0 && i < alt.length - 1 && a > alt[i - 1] && a > alt[i + 1]);

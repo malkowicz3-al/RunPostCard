@@ -311,6 +311,7 @@ button.text-button {
 
 /* Pocztówka i "generating": ta sama szerokość ramki 9:16 */
 .postcard-frame {
+  position: relative;
   /* Dolna granica: przy niskim oknie (telefon w poziomie) podgląd nie znika. */
   width: max(200px, min(100% - 32px, 480px, calc((100dvh - 260px) * 9 / 16)));
   aspect-ratio: 9 / 16;
@@ -345,6 +346,26 @@ button.text-button {
   display: block;
   width: 100%;
   height: 100%;
+}
+
+/* Przyciski nad statystykami pocztówki (HTML, poza eksportem). */
+button.slot-hit {
+  position: absolute;
+  min-height: 0;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+button.slot-hit:hover,
+button.slot-hit:focus-visible,
+button.slot-hit[data-active='true'] {
+  outline: 2px solid rgba(255, 255, 255, 0.9);
+  /* Do środka: ramka ma overflow: hidden i obcinała obrys przy krawędzi. */
+  outline-offset: -2px;
+  box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.35);
 }
 
 /* Ekran pocztówki: telefon jedna kolumna, od 900px pocztówka lewa + panel „Style” prawy. */
@@ -424,6 +445,89 @@ button.look-tile {
 
 .look-preview.checkerboard {
   background: conic-gradient(#3a3a3f 25%, #2c2c30 0 50%, #3a3a3f 0 75%, #2c2c30 0) 0 0 / 16px 16px;
+}
+
+.look-preview.layout-mini {
+  aspect-ratio: 9 / 16;
+  color: var(--text);
+}
+
+.layout-mini svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.slot-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 16px;
+}
+
+dialog.data-modal {
+  width: min(92vw, 420px);
+  max-height: 80dvh;
+  padding: 16px;
+  box-sizing: border-box;
+  border: 1px solid var(--separator);
+  border-radius: 16px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+dialog.data-modal[open] {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+dialog.data-modal::backdrop {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.data-modal-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.data-list {
+  overflow: auto;
+  min-height: 0;
+}
+
+.data-option {
+  display: grid;
+  grid-template-columns: 1fr 120px;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.data-option:hover,
+.data-option:focus {
+  background: var(--surface-hover);
+  outline: none;
+}
+
+.data-option:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: -2px;
+}
+
+.data-option[aria-selected='true'] {
+  box-shadow: inset 0 0 0 2px var(--text);
+}
+
+.data-preview {
+  display: block;
+  width: 120px;
+  aspect-ratio: 2 / 1;
+  border-radius: 8px;
 }
 
 .font-sample {
@@ -704,6 +808,7 @@ button.swatch,
   }
 
   .swatches,
+  .slot-list,
   .toggle-row {
     justify-content: flex-start;
     padding: 0;

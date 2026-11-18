@@ -85,3 +85,13 @@ export function Vignette({ id, color, opacity }: { id: string; color: string; op
     </radialGradient>
   );
 }
+
+// Raster druku: kropka promienia r co gap na tle background (gęstość farby = rozmiar kropki).
+export function Dots({ id, background, color, r, gap = 6 }: { id: string; background: string; color: string; r: number; gap?: number }) {
+  return (
+    <pattern id={id} patternUnits="userSpaceOnUse" width={gap} height={gap} patternTransform="rotate(45)">
+      <rect width={gap} height={gap} fill={background} />
+      <circle cx={gap / 2} cy={gap / 2} r={r} fill={color} />
+    </pattern>
+  );
+}

@@ -1,18 +1,29 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import type { Activity } from '../strava/api';
 import { CAMERA_CENTER, DEFAULT_CAMERA, Postcard, type Camera } from '../postcard/Postcard';
 import { ROUTE_BOX } from '../postcard/Route';
 import { exportPng, exportSvg } from '../lib/exportPng';
-import { DEFAULT_FONT, loadFontCss, type FontId } from '../lib/fonts';
+import { DEFAULT_FONT, FONTS, loadFontCss, type FontId } from '../lib/fonts';
 import { loadPhoto } from '../lib/photo';
 import { isoRoute } from '../lib/isoRoute';
 import { fitRoute } from '../lib/routePath';
 import { zoomRegion } from '../lib/zoomRegion';
 import { POSTCARD, POSTCARD_DETAILED } from '../lib/vectorMap';
+import { DATA, resolveLayout, slotBox, swapSlot, type LayoutId, type Overrides, type SlotData } from '../postcard/slots';
 import { THEMES, type ThemeId } from '../postcard/themes';
 import { DEFAULT_ACCENT } from '../postcard/themes/neon';
+import { DataModal } from './DataModal';
 import { DownloadMenu } from './DownloadMenu';
 import { FontPicker } from './FontPicker';
+import { LayoutPicker } from './LayoutPicker';
 import { LookPicker, type Look } from './LookPicker';
 import { useMapLayers } from './useMapLayers';
 import { useRegionLayers } from './useRegionLayers';
@@ -34,6 +45,39 @@ export const clampCamera = ({ zoom, x, y }: Camera): Camera => {
     y: clamp(y, -Math.max(CAMERA_CENTER[1], ly), Math.max(SIZE[1] - CAMERA_CENTER[1], ly)),
   };
 };
+
+type Point = { x: number; y: number };
+
+// Czy puszczenie wskaźnika (albo klik) otwiera okno danych slotu: klawiatura zawsze, wskaźnik tylko bez przeciągania i szczypania.
+export function shouldOpenSlot({
+  down,
+  up,
+  multiTouch,
+  keyboard,
+}: {
+  down: Point | null;
+  up: Point;
+  multiTouch: boolean;
+  keyboard: boolean;
+}): boolean {
+  if (keyboard) return true;
+  return !multiTouch && !!down && Math.hypot(up.x - down.x, up.y - down.y) <= 6;
+}
+
+// Kolory podglądu w oknie danych: to samo tło i kolor tekstu co pocztówka (bez ziarna i filtrów).
+function previewColors(look: Look, accent: string, photo?: string): { color: string; bg: CSSProperties } {
+  if (look in THEMES) {
+    const theme = THEMES[look as ThemeId];
+    return { color: theme.render({}, { accent }).text.color, bg: { background: theme.style({ accent }).background } };
+  }
+  if (look === 'photo' && photo) {
+    return { color: '#ffffff', bg: { backgroundImage: `url("${photo}")`, backgroundSize: 'cover', backgroundPosition: 'center' } };
+  }
+  if (look === 'transparent') {
+    return { color: '#ffffff', bg: { background: 'conic-gradient(#3a3a3f 25%, #2c2c30 0 50%, #3a3a3f 0 75%, #2c2c30 0) 0 0 / 16px 16px' } };
+  }
+  return { color: '#ffffff', bg: { background: 'linear-gradient(#1e1b4b, #f97316)' } };
+}
 
 export function PostcardScreen({
   activity,
@@ -59,6 +103,15 @@ export function PostcardScreen({
   const [mapFailed, setMapFailed] = useState(false);
   const [view, setView] = useState<'flat' | '3d'>('flat');
   const [showHighlights, setShowHighlights] = useState(false);
+  const [layoutId, setLayoutId] = useState<LayoutId>('classic');
+  const [overrides, setOverrides] = useState<Partial<Record<LayoutId, Overrides>>>({});
+  const [editing, setEditing] = useState<string | null>(null);
+  const items = useMemo(() => resolveLayout(layoutId, overrides[layoutId]), [layoutId, overrides]);
+  const editingItem = items.find((i) => i.slot.id === editing) ?? null;
+  // Miejsce wciśnięcia: przeciągnięcie (np. przesuwanie 3D) nie otwiera okna danych.
+  const tap = useRef<{ x: number; y: number; id: string | null } | null>(null);
+  // Drugi palec w trakcie gestu: aż do puszczenia wszystkich to szczypanie, nie dotknięcie.
+  const multiTouch = useRef(false);
   const streams = useRunStreams(activity, onSessionExpired);
   const isMap = look in THEMES;
   const fit = useMemo(() => fitRoute(activity.map.summary_polyline, ROUTE_BOX), [activity]);
@@ -133,7 +186,15 @@ export function PostcardScreen({
     return () => el.removeEventListener('wheel', onWheel);
   }, [is3d]);
 
+  useEffect(() => setEditing(null), [activity]);
+
+  const opens = (e: { clientX: number; clientY: number }, keyboard = false) =>
+    shouldOpenSlot({ down: tap.current, up: { x: e.clientX, y: e.clientY }, multiTouch: multiTouch.current, keyboard });
+
   const onPointerDown = (e: ReactPointerEvent) => {
+    if (pointers.current.size > 0) multiTouch.current = true;
+    const hit = (e.target as Element).closest?.('[data-slot]');
+    tap.current = { x: e.clientX, y: e.clientY, id: hit?.getAttribute('data-slot') ?? null };
     if (!is3d) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -158,8 +219,25 @@ export function PostcardScreen({
   };
 
   const onPointerUp = (e: ReactPointerEvent) => {
+    // W 3D ramka przechwytuje wskaźnik, więc klik może nie dojść do przycisku slotu; dotknięcie łapiemy tutaj.
+    const id = tap.current?.id;
+    if (e.type === 'pointerup' && is3d && id && opens(e)) setEditing(id);
     pointers.current.delete(e.pointerId);
+    if (pointers.current.size === 0) multiTouch.current = false;
   };
+
+  // e.detail === 0: klawiatura (Enter/Spacja), bez wskaźnika.
+  const onSlotClick = (e: ReactMouseEvent, id: string) => {
+    if (opens(e, e.detail === 0)) setEditing(id);
+  };
+
+  const pick = (data: SlotData) => {
+    if (editing) setOverrides((o) => ({ ...o, [layoutId]: swapSlot(items, editing, data) }));
+    setEditing(null);
+  };
+  const scale = FONTS[font].scale;
+  // Bez wczytanej mapy pocztówka ma gradient, więc podgląd też.
+  const preview = previewColors(mapMissing ? 'gradient' : look, accent, photo);
 
   // Przy błędzie szczegółowej mapy wracamy do podstawowej, przy błędzie podstawowej do gradientu.
   useEffect(() => {
@@ -243,7 +321,29 @@ export function PostcardScreen({
             camera={camera}
             iso={iso}
             refined={zoomed.refined}
+            layout={items}
           />
+          {/* Nakładka w HTML obok <svg>, żeby nie trafiła do eksportu. */}
+          {items.map((item) => {
+            const b = slotBox(item, DATA[item.slot.data].value(activity), scale);
+            return (
+              <button
+                key={item.slot.id}
+                className="slot-hit"
+                aria-haspopup="dialog"
+                data-slot={item.slot.id}
+                data-active={editing === item.slot.id}
+                aria-label={`${DATA[item.slot.data].menu} – change`}
+                style={{
+                  left: `${b.x0 / 10.8}%`,
+                  top: `${b.y0 / 19.2}%`,
+                  width: `${(b.x1 - b.x0) / 10.8}%`,
+                  height: `${(b.y1 - b.y0) / 19.2}%`,
+                }}
+                onClick={(e) => onSlotClick(e, item.slot.id)}
+              />
+            );
+          })}
         </div>
         <div className="style-panel">
           <h2 className="panel-title">Style</h2>
@@ -289,6 +389,19 @@ export function PostcardScreen({
             </div>
           )}
           <FontPicker font={font} onFont={setFont} />
+          <LayoutPicker layout={layoutId} onLayout={setLayoutId} />
+          <div className="slot-list" role="group" aria-label="Data">
+            {items.map((item) => (
+              <button
+                key={item.slot.id}
+                className="toggle"
+                aria-haspopup="dialog"
+                onClick={() => setEditing(item.slot.id)}
+              >
+                {DATA[item.slot.data].menu} – change
+              </button>
+            ))}
+          </div>
           {streams && (
             <div className="toggle-row">
               {has3d && (
@@ -328,6 +441,16 @@ export function PostcardScreen({
               </button>
             </div>
           )}
+          <DataModal
+            slot={editingItem}
+            activity={activity}
+            font={font}
+            scale={scale}
+            color={preview.color}
+            bg={preview.bg}
+            onPick={pick}
+            onClose={() => setEditing(null)}
+          />
           <DownloadMenu disabled={loading || !fontReady} onPng={downloadPng} onSvg={downloadSvg} />
           {loading && (
             <p className="hint" role="status">
