@@ -88,7 +88,7 @@ export function App() {
         />
       )}
       <footer>
-        <svg className="strava-mark" viewBox="0 0 260 36">
+        <svg className="strava-mark" viewBox="0 0 340 36">
           <StravaMark x={0} y={26} />
         </svg>
         {screen === 'list' && <button onClick={onLogout}>Log out</button>}
