@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { fetchRuns, SessionExpiredError, type Activity } from './strava/api';
 import { handleCallback, hasSession, logout } from './strava/auth';
 import { StravaMark } from './postcard/StravaMark';
@@ -6,9 +6,13 @@ import { ActivityList } from './ui/ActivityList';
 import { LoginScreen } from './ui/LoginScreen';
 import { PostcardScreen } from './ui/PostcardScreen';
 
-type Screen = 'login' | 'list' | 'generating' | 'postcard';
+type Screen = 'login' | 'list' | 'generating' | 'postcard' | 'debug';
 
 const errorMessage = (e: unknown) => (e instanceof Error ? e.message : 'Something went wrong.');
+
+// Narzędzia dev: w buildzie produkcyjnym import.meta.env.DEV = false, więc Vite wycina je razem z kodem.
+const RawActivities = import.meta.env.DEV ? lazy(() => import('./dev/RawActivities')) : null;
+const devParam = (name: string) => new URLSearchParams(location.search).has(name);
 
 export function App() {
   const [screen, setScreen] = useState<Screen>('login');
@@ -38,12 +42,19 @@ export function App() {
   // Start: jeśli wracamy z Stravy, wymień kod; potem sesja decyduje o ekranie.
   useEffect(() => {
     (async () => {
+      if (import.meta.env.DEV && devParam('mock')) {
+        const { mockActivities } = await import('./dev/mockActivities');
+        setRuns(mockActivities());
+        setScreen('list');
+        return;
+      }
       try {
         await handleCallback();
       } catch (e) {
         setError(errorMessage(e));
       }
-      if (hasSession()) await loadRuns();
+      if (import.meta.env.DEV && devParam('debug')) setScreen('debug');
+      else if (hasSession()) await loadRuns();
     })();
   }, []);
 
@@ -87,6 +98,11 @@ export function App() {
       </header>
       {error && <p className="error">{error}</p>}
       {screen === 'login' && <LoginScreen />}
+      {screen === 'debug' && RawActivities && (
+        <Suspense fallback={<p>Loading…</p>}>
+          <RawActivities />
+        </Suspense>
+      )}
       {screen === 'list' && <ActivityList runs={runs} loading={loading} onSelect={onSelect} />}
       {screen === 'generating' && (
         <div className="screen generating">

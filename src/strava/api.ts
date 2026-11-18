@@ -15,7 +15,7 @@ export class SessionExpiredError extends Error {}
 
 const RUN_TYPES = new Set(['Run', 'TrailRun', 'VirtualRun']);
 
-export async function fetchRuns(): Promise<Activity[]> {
+async function getActivities(perPage: number): Promise<unknown[]> {
   let token: string | null;
   try {
     token = await getAccessToken();
@@ -25,7 +25,7 @@ export async function fetchRuns(): Promise<Activity[]> {
   }
   if (!token) throw new SessionExpiredError();
 
-  const res = await fetch('https://www.strava.com/api/v3/athlete/activities?per_page=30', {
+  const res = await fetch(`https://www.strava.com/api/v3/athlete/activities?per_page=${perPage}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (res.status === 401) {
@@ -37,6 +37,15 @@ export async function fetchRuns(): Promise<Activity[]> {
   }
   if (!res.ok) throw new Error(`Strava request failed (${res.status}).`);
 
-  const activities = (await res.json()) as Activity[];
+  return (await res.json()) as unknown[];
+}
+
+export async function fetchRuns(): Promise<Activity[]> {
+  const activities = (await getActivities(30)) as Activity[];
   return activities.filter((a) => a.map.summary_polyline && RUN_TYPES.has(a.sport_type));
+}
+
+// Tylko dev (?debug=1): surowa odpowiedź bez filtra, do podglądu struktury danych.
+export function fetchActivitiesRaw(): Promise<unknown[]> {
+  return getActivities(10);
 }
