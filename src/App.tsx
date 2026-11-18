@@ -1,7 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { fetchRuns, SessionExpiredError, type Activity } from './strava/api';
 import { handleCallback, hasSession, logout } from './strava/auth';
-import { MAP_ENABLED } from './lib/mapTiles';
 import poweredByBlack from './assets/brand/strava/powered-by-strava-black.svg';
 import poweredByWhite from './assets/brand/strava/powered-by-strava-white.svg';
 import { ActivityList } from './ui/ActivityList';
@@ -114,8 +113,12 @@ export function App() {
         <PostcardScreen activity={selected} onBack={() => history.back()} />
       )}
       <footer>
-        {screen === 'list' && MAP_ENABLED && (
-          <p className="map-attribution">Map data © OpenStreetMap contributors © CARTO</p>
+        {screen === 'list' && (
+          <p className="map-attribution">
+            Map: <a href="https://openfreemap.org">OpenFreeMap</a>{' '}
+            <a href="https://openmaptiles.org">© OpenMapTiles</a>{' '}
+            <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a>
+          </p>
         )}
         <picture>
           <source srcSet={poweredByBlack} media="(prefers-color-scheme: light)" />

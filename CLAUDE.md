@@ -4,7 +4,7 @@ Otwarta aplikacja webowa, która z wybranego biegu ze Stravy generuje „pocztó
 (Folder nazywał się `ShowRunPic`; właściciel zmienia go na `RunPostcard` ręcznie po sesji.)
 
 ## Status
-Etap 1 w trakcie domykania (logowanie, lista kafelków z trasami, pocztówka 9:16, PNG i SVG, tło gradient/przezroczyste, tryb jasny/ciemny, tryby dev `?mock=1` i `?debug=1`). Zostało w etapie 1: mapa (tło pocztówki i kafelki), font Barlow Condensed, oficjalny znak Stravy.
+Etap 1 w trakcie domykania (logowanie, lista kafelków z trasami, pocztówka 9:16, PNG i SVG, tło gradient/przezroczyste, tryb jasny/ciemny, tryby dev `?mock=1` i `?debug=1`). Zrobione też: font Barlow Condensed, oficjalne znaki Stravy. Zostało w etapie 1: wektorowy zarys mapy (tło pocztówki i kafelki).
 Na razie bez wdrożenia na Vercel: aplikacja działa tylko lokalnie (`npm run dev`).
 
 ## Model projektu
@@ -17,7 +17,7 @@ Na razie bez wdrożenia na Vercel: aplikacja działa tylko lokalnie (`npm run de
 ## Stos
 - React + SVG (D3 do skal i kształtów), eksport SVG → PNG w przeglądarce. Biblioteka wykresów wybierana w etapie 3.
 - Three.js: odłożony; kandydat do przyszłego widoku 3D (niżej).
-- Mapa: kafelki CARTO (styl minimalistyczny, dane OpenStreetMap), bez biblioteki map; kafelki osadzane w SVG jako data URL, żeby eksport PNG/SVG działał. Podpis „© OpenStreetMap contributors © CARTO” na pocztówce z mapą i w aplikacji.
+- Mapa: własny minimalistyczny zarys (ulice, budynki, woda, zieleń) rysowany jako SVG z wektorowych kafelków OpenFreeMap (dane OSM, schemat OpenMapTiles, bez klucza); dekoder `@mapbox/vector-tile` + `pbf`, bez biblioteki map (ADR 0004). CARTO odrzucone (wymaga klucza). Podpis OpenMapTiles/OSM na pocztówce z mapą i w aplikacji. Overpass API odrzucone (niedostępne przy testach).
 - Przyszłość (bez terminu): widok 3D/izometryczny trasy z wysokościami (góry, miasto), generowany tylko na pocztówce, nie w liście.
 - Dane tylko ze Stravy (OAuth). Garmin: później, bez terminu (dostęp do API Garmina wymaga zatwierdzenia).
 

@@ -1,4 +1,4 @@
-// Zasoby osadzane w SVG pocztówki (font, kafelki mapy) muszą być data URL, bo <img> z SVG nie ładuje zewnętrznych plików.
+// Zasoby osadzane w SVG pocztówki (font) muszą być data URL, bo <img> z SVG nie ładuje zewnętrznych plików.
 const cache = new Map<string, Promise<string>>();
 
 export function fetchDataUrl(url: string): Promise<string> {

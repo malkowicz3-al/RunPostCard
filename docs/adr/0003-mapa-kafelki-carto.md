@@ -1,5 +1,7 @@
 # 0003. Mapa z kafelków CARTO (dane OSM) bez biblioteki map
 
+> Status: zastąpione przez [0004](0004-mapa-wektorowa-openfreemap.md) (wektorowa mapa z OpenFreeMap rysowana jako SVG; CARTO usunięte). Aktualne pozostają: jedna projekcja dla mapy i trasy, grupa „scena”, uwagi o 3D.
+
 ## Kontekst
 Pod trasą (pocztówka i miniatury na liście) ma być widać mapę. Pocztówka to jeden samowystarczalny SVG eksportowany przez `<img>` -> canvas (ADR 0002), więc każdy zasób musi być w nim jako data URL. Trasa jest rzutowana przez `d3-geo` `geoMercator().fitExtent` (`src/lib/routePath.ts`). Nie chcemy nowych zależności ani bazy/backendu.
 

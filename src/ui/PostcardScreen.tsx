@@ -1,57 +1,40 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Activity } from '../strava/api';
 import { Postcard, type PostcardBackground } from '../postcard/Postcard';
-import { postcardTileUrls } from '../postcard/MapBackground';
 import { ROUTE_BOX } from '../postcard/Route';
 import { exportPng, exportSvg } from '../lib/exportPng';
-import { fetchDataUrl } from '../lib/dataUrl';
 import { loadFontCss } from '../lib/fonts';
 import { fitRoute } from '../lib/routePath';
-import { MAP_ENABLED } from '../lib/mapTiles';
+import { POSTCARD } from '../lib/vectorMap';
+import { useMapLayers } from './useMapLayers';
 
 const BACKGROUNDS: [PostcardBackground, string][] = [
   ['gradient', 'Gradient'],
   ['transparent', 'Transparent'],
-  ...(MAP_ENABLED ? [['map', 'Map'] as [PostcardBackground, string]] : []),
+  ['map', 'Map'],
 ];
+const SIZE: [number, number] = [1080, 1920];
 
 export function PostcardScreen({ activity, onBack }: { activity: Activity; onBack: () => void }) {
   const previewRef = useRef<HTMLDivElement>(null);
   const [fontCss, setFontCss] = useState<string>();
   const [exportFailed, setExportFailed] = useState(false);
   const [background, setBackground] = useState<PostcardBackground>('gradient');
-  const [mapImages, setMapImages] = useState<Record<string, string>>();
   const [mapFailed, setMapFailed] = useState(false);
   const fit = useMemo(() => fitRoute(activity.map.summary_polyline, ROUTE_BOX), [activity]);
-  const mapLoading = background === 'map' && !mapImages;
+  const map = useMapLayers(fit?.projection ?? null, SIZE, POSTCARD, background === 'map');
+  const mapLoading = background === 'map' && !map.layers;
 
   useEffect(() => {
     loadFontCss().then(setFontCss);
   }, []);
 
-  // Kafelki jako data URL, żeby trafiły do eksportu; przy błędzie wracamy do gradientu.
+  // Przy błędzie mapy wracamy do gradientu.
   useEffect(() => {
-    if (!mapLoading) return;
-    let cancelled = false;
-    const failed = () => {
-      if (cancelled) return;
-      setMapFailed(true);
-      setBackground('gradient');
-    };
-    if (!fit) {
-      failed();
-      return;
-    }
-    const urls = postcardTileUrls(fit.projection);
-    Promise.all(urls.map((url) => fetchDataUrl(url).then((data) => [url, data] as const)))
-      .then((entries) => {
-        if (!cancelled) setMapImages(Object.fromEntries(entries));
-      })
-      .catch(failed);
-    return () => {
-      cancelled = true;
-    };
-  }, [mapLoading, fit]);
+    if (!map.failed) return;
+    setMapFailed(true);
+    setBackground('gradient');
+  }, [map.failed]);
 
   const currentSvg = () => previewRef.current?.querySelector('svg') ?? null;
 
@@ -89,11 +72,12 @@ export function PostcardScreen({ activity, onBack }: { activity: Activity; onBac
           activity={activity}
           fontCss={fontCss}
           background={mapLoading ? 'gradient' : background}
-          mapImages={mapImages}
+          map={map.layers}
         />
       </div>
       <div className="segmented" role="group" aria-label="Background">
-        {BACKGROUNDS.map(([value, label]) => (
+        {/* Bez trasy nie ma projekcji, więc nie ma też mapy. */}
+        {BACKGROUNDS.filter(([value]) => value !== 'map' || fit).map(([value, label]) => (
           <button key={value} aria-pressed={background === value} onClick={() => choose(value)}>
             {label}
           </button>

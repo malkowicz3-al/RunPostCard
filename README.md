@@ -39,8 +39,6 @@ Do not use the **Your access token** section. The app gets its own token when yo
 
 In the project root (next to `package.json`), copy `.env.example` to `.env`. On Windows you can copy the file in Explorer and rename it, or run `copy .env.example .env` in a terminal.
 
-![The .env file](docs/setup/3-env-file.svg)
-
 ## Environment variables
 
 Fill in the two values in `.env`:
@@ -52,19 +50,6 @@ STRAVA_CLIENT_SECRET=your-client-secret
 
 - `VITE_STRAVA_CLIENT_ID` is public (it appears in the authorization URL).
 - `STRAVA_CLIENT_SECRET` is secret. It is read only by the server side (`server/stravaToken.ts`) and never sent to the browser. Never commit `.env`.
-
-### Map backgrounds (optional): get a free CARTO key
-
-Map tiles under route thumbnails and the **Map** postcard background come from CARTO, which requires an API key. Without it the app works normally, just without maps (no map in thumbnails, no **Map** background).
-
-1. Request a free key at <https://carto.com/basemaps/apikey> (sent by email, no credit card).
-2. Paste it into `.env` and restart `npm run dev`:
-   ```
-   VITE_CARTO_API_KEY=your-carto-key
-   ```
-3. This is a public key: it is sent from your browser in every tile URL. In the CARTO dashboard, restrict it to your domains (e.g. `localhost` and your Vercel domain).
-
-The free key is for non-commercial use, up to 5 million requests per month. On Vercel, add `VITE_CARTO_API_KEY` to the environment variables as well (read at build time).
 
 ## Run locally
 
@@ -118,15 +103,15 @@ Vercel and local Node are the officially supported setups. Other hosting platfor
 
 ## Maps
 
-Route thumbnails and the **Map** postcard background show raster map tiles from [CARTO basemaps](https://carto.com/basemaps) with [OpenStreetMap](https://www.openstreetmap.org/copyright) data. The attribution "© OpenStreetMap contributors © CARTO" is shown under the run list and on postcards with the map background.
+Route thumbnails and the **Map** postcard background are a minimalist outline (streets, buildings, water, greenery) drawn by the app as SVG from vector tiles by [OpenFreeMap](https://openfreemap.org) ([OpenMapTiles](https://openmaptiles.org) schema, [OpenStreetMap](https://www.openstreetmap.org/copyright) data). No API key or configuration is needed. The attribution "Map: OpenFreeMap © OpenMapTiles © OpenStreetMap contributors" is shown under the run list, and "© OpenMapTiles © OpenStreetMap contributors" on postcards with the map background.
 
-- Your browser downloads the tiles directly from `basemaps.cartocdn.com`, so CARTO can see the area of your run (approximate location).
+- Your browser downloads the tiles directly from `tiles.openfreemap.org` (served through Cloudflare), so OpenFreeMap and Cloudflare can see the area of your run (approximate location).
 - With the map background, the postcard shows the surroundings of the start and finish of your run, which may reveal where you live. Strava privacy zones still apply to the route.
-- CARTO basemaps are a free external service; their terms (attribution, usage limits, non-commercial use) and availability are outside this project's control.
+- OpenFreeMap is a free external service without an SLA; its terms and availability are outside this project's control. The app sends at most 4 tile requests at a time.
 
 ## License and third-party notes
 
 - The code is released under the MIT license.
 - The "Connect with Strava" button and the "Powered by Strava" marks (`src/assets/brand/strava/`) are the official Strava brand assets, used without modification.
 - The postcard font is Barlow Condensed Bold, under the SIL Open Font License (`public/fonts/OFL.txt`).
-- Map tiles: © OpenStreetMap contributors © CARTO (see **Maps** above).
+- Map data: OpenFreeMap, © OpenMapTiles, © OpenStreetMap contributors (see **Maps** above).

@@ -13,6 +13,8 @@
   --error: #ff8a8a;
   --primary-bg: var(--text);
   --primary-text: var(--bg);
+  --map-water: #1a2530;
+  --map-road: #2a2a2f;
   background: var(--bg);
   color: var(--text);
 }
@@ -27,6 +29,8 @@
     --separator: #e4e4e7;
     --segment-selected: #ffffff;
     --error: #c62828;
+    --map-water: #d6e2ee;
+    --map-road: #dcdce1;
   }
 }
 
@@ -388,6 +392,11 @@ footer {
   display: block;
   height: 16px;
   width: auto;
+}
+
+/* Linki podpisu mapy w kolorze tekstu obok, bez domyślnego niebieskiego. */
+.map-attribution a {
+  color: inherit;
 }
 
 .map-attribution,

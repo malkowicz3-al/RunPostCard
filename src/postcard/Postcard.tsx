@@ -1,5 +1,6 @@
 import type { Activity } from '../strava/api';
 import { fitRoute } from '../lib/routePath';
+import { MAP_ATTRIBUTION, type MapLayers } from '../lib/vectorMap';
 import { Background } from './Background';
 import { MapBackground } from './MapBackground';
 import { Route, ROUTE_BOX } from './Route';
@@ -12,23 +13,23 @@ export function Postcard({
   activity,
   fontCss,
   background = 'gradient',
-  mapImages,
+  map,
 }: {
   activity: Activity;
   fontCss?: string;
   background?: PostcardBackground;
-  mapImages?: Record<string, string>;
+  map?: MapLayers;
 }) {
   // Jedna projekcja dla mapy i trasy („scena”).
   const fit = fitRoute(activity.map.summary_polyline, ROUTE_BOX);
-  const showMap = background === 'map' && fit && mapImages;
+  const showMap = background === 'map' && fit && map;
 
   return (
     <svg className="postcard" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920">
       {fontCss && <style>{fontCss}</style>}
       {background === 'gradient' && <Background />}
       <g>
-        {showMap && <MapBackground projection={fit.projection} images={mapImages} />}
+        {showMap && <MapBackground layers={map} />}
         {fit && <Route d={fit.d} />}
       </g>
       {defaultLayout.map(({ slot, x, y, size }) => {
@@ -49,7 +50,7 @@ export function Postcard({
       {showMap && (
         <text
           x={1020}
-          y={1856}
+          y={1885}
           fontSize={26}
           fontWeight={700}
           fontFamily="'Barlow Condensed', system-ui, sans-serif"
@@ -57,7 +58,7 @@ export function Postcard({
           fill="#ffffff"
           opacity={0.8}
         >
-          © OpenStreetMap contributors © CARTO
+          {MAP_ATTRIBUTION}
         </text>
       )}
     </svg>

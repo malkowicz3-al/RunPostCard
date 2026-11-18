@@ -1,33 +1,28 @@
-import type { GeoProjection } from 'd3-geo';
-import { cartoKey, mapTiles, tileUrl } from '../lib/mapTiles';
+import { LINE_KEYS, MAP_KEYS, type MapLayers } from '../lib/vectorMap';
+import { MAP_BACKGROUND, MAP_COLORS, MAP_WIDTHS } from './mapStyle';
 
-// Kafelki pocztówki: ciemna mapa pod białą treścią, płótno 1080x1920, kafelek ok. 512 jednostek.
-export function postcardTileUrls(projection: GeoProjection): string[] {
-  return mapTiles(projection, [1080, 1920], 1).map((t) => tileUrl('dark_all', t, cartoKey));
-}
-
-// images: URL kafelka -> data URL (eksport SVG -> PNG nie pobiera zewnętrznych obrazów).
-export function MapBackground({
-  projection,
-  images,
-}: {
-  projection: GeoProjection;
-  images: Record<string, string>;
-}) {
+// Tło "map": ciemny prostokąt i po jednej ścieżce na warstwę (wektor inline, więc eksport działa bez data URL).
+export function MapBackground({ layers }: { layers: MapLayers }) {
   return (
     <>
-      {mapTiles(projection, [1080, 1920], 1).map((t) => (
-        <image
-          key={`${t.left},${t.top}`}
-          href={images[tileUrl('dark_all', t, cartoKey)]}
-          x={t.left}
-          y={t.top}
-          // +1 zakładki: antyaliasing styku sąsiednich kafelków przy skalowaniu daje widoczną jasną linię.
-          width={t.width + 1}
-          height={t.height + 1}
-          preserveAspectRatio="none"
-        />
-      ))}
+      <rect width={1080} height={1920} fill={MAP_BACKGROUND} />
+      {MAP_KEYS.map((key) => {
+        const d = layers[key];
+        if (!d) return null;
+        return LINE_KEYS.has(key) ? (
+          <path
+            key={key}
+            d={d}
+            fill="none"
+            stroke={MAP_COLORS[key]}
+            strokeWidth={MAP_WIDTHS[key]}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        ) : (
+          <path key={key} d={d} fill={MAP_COLORS[key]} />
+        );
+      })}
     </>
   );
 }
