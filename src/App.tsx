@@ -47,12 +47,22 @@ export function App() {
     })();
   }, []);
 
-  // Animacja "generuję" trwa krótko, potem pokazujemy pocztówkę.
+  // Animacja "generuję" trwa krótko, potem pokazujemy pocztówkę (zapisana w historii, żeby Wstecz wracał do listy).
   useEffect(() => {
     if (screen !== 'generating') return;
-    const timer = setTimeout(() => setScreen('postcard'), 1200);
+    const timer = setTimeout(() => {
+      history.pushState({ screen: 'postcard' }, '');
+      setScreen('postcard');
+    }, 1200);
     return () => clearTimeout(timer);
   }, [screen]);
+
+  // Wstecz w przeglądarce z pocztówki wraca do listy, zamiast do okna Stravy.
+  useEffect(() => {
+    const onPop = () => setScreen((s) => (s === 'postcard' ? 'list' : s));
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
 
   const onSelect = (activity: Activity) => {
     setSelected(activity);
@@ -83,7 +93,7 @@ export function App() {
       {screen === 'postcard' && selected && (
         <PostcardScreen
           activity={selected}
-          onBack={() => setScreen('list')}
+          onBack={() => history.back()}
           onLogout={onLogout}
         />
       )}
