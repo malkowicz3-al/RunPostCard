@@ -23,7 +23,7 @@ export function MapBackground({ layers, style }: { layers: MapLayers; style: Map
             filter={filter}
           />
         ) : (
-          <path key={key} d={d} fill={style.colors[key]} filter={filter} />
+          <path key={key} d={d} fill={style.fills?.[key] ?? style.colors[key]} filter={filter} />
         );
       })}
     </>

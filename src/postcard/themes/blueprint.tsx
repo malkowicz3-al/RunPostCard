@@ -31,6 +31,7 @@ const STYLE: MapStyle = {
 
 export const blueprint: MapTheme = {
   label: 'Blueprint',
+  font: 'orbitron',
   style: () => STYLE,
   render: (layers) => ({
     scene: (

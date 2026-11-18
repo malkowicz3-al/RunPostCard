@@ -186,6 +186,7 @@ export function PostcardScreen({
   const choose = (value: Look) => {
     setMapFailed(false);
     setLook(value);
+    if (value in THEMES) setFont(THEMES[value as ThemeId].font);
   };
 
   // Przy błędzie zostaje poprzednie zdjęcie i wygląd.

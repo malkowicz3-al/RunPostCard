@@ -8,4 +8,5 @@ export type MapStyle = {
   widths: Partial<Record<MapKey, number>>; // grubość obrysu linii (jednostki płótna 1080x1920)
   dashes?: Partial<Record<MapKey, string>>; // stroke-dasharray linii
   filters?: Partial<Record<MapKey, string>>;
+  fills?: Partial<Record<MapKey, string>>; // farba poligonu (np. url(#kreskowanie)); colors zostają heksami dla miniatur
 };

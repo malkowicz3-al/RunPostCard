@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import type { FontId } from '../../lib/fonts';
 import type { MapLayers } from '../../lib/vectorMap';
 import type { MapStyle } from '../mapStyle';
 import type { RouteStyle } from '../Route';
@@ -7,12 +8,17 @@ import { dark } from './dark';
 import { light } from './light';
 import { neon } from './neon';
 import { blueprint } from './blueprint';
+import { pencil } from './pencil';
+import { watercolor } from './watercolor';
+import { vintage } from './vintage';
+import { riso } from './riso';
 
 // Motywy map na pocztówce: tylko stylistyka (ADR 0005). Nowy motyw = plik w themes/ + wpis w THEMES.
-export type ThemeId = 'dark' | 'light' | 'neon' | 'blueprint';
+export type ThemeId = 'dark' | 'light' | 'neon' | 'blueprint' | 'pencil' | 'watercolor' | 'vintage' | 'riso';
 
 export type ThemeOutput = {
   scene: ReactNode; // pod trasą: <defs>, tło, warstwy mapy
+  overlay?: ReactNode; // faktura papieru nad mapą (także nad ostrzejszym fragmentem 3D), pod trasą
   route: RouteStyle;
   text: { color: string; filter?: string };
   mark: StravaMarkVariant;
@@ -22,8 +28,9 @@ export type ThemeOptions = { accent?: string }; // accent: kolor neonu; Dark i L
 
 export type MapTheme = {
   label: string;
+  font: FontId; // font ustawiany przy wyborze motywu; potem można go zmienić
   style: (opts?: ThemeOptions) => MapStyle; // paleta jako dane (miniatury w wyborze wyglądu)
   render: (layers: MapLayers, opts?: ThemeOptions) => ThemeOutput;
 };
 
-export const THEMES: Record<ThemeId, MapTheme> = { dark, light, neon, blueprint };
+export const THEMES: Record<ThemeId, MapTheme> = { dark, light, neon, blueprint, pencil, watercolor, vintage, riso };

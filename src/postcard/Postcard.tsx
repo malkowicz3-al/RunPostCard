@@ -134,12 +134,17 @@ export function Postcard({
                 </g>
               </>
             )}
+          </g>
+          {/* Faktura papieru w przestrzeni płótna (jak w widoku płaskim), nie na pochylonej i powiększanej podłodze. */}
+          {out?.overlay}
+          <g transform={`translate(${CX * (1 - zoom) + panX} ${CY * (1 - zoom) + panY}) scale(${zoom})`}>
             <IsoRoute iso={iso} flat={out?.route.stroke} filter={out?.route.filter} zoom={zoom} />
           </g>
         </g>
       ) : (
         <g>
           {out?.scene}
+          {out?.overlay}
           {fit && <Route {...out?.route} d={fit.d} />}
         </g>
       )}

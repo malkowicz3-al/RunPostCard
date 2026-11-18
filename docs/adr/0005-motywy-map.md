@@ -5,8 +5,31 @@
 ### Blueprint, Details
 - **Blueprint** (`themes/blueprint.tsx`): granatowe tło z siatką (`<pattern id="blueprint-grid">` w `scene`, `MapStyle.fill = 'url(#blueprint-grid)'`, `background` zostaje kolorem dla 3D i miniatur), jasnoniebieskie linie, trasa żółta `#ffb703`, tekst biały.
 - **Details** (przełącznik na ekranie pocztówki, domyślnie wyłączony): profil `POSTCARD_DETAILED` dokłada 9 kluczy: `field`, `landuse`, `industrial`, `civic`, `sport` (poligony pod wodą), `tunnel`, `rail`, `runway`, `bridge` (linie; most jako obwódka pod drogą). `POSTCARD` = `BASE_KEYS` (dawne 8), `THUMB` bez zmian. Bez nazw ulic i miejsc.
-- `MapStyle`: `colors` dla wszystkich kluczy (kompilator wymusza w każdym motywie), `dashes` (kolej `10 6`, tunel `4 4`), `fill`. Szczegóły w neonie bez poświaty. Test pilnuje kontrastu WCAG ≥ 2 kolorów szczegółów względem trasy (Dark, Light, Blueprint, Neon × każdy gotowy kolor).
+- `MapStyle`: `colors` dla wszystkich kluczy (kompilator wymusza w każdym motywie), `dashes` (kolej `10 6`, tunel `4 4`), `fill`. Szczegóły w neonie bez poświaty. Test pilnuje kontrastu WCAG ≥ 2 kolorów szczegółów względem trasy (wszystkie motywy, Neon × każdy gotowy kolor).
 - Zmiana profilu zostawia stare warstwy w podglądzie, pobieranie czeka na nowe. Błąd szczegółowej mapy wraca do podstawowej, błąd podstawowej do gradientu.
+
+### Motywy stylizowane: Pencil, Watercolor, Vintage, Riso
+- **Pencil:** papier, drżące kreski grafitu i druga kreska głównych dróg, kreskowane budynki i woda, czerwona kredka.
+- **Watercolor:** plamy z miękkimi brzegami na wodzie, zieleni i terenach, cienki tusz ulic.
+- **Vintage:** pergamin z winietą, sepia, kreskowana woda, czerwony atrament.
+- **Riso:** jedna niebieska farba w odcieniach, różowa trasa z niebieską kopią przesuniętą o 4 px (filtr, bez `mix-blend-mode`), progowane ziarno druku.
+- **Jak to działa:**
+  - Faktury są w `themes/texture.tsx`: `Grain`, `Wobble`, `Hatch`, `Vignette`, `Overlay`.
+  - Filtry mają obszar równy płótnu i `color-interpolation-filters="sRGB"`.
+  - `MapStyle.fills` to wzór wypełnienia poligonu; `colors` zostają heksami dla miniatur i testu kontrastu.
+  - `ThemeOutput.overlay` to faktura papieru. Jest rysowana nad mapą w przestrzeni płótna, także w 3D, czyli nad podłogą i ostrzejszym fragmentem, a pod trasą.
+  - Zniekształcające filtry dostają tylko drogi (Pencil) i plamy (Watercolor).
+- **Font motywu:** `MapTheme.font`. Kliknięcie kafelka motywu ustawia jego font, który można potem zmienić:
+
+  | Motyw | Font |
+  | --- | --- |
+  | Dark, Light | Barlow |
+  | Neon | Audiowide |
+  | Blueprint | Orbitron |
+  | Pencil | Marker |
+  | Watercolor | Pacifico |
+  | Vintage | Lobster |
+  | Riso | Bungee |
 
 ## Kontekst
 Etap 2 „Motywy map” (CLAUDE.md): z tych samych danych OSM co tło „Map” (ADR 0004) generujemy stylizowane mapy na pocztówce, np. zamek zamiast bloku, smok, woda w falach. Wymagania: deterministycznie (ziarno = id biegu), trasa dokładna, eksport SVG/PNG jak teraz (ADR 0002: jeden samowystarczalny SVG), miniatury listy bez zmian, bez nowych zależności.

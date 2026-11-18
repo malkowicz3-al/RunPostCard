@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { hexToRgb, mix } from '../../lib/color';
 import { BASE_KEYS, LINE_KEYS, MAP_KEYS } from '../../lib/vectorMap';
-import { mockActivities } from '../../dev/mockActivities';
+import { mockActivities, mockStreams } from '../../dev/mockActivities';
+import { FONTS } from '../../lib/fonts';
 import { Postcard } from '../Postcard';
 import { THEMES, type ThemeId } from './index';
 import { DEFAULT_ACCENT, NEON_ACCENTS, neonStyle, visibleAccent } from './neon';
@@ -31,8 +32,22 @@ function contrast(a: string, b: string): number {
 }
 
 describe('THEMES', () => {
-  it('Dark, Light, Neon, Blueprint w tej kolejności', () => {
-    expect(Object.values(THEMES).map((t) => t.label)).toEqual(['Dark', 'Light', 'Neon', 'Blueprint']);
+  it('motywy w kolejności Dark, Light, Neon, Blueprint, Pencil, Watercolor, Vintage, Riso', () => {
+    expect(Object.values(THEMES).map((t) => t.label)).toEqual([
+      'Dark',
+      'Light',
+      'Neon',
+      'Blueprint',
+      'Pencil',
+      'Watercolor',
+      'Vintage',
+      'Riso',
+    ]);
+  });
+
+  it('font każdego motywu jest na liście fontów', () => {
+    for (const theme of Object.values(THEMES)) expect(FONTS[theme.font], theme.label).toBeDefined();
+    expect(THEMES.pencil.font).toBe('marker');
   });
 
   it('każdy motyw ma kolor dla każdego klucza i grubość dla każdej linii', () => {
@@ -61,15 +76,33 @@ describe('THEMES', () => {
     expect(svg).toMatch(/d="M0 200L500 200"[^>]*stroke-dasharray="10 6"/);
   });
 
-  it('każde url(#id) w pocztówce wskazuje element z tego samego SVG (eksport PNG bez zewnętrznych zasobów)', () => {
+  it('każde url(#id) w pocztówce (płaskiej, 3D i 3D z ostrzejszą mapą) wskazuje element z tego SVG, id unikalne', () => {
+    const hills = mockActivities().find((r) => r.name === 'Hill repeats')!;
+    const streams = mockStreams(hills);
+    const refined = { rect: [100, 200, 600, 900] as [number, number, number, number], layers: LAYERS };
     for (const id of Object.keys(THEMES) as ThemeId[]) {
-      const svg = renderToStaticMarkup(
-        <Postcard activity={mockActivities()[0]} background="map" map={LAYERS} theme={id} />,
-      );
-      const refs = [...svg.matchAll(/url\(#([\w-]+)\)/g)].map((m) => m[1]);
-      for (const ref of refs) expect(svg, `${id}: #${ref}`).toContain(`id="${ref}"`);
-      if (id === 'neon') expect(refs.length).toBeGreaterThan(0);
-      if (id === 'blueprint') expect(svg).toContain('id="blueprint-grid"');
+      const variants = {
+        flat: <Postcard activity={hills} background="map" map={LAYERS} theme={id} />,
+        '3d': <Postcard activity={hills} background="map" map={LAYERS} theme={id} streams={streams} view="3d" />,
+        refined: (
+          <Postcard activity={hills} background="map" map={LAYERS} theme={id} streams={streams} view="3d" refined={refined} />
+        ),
+      };
+      for (const [name, el] of Object.entries(variants)) {
+        const svg = renderToStaticMarkup(el);
+        const refs = [...svg.matchAll(/url\(#([\w-]+)\)/g)].map((m) => m[1]);
+        for (const ref of refs) expect(svg, `${id} ${name}: #${ref}`).toContain(`id="${ref}"`);
+        const ids = [...svg.matchAll(/id="([^"]+)"/g)].map((m) => m[1]);
+        expect(new Set(ids).size, `${id} ${name}: id unikalne`).toBe(ids.length);
+        if (id === 'neon') expect(refs.length).toBeGreaterThan(0);
+        if (id === 'blueprint') expect(svg).toContain('id="blueprint-grid"');
+        // fills: kreskowanie wskazuje wzór z tej samej pocztówki.
+        if (id === 'pencil') expect(refs).toContain('pencil-hatch-building');
+        if (id === 'vintage') expect(refs).toContain('vintage-water');
+        if (id === 'riso') expect(refs).toContain('riso-route');
+        // Nakładka papieru (overlay) jest też w 3D i nad ostrzejszym fragmentem.
+        if (['pencil', 'watercolor', 'vintage', 'riso'].includes(id)) expect(refs, `${id} ${name}`).toContain(`${id}-grain`);
+      }
     }
   });
 

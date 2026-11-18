@@ -30,6 +30,7 @@ const STYLE: MapStyle = {
 
 export const dark: MapTheme = {
   label: 'Dark',
+  font: 'barlow',
   style: () => STYLE,
   render: (layers) => ({
     scene: <MapBackground layers={layers} style={STYLE} />,

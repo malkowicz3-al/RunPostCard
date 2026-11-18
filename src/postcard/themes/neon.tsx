@@ -76,6 +76,7 @@ export function neonStyle(rawAccent: string): MapStyle {
 
 export const neon: MapTheme = {
   label: 'Neon',
+  font: 'audiowide',
   style: ({ accent = DEFAULT_ACCENT } = {}) => neonStyle(accent),
   render: (layers, { accent = DEFAULT_ACCENT } = {}) => ({
     scene: (
