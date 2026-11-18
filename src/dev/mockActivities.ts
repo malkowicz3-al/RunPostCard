@@ -49,9 +49,9 @@ const RUNS: { name: string; shape: keyof typeof SHAPES; km: number; minutes: num
   { name: 'Morning loop', shape: 'loop', km: 5.0, minutes: 27, hr: 152, date: '2026-11-10T07:12:00Z' },
   { name: 'Intervals at the park', shape: 'zigzag', km: 8.2, minutes: 40, hr: 168, date: '2026-11-12T17:30:00Z' },
   { name: 'Long run by the river', shape: 'line', km: 20.1, minutes: 120, hr: 141, date: '2026-11-14T09:00:00Z' },
-  { name: 'Lunch figure eight', shape: 'eight', km: 3.1, minutes: 19, date: '2026-11-15T12:45:00Z' },
+  { name: 'Lunch 🏃🏻‍♀️ figure eight', shape: 'eight', km: 3.1, minutes: 19, date: '2026-11-15T12:45:00Z' },
   { name: 'Hill repeats', shape: 'zigzag', km: 6.4, minutes: 38, hr: 161, date: '2026-11-16T18:05:00Z' },
-  { name: 'Easy shakeout', shape: 'loop', km: 12.0, minutes: 66, hr: 135, date: '2026-11-17T06:50:00Z' },
+  { name: 'A very long title to check how the tile wraps onto two lines', shape: 'loop', km: 12.0, minutes: 66, hr: 135, date: '2026-11-17T06:50:00Z' },
 ];
 
 export function mockActivities(): Activity[] {
