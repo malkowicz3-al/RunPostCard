@@ -9,7 +9,6 @@
   --text: #fafafa;
   --text-secondary: #a1a1aa;
   --separator: #27272a;
-  --strava: #fc4c02;
   --segment-selected: #2c2c30;
   --error: #ff8a8a;
   --primary-bg: var(--text);
@@ -135,13 +134,23 @@ button.primary:hover {
   opacity: 0.9;
 }
 
-button.strava {
-  background: var(--strava);
-  color: #ffffff;
+button:disabled,
+button:disabled:hover {
+  opacity: 0.5;
+  cursor: default;
 }
 
-button.strava:hover {
-  background: #e04302;
+button.strava-connect,
+button.strava-connect:hover {
+  min-height: 0;
+  padding: 0;
+  border-radius: 6px;
+  background: none;
+}
+
+.strava-connect img {
+  display: block;
+  height: 48px;
 }
 
 button.text-button {
@@ -368,15 +377,24 @@ button.text-button {
 
 footer {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
   margin-top: auto;
   padding: 16px 0 20px;
 }
 
 .strava-mark {
   display: block;
-  height: 14px;
+  height: 16px;
   width: auto;
+}
+
+.map-attribution,
+.hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
 }
 
 @media (prefers-reduced-motion: reduce) {

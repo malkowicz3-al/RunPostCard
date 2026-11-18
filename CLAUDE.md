@@ -4,7 +4,8 @@ Otwarta aplikacja webowa, która z wybranego biegu ze Stravy generuje „pocztó
 (Folder nazywał się `ShowRunPic`; właściciel zmienia go na `RunPostcard` ręcznie po sesji.)
 
 ## Status
-Szkielet projektu, ustalenia gotowe, kodu jeszcze brak. Następny krok: etap 1.
+Etap 1 w trakcie domykania (logowanie, lista kafelków z trasami, pocztówka 9:16, PNG i SVG, tło gradient/przezroczyste, tryb jasny/ciemny, tryby dev `?mock=1` i `?debug=1`). Zostało w etapie 1: mapa (tło pocztówki i kafelki), font Barlow Condensed, oficjalny znak Stravy.
+Na razie bez wdrożenia na Vercel: aplikacja działa tylko lokalnie (`npm run dev`).
 
 ## Model projektu
 - Repozytorium otwarte na GitHubie, licencja MIT. Każdy uruchamia je u siebie (lokalnie, Vercel lub inny Node).
@@ -15,7 +16,9 @@ Szkielet projektu, ustalenia gotowe, kodu jeszcze brak. Następny krok: etap 1.
 
 ## Stos
 - React + SVG (D3 do skal i kształtów), eksport SVG → PNG w przeglądarce. Biblioteka wykresów wybierana w etapie 3.
-- Three.js: odłożony, na razie bez planu i bez wzmianek w etapach.
+- Three.js: odłożony; kandydat do przyszłego widoku 3D (niżej).
+- Mapa: kafelki CARTO (styl minimalistyczny, dane OpenStreetMap), bez biblioteki map; kafelki osadzane w SVG jako data URL, żeby eksport PNG/SVG działał. Podpis „© OpenStreetMap contributors © CARTO” na pocztówce z mapą i w aplikacji.
+- Przyszłość (bez terminu): widok 3D/izometryczny trasy z wysokościami (góry, miasto), generowany tylko na pocztówce, nie w liście.
 - Dane tylko ze Stravy (OAuth). Garmin: później, bez terminu (dostęp do API Garmina wymaga zatwierdzenia).
 
 ## Backend (jedyny)
@@ -41,7 +44,7 @@ Wymiana kodu OAuth na token i jego odświeżanie wymagają sekretu aplikacji, wi
 - Znak „Powered by Strava”: w aplikacji zawsze, na pocztówce w rogu (domyślnie włączony, wyłączalny). Wytyczne Stravy sprawdzić na początku etapu 1.
 
 ## Etapy
-1. Logowanie Stravą, lista biegów, wybór, domyślna pocztówka (gradient, trasa, 4 statystyki, 9:16), pobranie PNG, znak Strava.
+1. Logowanie Stravą, lista biegów, wybór, domyślna pocztówka (gradient, trasa, 4 statystyki, 9:16), pobranie PNG, znak Strava. Dodane przez właściciela: mapa jako tło pocztówki i w kafelkach.
 2. Presety stylu i fontów, tryby tła (przezroczyste/gradient/zdjęcie), proporcje 4:5 i 1:1, przycięcie trasy, udostępnianie na telefonie.
 3. Sloty z konfigurowalnymi danymi i formami (np. tętno, tempo, przewyższenie, tempo na km; liczba, wykres liniowy, słupki, pierścień…). Najpierw agent badawczy proponuje formy wizualizacji, potem coder je implementuje.
 4. Przesuwanie, skalowanie i transformacja elementów myszą i dotykiem.
@@ -49,8 +52,7 @@ Wymiana kodu OAuth na token i jego odświeżanie wymagają sekretu aplikacji, wi
 
 ## Do sprawdzenia (nie potwierdzone)
 - Pełny tekst API Agreement/Policy Stravy: czy zezwala na publiczne repo z gotową integracją; zasada „dane tylko dla właściciela” (znana tylko ze wtórnych streszczeń); wytyczne „Powered by Strava”.
-- Wygodna obsługa wtyczek serwera w aktualnym Vite (zakładamy `configureServer`).
-- Czy w ustawieniach Stravy wszystko działa bez przeglądu dla jednego sportowca (własna aplikacja).
+- Potwierdzone: wtyczka Vite `configureServer` działa; własna aplikacja Stravy działa dla jednego sportowca bez przeglądu; wylogowanie odwołuje dostęp. Po wylogowaniu Strava czasem zwraca 403 (limit sportowców) przy natychmiastowym ponownym logowaniu.
 
 ## Zasady
 - Odpowiadaj po polsku.

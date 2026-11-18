@@ -32,14 +32,19 @@ src/
     slots.ts              # model slotu {id, data, form}, rejestr danych (data -> etykieta + wartość z Activity), domyślny układ 9:16
     Postcard.tsx          # jeden <svg viewBox="0 0 1080 1920">: tło, trasa, sloty, znak Strava; ten sam SVG idzie do eksportu
     Background.tsx        # gradient + ziarno przez filtr feTurbulence (kod, bez obrazków)
-    Route.tsx             # dekodowany polyline -> GeoJSON LineString -> d3-geo geoMercator().fitExtent -> <path>
+    Route.tsx             # <path> trasy z gotowej ścieżki; ROUTE_BOX = obszar trasy na płótnie
+    MapBackground.tsx     # tryb tła "map": kafelki CARTO dark_all jako <image> z data URL, z tej samej projekcji co trasa (ADR 0003)
     SlotNumber.tsx        # forma "liczba" (jedyna w etapie 1); rejestr form w slots.ts mapuje form -> komponent
-    StravaMark.tsx        # oficjalny znak „Powered by Strava” jako inline SVG (bez zewnętrznych zasobów, by eksport działał)
+    StravaMark.tsx        # oficjalny biały znak „Powered by Strava” jako <image> z data URL (import ?raw, bez modyfikacji pliku)
 
   ui/
     LoginScreen.tsx       # przycisk „Connect with Strava” (oficjalny styl) + znak Strava
     ActivityList.tsx      # lista ostatnich biegów (nazwa, data, dystans) do wyboru
-    PostcardScreen.tsx    # podgląd pocztówki + przycisk „Download PNG”
+    PostcardScreen.tsx    # podgląd pocztówki, wybór tła (gradient / przezroczyste / mapa), pobieranie kafelków, „Download PNG”/SVG
+    RouteThumb.tsx        # miniatura trasy na kafelkach CARTO (light_all/dark_all wg motywu, zwykłe URL-e)
+    useColorScheme.ts     # motyw systemu (matchMedia z nasłuchem zmian)
+
+  assets/brand/strava/    # oficjalne zasoby Stravy (przycisk Connect, znaki Powered by), bez modyfikacji
 
   lib/
     polyline.ts           # dekoder Google encoded polyline (~20 linii; bez zależności)
@@ -47,9 +52,13 @@ src/
     format.ts             # dystans km, czas h:mm:ss, tempo min/km, data
     format.test.ts
     exportPng.ts          # SVG -> XMLSerializer -> Blob URL -> Image -> canvas 1080x1920 -> toBlob -> pobranie
-    fonts.ts              # font pocztówki jako data URL wstrzykiwany do <style> w SVG (img nie pobiera zewnętrznych fontów)
+    fonts.ts              # font pocztówki (TTF) jako data URL wstrzykiwany do <style> w SVG (img nie pobiera zewnętrznych fontów)
+    dataUrl.ts            # fetch -> data URL z cache w pamięci (font, kafelki mapy)
+    routePath.ts          # fitRoute: polyline -> d3-geo geoMercator().fitExtent -> {projection, d}; routePath = samo d
+    mapTiles.ts           # czysta funkcja: projekcja trasy -> kafelki XYZ pokrywające płótno; tileUrl dla CARTO @2x (ADR 0003)
+    mapTiles.test.ts
 
-public/fonts/             # jeden font OFL dla pocztówki
+public/fonts/             # Barlow Condensed Bold (TTF) + OFL.txt
 
 docs/
   architecture.md         # ten plik
@@ -78,6 +87,7 @@ docs/
 - **Model slotu od początku**: `Slot = {id, data: SlotData, form: SlotForm}`; rejestr danych i rejestr form; w etapie 1 `SlotForm = 'number'` (ADR 0002).
 - **Testy: Vitest**: współdzieli konfigurację Vite, zero dodatkowej konfiguracji; testy tylko dla logiki (polyline, format, stravaToken).
 - **Jednostki: tylko km** w etapie 1.
+- **Mapa z kafelków CARTO (dane OSM) bez biblioteki map**: kafelki liczone z tej samej projekcji co trasa; na pocztówce osadzane jako data URL, w miniaturach zwykłe URL-e (ADR 0003).
 
 ## Otwarte pytania
 

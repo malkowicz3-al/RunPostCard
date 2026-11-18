@@ -1,10 +1,14 @@
-import { geoMercator, geoPath } from 'd3-geo';
+import { geoMercator, geoPath, type GeoProjection } from 'd3-geo';
 import { decodePolyline } from './polyline';
 
 export type Box = [[number, number], [number, number]];
 
-// Ścieżka SVG trasy dopasowana do obszaru box (x0, y0, x1, y1); null gdy są mniej niż 2 punkty.
-export function routePath(polyline: string, box: Box): string | null {
+// Projekcja trasy dopasowana do obszaru box (x0, y0, x1, y1) i jej ścieżka SVG; null gdy są mniej niż 2 punkty.
+// Tę samą projekcję dostają warstwy pod trasą (mapa), żeby się pokrywały.
+export function fitRoute(
+  polyline: string,
+  box: Box,
+): { projection: GeoProjection; d: string } | null {
   const points = decodePolyline(polyline);
   if (points.length < 2) return null;
 
@@ -18,5 +22,9 @@ export function routePath(polyline: string, box: Box): string | null {
     },
   };
   const projection = geoMercator().fitExtent(box, line);
-  return geoPath(projection)(line) ?? '';
+  return { projection, d: geoPath(projection)(line) ?? '' };
+}
+
+export function routePath(polyline: string, box: Box): string | null {
+  return fitRoute(polyline, box)?.d ?? null;
 }

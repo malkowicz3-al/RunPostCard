@@ -1,7 +1,9 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { fetchRuns, SessionExpiredError, type Activity } from './strava/api';
 import { handleCallback, hasSession, logout } from './strava/auth';
-import { StravaMark } from './postcard/StravaMark';
+import { MAP_ENABLED } from './lib/mapTiles';
+import poweredByBlack from './assets/brand/strava/powered-by-strava-black.svg';
+import poweredByWhite from './assets/brand/strava/powered-by-strava-white.svg';
 import { ActivityList } from './ui/ActivityList';
 import { LoginScreen } from './ui/LoginScreen';
 import { PostcardScreen } from './ui/PostcardScreen';
@@ -112,9 +114,13 @@ export function App() {
         <PostcardScreen activity={selected} onBack={() => history.back()} />
       )}
       <footer>
-        <svg className="strava-mark" viewBox="0 0 340 36" role="img" aria-label="Powered by Strava">
-          <StravaMark x={0} y={26} />
-        </svg>
+        {screen === 'list' && MAP_ENABLED && (
+          <p className="map-attribution">Map data © OpenStreetMap contributors © CARTO</p>
+        )}
+        <picture>
+          <source srcSet={poweredByBlack} media="(prefers-color-scheme: light)" />
+          <img className="strava-mark" src={poweredByWhite} alt="Powered by Strava" />
+        </picture>
       </footer>
     </main>
   );

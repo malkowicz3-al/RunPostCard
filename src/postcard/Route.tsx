@@ -1,15 +1,12 @@
-import { routePath } from '../lib/routePath';
+import type { Box } from '../lib/routePath';
 
 // Obszar trasy na płótnie 1080x1920 (x0, y0, x1, y1).
-const BOX: [[number, number], [number, number]] = [
+export const ROUTE_BOX: Box = [
   [90, 260],
   [990, 1180],
 ];
 
-export function Route({ polyline }: { polyline: string }) {
-  const d = routePath(polyline, BOX);
-  if (d === null) return null;
-
+export function Route({ d }: { d: string }) {
   return (
     <path
       d={d}
