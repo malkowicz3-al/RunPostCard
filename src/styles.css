@@ -434,6 +434,106 @@ button.look-tile {
   background: var(--surface);
 }
 
+.font-picker {
+  position: relative;
+  width: calc(100% - 32px);
+  max-width: 320px;
+}
+
+button.font-picker-button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 16px;
+  border: 2px solid var(--separator);
+  text-align: left;
+}
+
+.font-picker-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.font-picker-sample {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.font-picker-chevron {
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--text-secondary);
+  border-bottom: 2px solid var(--text-secondary);
+  transform: translateY(-2px) rotate(45deg);
+}
+
+.font-list {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 2;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+/* Za mało miejsca pod przyciskiem: lista otwiera się w górę. */
+.font-list.up {
+  top: auto;
+  bottom: calc(100% + 8px);
+}
+
+.font-group {
+  padding: 8px 12px 4px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+}
+
+.font-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.font-option:hover,
+.font-option:focus {
+  background: var(--surface-hover);
+  outline: none;
+}
+
+.font-option:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: -2px;
+}
+
+.font-option[aria-selected='true'] {
+  background: var(--segment-selected);
+  box-shadow: inset 0 0 0 2px var(--separator);
+}
+
+.font-option-sample {
+  font-size: 15px;
+  color: var(--text-secondary);
+}
+
 .look-photo {
   background-size: cover;
   background-position: center;
@@ -596,6 +696,11 @@ button.swatch,
 
   button.look-tile {
     flex: none;
+  }
+
+  .font-picker {
+    width: 100%;
+    max-width: none;
   }
 
   .swatches,

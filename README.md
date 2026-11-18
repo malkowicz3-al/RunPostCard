@@ -108,7 +108,7 @@ Route thumbnails and the **Map** postcard background are a minimalist outline (s
 
 On the postcard screen you pick the look from a row of tiles that preview your route: **Gradient**, **Transparent**, **Photo** (your own image, cropped to fill the postcard, with a **Dim** slider) and three map themes: **Dark** (the outline above), **Light** (a light outline with a dark route and text) and **Neon** (a near-black map with glowing streets and a glowing route). Neon uses one color for the route and streets: pick pink (default), red, orange, yellow, green, cyan or violet, or any custom color. Map tiles are hidden for runs without a route. Themes only change colors, line styles and glow; they use the same map data. Thumbnails in the run list always use the minimalist outline.
 
-A second row of tiles picks the postcard font (six fonts, see the license notes below).
+The **Font** list below picks the postcard font: 20 fonts grouped as Sport, Tech, Retro and Script, each option previewed in its own font (see the license notes below). The preview fonts are downloaded only when you first open the list. Each font has its own size factor so the stats stay in their columns; very wide fonts (Press Start 2P, Rubik Mono One) are drawn smaller.
 
 **Download** opens a menu with **PNG image** and **SVG (vector)**.
 
@@ -127,5 +127,5 @@ When you open a postcard, the app makes one extra Strava request for that run on
 
 - The code is released under the MIT license.
 - The "Connect with Strava" button and the "Powered by Strava" marks (`src/assets/brand/strava/`) are the official Strava brand assets, used without modification.
-- Postcard fonts (`public/fonts/`): Barlow Condensed Bold, Bebas Neue, Archivo Black, Space Grotesk and Bungee under the SIL Open Font License; Permanent Marker under the Apache License 2.0. License texts: `public/fonts/OFL.txt` (Barlow Condensed) and `public/fonts/licenses/`.
+- Postcard fonts (`public/fonts/`): Barlow Condensed Bold, Bebas Neue, Anton, Oswald, Teko, Archivo Black, Russo One, Black Ops One, Space Grotesk, Orbitron, Audiowide, Rubik Mono One, Bungee, Monoton, Righteous, Racing Sans One, Press Start 2P, Pacifico and Lobster under the SIL Open Font License 1.1; Permanent Marker under the Apache License 2.0. License texts: `public/fonts/licenses/`.
 - Map data: OpenFreeMap, © OpenMapTiles, © OpenStreetMap contributors (see **Maps** above).

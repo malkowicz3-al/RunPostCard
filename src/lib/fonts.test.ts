@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import { fetchDataUrl } from './dataUrl';
 import { FONTS, loadFontCss, type FontId } from './fonts';
@@ -26,10 +26,15 @@ describe('fonty pocztówki', () => {
     expect(await loadFontCss('bungee')).toBeUndefined();
   });
 
-  it('każdy font ma plik, unikalną rodzinę i rozsądną skalę', () => {
+  it('20 fontów; każdy ma plik, licencję, unikalną rodzinę i rozsądną skalę', () => {
     const ids = Object.keys(FONTS) as FontId[];
+    expect(ids).toHaveLength(20);
+    const licenses = readdirSync('public/fonts/licenses');
     for (const id of ids) {
       expect(existsSync(`public/fonts/${FONTS[id].file}`), id).toBe(true);
+      // Rdzeń nazwy pliku do pierwszego „-”, np. Orbitron-Variable.ttf → Orbitron-OFL.txt.
+      const stem = FONTS[id].file.split('-')[0];
+      expect(licenses.some((name) => name.startsWith(stem + '-')), id).toBe(true);
       expect(FONTS[id].scale).toBeGreaterThan(0);
       expect(FONTS[id].scale).toBeLessThanOrEqual(1.5);
     }

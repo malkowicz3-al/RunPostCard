@@ -67,7 +67,7 @@ src/
     color.ts              # hexToRgb, rgbToHex, mix (paleta neonu)
     color.test.ts
     exportPng.ts          # SVG -> XMLSerializer -> Blob URL -> Image -> canvas 1080x1920 -> toBlob -> pobranie
-    fonts.ts              # FONTS (6 fontów: plik, rodzina, grubość, skala); wybrany TTF jako data URL wstrzykiwany do <style> w SVG (img nie pobiera zewnętrznych fontów)
+    fonts.ts              # FONTS (20 fontów: plik, rodzina, grubość, skala, grupa); wybrany TTF jako data URL wstrzykiwany do <style> w SVG (img nie pobiera zewnętrznych fontów)
     photo.ts              # loadPhoto: plik -> canvas 1080x1920 (cover, coverRect) -> JPEG data URL (bez EXIF)
     dataUrl.ts            # fetch -> data URL z cache w pamięci (font)
     runHighlights.ts      # highlights(streams) -> indeksy markerów; TRIM_M = 200 m bez markerów na początku i końcu
@@ -80,7 +80,7 @@ src/
     vectorMap.ts          # OpenFreeMap: TileJSON, kolejka ≤4, cache kafelków, dekodowanie MVT, buildMapLayers (scalone budynki dzielone na osobne poligony), profile POSTCARD/THUMB
     vectorMap.test.ts
 
-public/fonts/             # 6 fontów TTF (Barlow Condensed, Bebas Neue, Archivo Black, Space Grotesk, Permanent Marker, Bungee) + OFL.txt i licenses/
+public/fonts/             # 20 fontów TTF (lista w README) + licenses/ (plik licencji na font, nazwa zaczyna się od rdzenia nazwy pliku fontu)
 
 docs/
   architecture.md         # ten plik
@@ -117,7 +117,7 @@ docs/
 ## Zdjęcie i fonty
 
 - **Zdjęcie jako tło**: `loadPhoto` przycina plik do 1080x1920 na canvasie i zwraca JPEG jako data URL; `PhotoBackground` rysuje go w SVG z czarnym prostokątem przyciemnienia. Plik nie opuszcza przeglądarki, a ponowne zakodowanie usuwa EXIF/GPS. W 3D bez podłogi mapy, trasa biała jak przy gradiencie.
-- **Fonty**: `<svg>` pocztówki ma `fontFamily` i `fontWeight` wybranego fontu, teksty je dziedziczą; rozmiar slotów × `scale` fontu (dobrana z szerokości glifów). Do eksportu osadzany jest tylko wybrany font (data URL); pobieranie jest zablokowane, dopóki się nie wczyta. Podgląd w `FontPicker` używa zwykłych `@font-face` z `/fonts/`.
+- **Fonty**: `<svg>` pocztówki ma `fontFamily` i `fontWeight` wybranego fontu, teksty je dziedziczą; rozmiar slotów × `scale` fontu (zmierzona w przeglądarce: „1:23:45” przy 100·scale ≤ 270 px, „100.0” przy 300·scale ≤ ~960 px). Do eksportu osadzany jest tylko wybrany font (data URL); pobieranie jest zablokowane, dopóki się nie wczyta. `FontPicker` to własny listbox (natywny `<select>` nie renderuje opcji w ich fontach, zwłaszcza na telefonie); podgląd używa zwykłych `@font-face` z `/fonts/`: przed pierwszym otwarciem listy tylko bieżący font, potem wszystkie (ok. 2 MB).
 
 ## Otwarte pytania
 
