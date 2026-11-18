@@ -22,36 +22,19 @@ export type MapProfile = {
   tileUnits: number;
   precision: number;
   minBuildingArea: number;
-  objects: boolean; // czy liczyć MapObjects (motywy, ADR 0005)
 };
 
-export const POSTCARD: MapProfile = {
-  keys: [...MAP_KEYS],
-  tileUnits: 1024,
-  precision: 1,
-  minBuildingArea: 16,
-  objects: true,
-};
+export const POSTCARD: MapProfile = { keys: [...MAP_KEYS], tileUnits: 1024, precision: 1, minBuildingArea: 16 };
 export const THUMB: MapProfile = {
   keys: ['water', 'waterway', 'minor', 'mid', 'major'],
   tileUnits: 256,
   precision: 0.1,
   minBuildingArea: 0,
-  objects: false,
 };
-// Motyw 8-bit: mapa przyciągnięta do siatki 24 przez samo zaokrąglanie.
-export const PIXEL: MapProfile = { ...POSTCARD, precision: 24, minBuildingArea: 576 };
 
 // [x0, y0, x1, y1] w układzie płótna.
-export type Rect = [number, number, number, number];
-export type Ring = [number, number][];
-export type Area = { rings: Ring[]; area: number; box: Rect };
-export type MapObjects = {
-  buildings: { x: number; y: number; area: number }[]; // x, y = środek bbox
-  green: Area[];
-  water: Area[];
-};
-export type MapData = { layers: MapLayers; objects: MapObjects };
+type Rect = [number, number, number, number];
+type Ring = [number, number][];
 
 // type jak w MVT: 2 = linia, 3 = poligon.
 export type MapFeature = {
@@ -95,15 +78,14 @@ function classify(f: Pick<MapFeature, 'layer' | 'type' | 'cls' | 'brunnel'>): Ma
   }
 }
 
-type Projected = { key: MapKey; rings: Ring[]; box: Rect };
-
-// Rzutowanie na płótno, zaokrąglanie i filtrowanie wspólne dla warstw i obiektów.
-function projectFeatures(features: MapFeature[], [width, height]: [number, number], profile: MapProfile): Projected[] {
-  const step = profile.precision;
-  const k = 1 / step;
-  // Dla precision >= 1 dzielenie zamiast mnożenia przez 1/p: v * (1/12) daje np. 36.00000000000001.
-  const round = step >= 1 ? (v: number) => Math.round(v / step) * step : (v: number) => Math.round(v * k) / k;
-  const out: Projected[] = [];
+export function buildMapLayers(
+  features: MapFeature[],
+  [width, height]: [number, number],
+  profile: MapProfile,
+): MapLayers {
+  const k = 1 / profile.precision;
+  const round = (v: number) => Math.round(v * k) / k;
+  const parts: Partial<Record<MapKey, string[]>> = {};
 
   for (const f of features) {
     const key = classify(f);
@@ -129,10 +111,14 @@ function projectFeatures(features: MapFeature[], [width, height]: [number, numbe
       if (maxX < 0 || minX > width || maxY < 0 || minY > height) continue;
       if (key === 'building' && (maxX - minX) * (maxY - minY) < profile.minBuildingArea) continue;
       if (line && Math.hypot(maxX - minX, maxY - minY) < 1) continue;
-      out.push({ key, rings: part, box: [minX, minY, maxX, maxY] });
+      const d = part.map((r) => 'M' + r.map(([x, y]) => `${x} ${y}`).join('L') + (line ? '' : 'Z')).join('');
+      (parts[key] ??= []).push(d);
     }
   }
-  return out;
+
+  const layers: MapLayers = {};
+  for (const key of MAP_KEYS) if (parts[key]) layers[key] = parts[key].join('');
+  return layers;
 }
 
 function boxOf(rings: Ring[]): Rect {
@@ -154,7 +140,7 @@ const signedArea = (r: Ring) => {
 };
 
 // MVT 4.3.4.4: pierścień o kierunku pierwszego zaczyna nowy poligon, przeciwny to otwór poprzedniego.
-// Kierunek z surowych współrzędnych kafelka: zaokrąglenie do siatki może go zmienić albo wyzerować.
+// Kierunek z surowych współrzędnych kafelka: zaokrąglenie może go zmienić albo wyzerować.
 function polygons(raw: MapFeature['geometry'], rings: (Ring | null)[]): Ring[][] {
   const out: Ring[][] = [];
   let outer = 0;
@@ -171,40 +157,6 @@ function polygons(raw: MapFeature['geometry'], rings: (Ring | null)[]): Ring[][]
     } else if (r) current?.push(r);
   });
   return out;
-}
-
-function layersFrom(projected: Projected[]): MapLayers {
-  const parts: Partial<Record<MapKey, string[]>> = {};
-  for (const { key, rings } of projected) {
-    const line = LINE_KEYS.has(key);
-    const d = rings.map((r) => 'M' + r.map(([x, y]) => `${x} ${y}`).join('L') + (line ? '' : 'Z')).join('');
-    (parts[key] ??= []).push(d);
-  }
-  const layers: MapLayers = {};
-  for (const key of MAP_KEYS) if (parts[key]) layers[key] = parts[key].join('');
-  return layers;
-}
-
-// |suma pól ze znakiem| (shoelace): otwory w MVT mają przeciwny kierunek, więc same się odejmują.
-const ringsArea = (rings: Ring[]) => Math.abs(rings.reduce((sum, r) => sum + signedArea(r), 0));
-
-function objectsFrom(projected: Projected[], profile: MapProfile): MapObjects {
-  const objects: MapObjects = { buildings: [], green: [], water: [] };
-  if (!profile.objects) return objects;
-  for (const { key, rings, box } of projected) {
-    if (key === 'building')
-      objects.buildings.push({ x: (box[0] + box[2]) / 2, y: (box[1] + box[3]) / 2, area: ringsArea(rings) });
-    else if (key === 'green' || key === 'water') objects[key].push({ rings, area: ringsArea(rings), box });
-  }
-  return objects;
-}
-
-export function buildMapLayers(features: MapFeature[], size: [number, number], profile: MapProfile): MapLayers {
-  return layersFrom(projectFeatures(features, size, profile));
-}
-
-export function buildMapObjects(features: MapFeature[], size: [number, number], profile: MapProfile): MapObjects {
-  return objectsFrom(projectFeatures(features, size, profile), profile);
 }
 
 type TileJson = { template: string; maxZoom: number };
@@ -322,14 +274,13 @@ export async function loadMapLayers(
   projection: GeoProjection,
   size: [number, number],
   profile: MapProfile,
-): Promise<MapData> {
+): Promise<MapLayers> {
   const { template, maxZoom } = await loadTileJson();
   const tiles = mapTiles(projection, size, profile.tileUnits, maxZoom);
   const perTile = await Promise.all(tiles.map((t) => loadTileFeatures(tileUrlFrom(template, t), profile)));
-  const projected = projectFeatures(
+  return buildMapLayers(
     perTile.flatMap((features, i) => features.map((f) => ({ ...f, tile: tiles[i] }))),
     size,
     profile,
   );
-  return { layers: layersFrom(projected), objects: objectsFrom(projected, profile) };
 }

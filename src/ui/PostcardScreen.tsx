@@ -5,7 +5,8 @@ import { ROUTE_BOX } from '../postcard/Route';
 import { exportPng, exportSvg } from '../lib/exportPng';
 import { loadFontCss } from '../lib/fonts';
 import { fitRoute } from '../lib/routePath';
-import { THEMES, shownTheme, type ThemeId } from '../postcard/themes';
+import { POSTCARD } from '../lib/vectorMap';
+import { THEMES, type ThemeId } from '../postcard/themes';
 import { useMapLayers } from './useMapLayers';
 
 const BACKGROUNDS: [PostcardBackground, string][] = [
@@ -21,20 +22,10 @@ export function PostcardScreen({ activity, onBack }: { activity: Activity; onBac
   const [exportFailed, setExportFailed] = useState(false);
   const [background, setBackground] = useState<PostcardBackground>('gradient');
   const [mapFailed, setMapFailed] = useState(false);
-  const [theme, setTheme] = useState<ThemeId>('minimal');
-  const [renderedTheme, setRenderedTheme] = useState<ThemeId>('minimal');
+  const [theme, setTheme] = useState<ThemeId>('dark');
   const fit = useMemo(() => fitRoute(activity.map.summary_polyline, ROUTE_BOX), [activity]);
-  const map = useMapLayers(fit?.projection ?? null, SIZE, THEMES[theme].profile, background === 'map');
-  const mapData = useMemo(
-    () => (map.layers && map.objects ? { layers: map.layers, objects: map.objects } : undefined),
-    [map.layers, map.objects],
-  );
-  // Przy zmianie motywu rysujemy poprzedni na starych danych, aż przyjdą dane nowego profilu (bez migotania).
-  const shown = shownTheme(theme, renderedTheme, map.profile);
-  if (shown !== renderedTheme) setRenderedTheme(shown);
-  const mapLoading = background === 'map' && !mapData;
-  // Nie eksportujemy starego motywu, gdy nowy jeszcze się ładuje.
-  const exportBlocked = mapLoading || (background === 'map' && shown !== theme);
+  const map = useMapLayers(fit?.projection ?? null, SIZE, POSTCARD, background === 'map');
+  const mapLoading = background === 'map' && !map.layers;
 
   useEffect(() => {
     loadFontCss().then(setFontCss);
@@ -83,8 +74,8 @@ export function PostcardScreen({ activity, onBack }: { activity: Activity; onBac
           activity={activity}
           fontCss={fontCss}
           background={mapLoading ? 'gradient' : background}
-          map={mapData}
-          theme={shown}
+          map={map.layers}
+          theme={theme}
         />
       </div>
       <div className="segmented" role="group" aria-label="Background">
@@ -105,10 +96,10 @@ export function PostcardScreen({ activity, onBack }: { activity: Activity; onBac
         </div>
       )}
       <div className="actions">
-        <button className="primary" onClick={downloadPng} disabled={exportBlocked}>
+        <button className="primary" onClick={downloadPng} disabled={mapLoading}>
           Download PNG
         </button>
-        <button aria-label="Download SVG" onClick={downloadSvg} disabled={exportBlocked}>
+        <button aria-label="Download SVG" onClick={downloadSvg} disabled={mapLoading}>
           SVG
         </button>
       </div>

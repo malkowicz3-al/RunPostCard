@@ -1,51 +1,31 @@
-import { useMemo } from 'react';
 import type { Activity } from '../strava/api';
-import { hashSeed } from '../lib/random';
 import { fitRoute } from '../lib/routePath';
-import { MAP_ATTRIBUTION, type MapData } from '../lib/vectorMap';
+import { MAP_ATTRIBUTION, type MapLayers } from '../lib/vectorMap';
 import { Background } from './Background';
 import { Route, ROUTE_BOX } from './Route';
 import { StravaMark } from './StravaMark';
 import { DATA, FORMS, defaultLayout } from './slots';
 import { THEMES, type ThemeId } from './themes';
-import { slotZones } from './themes/geometry';
 
 export type PostcardBackground = 'gradient' | 'transparent' | 'map';
-
-const SIZE: [number, number] = [1080, 1920];
-const EXCLUDE = slotZones(defaultLayout);
 
 export function Postcard({
   activity,
   fontCss,
   background = 'gradient',
   map,
-  theme = 'minimal',
+  theme = 'dark',
 }: {
   activity: Activity;
   fontCss?: string;
   background?: PostcardBackground;
-  map?: MapData;
+  map?: MapLayers;
   theme?: ThemeId;
 }) {
   // Jedna projekcja dla mapy i trasy („scena”).
-  const fit = useMemo(() => fitRoute(activity.map.summary_polyline, ROUTE_BOX), [activity]);
+  const fit = fitRoute(activity.map.summary_polyline, ROUTE_BOX);
   const showMap = background === 'map' && fit && map;
-  // Rozmieszczanie ikon trwa do kilkudziesięciu ms, więc nie przy każdym renderze (np. po doczytaniu fontu).
-  const out = useMemo(
-    () =>
-      showMap
-        ? THEMES[theme].render({
-            map,
-            size: SIZE,
-            route: fit.points,
-            seed: hashSeed(activity.id),
-            activity,
-            exclude: EXCLUDE,
-          })
-        : null,
-    [showMap, theme, map, fit, activity],
-  );
+  const out = showMap ? THEMES[theme].render(map) : null;
   const text = out?.text ?? { color: '#ffffff' };
 
   return (
@@ -54,16 +34,9 @@ export function Postcard({
       {background === 'gradient' && <Background />}
       <g>
         {out?.scene}
-        {fit && <Route {...out?.route} d={out?.route.d ?? fit.d} />}
+        {fit && <Route {...out?.route} d={fit.d} />}
       </g>
-      {out?.overlay}
-      <g
-        color={text.color}
-        stroke={text.outline}
-        strokeWidth={text.outlineWidth}
-        paintOrder="stroke"
-        strokeLinejoin="round"
-      >
+      <g color={text.color} filter={text.filter}>
         {defaultLayout.map(({ slot, x, y, size }) => {
           const Form = FORMS[slot.form];
           const data = DATA[slot.data];

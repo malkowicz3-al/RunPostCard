@@ -1,5 +1,7 @@
 # 0005. Motywy map rysowane kodem w SVG (minimal, pixel, fantasy)
 
+> **Aktualizacja (decyzja właściciela):** motywy pixel (8-bit) i fantasy usunięte jako „za dużo”. Motywy zmieniają tylko stylistykę (kolory, linie, poświata), bez ikon: **dark** (dawny minimal, bez zmian wizualnych, domyślny), **light**, **neon** (`src/postcard/themes/`). Usunięte razem z nimi: `MapObjects`/`buildMapObjects`, profil `PIXEL`, `random.ts`, `geometry.ts` (rozmieszczanie ikon, schodkowa trasa), `shownTheme` (jeden profil `POSTCARD` dla wszystkich motywów). Zostaje podział scalonych multipoligonów budynków w `buildMapLayers` i warianty `StravaMark`. Interfejs: `MapTheme = { label, render(layers) -> { scene, route, text, mark } }`; filtry SVG lokalne, z obszarem równym płótnu. Poniższy tekst opisuje pierwotną wersję i zostaje jako historia.
+
 ## Kontekst
 Etap 2 „Motywy map” (CLAUDE.md): z tych samych danych OSM co tło „Map” (ADR 0004) generujemy stylizowane mapy na pocztówce, np. zamek zamiast bloku, smok, woda w falach. Wymagania: deterministycznie (ziarno = id biegu), trasa dokładna, eksport SVG/PNG jak teraz (ADR 0002: jeden samowystarczalny SVG), miniatury listy bez zmian, bez nowych zależności.
 

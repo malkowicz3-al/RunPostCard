@@ -9,6 +9,7 @@ export function MapBackground({ layers, style }: { layers: MapLayers; style: Map
       {MAP_KEYS.map((key) => {
         const d = layers[key];
         if (!d) return null;
+        const filter = style.filters?.[key];
         return LINE_KEYS.has(key) ? (
           <path
             key={key}
@@ -16,11 +17,12 @@ export function MapBackground({ layers, style }: { layers: MapLayers; style: Map
             fill="none"
             stroke={style.colors[key]}
             strokeWidth={style.widths[key]}
-            strokeLinecap={style.linecap ?? 'round'}
+            strokeLinecap="round"
             strokeLinejoin="round"
+            filter={filter}
           />
         ) : (
-          <path key={key} d={d} fill={style.colors[key]} />
+          <path key={key} d={d} fill={style.colors[key]} filter={filter} />
         );
       })}
     </>

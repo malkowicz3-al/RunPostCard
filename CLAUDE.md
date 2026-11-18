@@ -45,7 +45,7 @@ Wymiana kodu OAuth na token i jego odświeżanie wymagają sekretu aplikacji, wi
 
 ## Etapy
 1. Logowanie Stravą, lista biegów, wybór, domyślna pocztówka (gradient, trasa, 4 statystyki, 9:16), pobranie PNG, znak Strava. Dodane przez właściciela: mapa jako tło pocztówki i w kafelkach.
-2. Motywy map (dodane przez właściciela): z prawdziwych danych mapy generowane kodem w SVG stylizowane mapy na pocztówce, np. zamek zamiast bloku, smok, woda w falach. Najpierw architektura motywów + 8-bit i fantasy/pergamin (w klimacie sag fantasy, bez marek), potem mapa skarbów, neon/sci-fi, akwarela. Deterministyczne (ziarno = id biegu), trasa dokładna, eksport jak teraz; miniatury listy zostają minimalistyczne. Generowanie AI (model obrazu, własny płatny klucz, drugi backend): ewentualnie później jako opcja.
+2. Motywy map (dodane przez właściciela): ten sam prawdziwy zarys mapy w różnych stylach, zmienia się tylko stylistyka (kolory, linie, poświata), bez ikon. Są: Dark (domyślny), Light, Neon. 8-bit i fantasy (zamki, smok) zrobione i usunięte decyzją właściciela: „za dużo”. Kandydat na kolejny: Blueprint. Trasa dokładna, eksport jak teraz; miniatury listy minimalistyczne. Generowanie AI (model obrazu, własny płatny klucz, drugi backend): ewentualnie później jako opcja.
 3. Presety stylu i fontów, tryby tła (przezroczyste/gradient/zdjęcie), proporcje 4:5 i 1:1, przycięcie trasy, udostępnianie na telefonie.
 4. Sloty z konfigurowalnymi danymi i formami (np. tętno, tempo, przewyższenie, tempo na km; liczba, wykres liniowy, słupki, pierścień…). Najpierw agent badawczy proponuje formy wizualizacji, potem coder je implementuje.
 5. Przesuwanie, skalowanie i transformacja elementów myszą i dotykiem.

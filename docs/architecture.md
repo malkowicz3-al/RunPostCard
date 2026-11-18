@@ -32,25 +32,24 @@ src/
     slots.ts              # model slotu {id, data, form}, rejestr danych (data -> etykieta + wartość z Activity), domyślny układ 9:16
     Postcard.tsx          # jeden <svg viewBox="0 0 1080 1920">: tło, trasa, sloty, znak Strava; ten sam SVG idzie do eksportu
     Background.tsx        # gradient + ziarno przez filtr feTurbulence (kod, bez obrazków)
-    Route.tsx             # <path> trasy z gotowej ścieżki + styl z motywu (kolor, grubość, obwódka); ROUTE_BOX = obszar trasy na płótnie
-    MapBackground.tsx     # renderer warstw mapy: <rect> tła + jeden <path> na warstwę wg MapStyle (wektor inline, ADR 0004)
-    mapStyle.ts           # typ MapStyle i styl MINIMAL (kolory i grubości linii mapy)
+    Route.tsx             # <path> trasy z gotowej ścieżki + styl z motywu (kolor, grubość, filtr); ROUTE_BOX = obszar trasy na płótnie
+    MapBackground.tsx     # renderer warstw mapy: <rect> tła + jeden <path> na warstwę wg MapStyle (kolory, grubości, opcjonalny filtr; wektor inline, ADR 0004)
+    mapStyle.ts           # typ MapStyle (kolory, grubości linii, filtry warstw)
     SlotNumber.tsx        # forma "liczba"; kolor tylko przez currentColor (motyw ustawia color na grupie slotów)
     StravaMark.tsx        # oficjalny znak „Powered by Strava” (white/black/orange) jako <image> z data URL (import ?raw, bez modyfikacji plików)
-    themes/               # motywy mapy na pocztówce (ADR 0005)
-      index.ts            # typy ThemeInput/ThemeOutput/MapTheme, rejestr THEMES (minimal, pixel, fantasy)
-      minimal.tsx         # dotychczasowy wygląd mapy
-      pixel.tsx           # 8-bit: profil PIXEL (siatka 24), paleta 8 kolorów, miejskie sprite'y z prostokątów, schodkowa trasa
-      fantasy.tsx         # pergamin, drżenie feDisplacementMap (tylko mapa i ikony), woda w falach, kartusz, róża wiatrów
-      geometry.ts         # czyste funkcje: pointInPolygon, OccupancyGrid, slotZones, placeIcons, snap, staircase
-      geometry.test.ts
+    themes/               # motywy mapy na pocztówce, tylko stylistyka (ADR 0005)
+      index.ts            # typy ThemeOutput/MapTheme, rejestr THEMES (dark, light, neon)
+      index.test.tsx      # kolejność rejestru; każde url(#id) wskazuje element z tego samego SVG
+      dark.tsx            # ciemny zarys (dotychczasowy wygląd)
+      light.tsx           # jasny zarys, ciemna trasa i tekst, czarny znak Stravy
+      neon.tsx            # granatowe tło, świecące ulice i trasa (feGaussianBlur + feMerge, obszar filtra = płótno)
 
   ui/
     LoginScreen.tsx       # przycisk „Connect with Strava” (oficjalny styl) + znak Strava
     ActivityList.tsx      # lista ostatnich biegów (nazwa, data, dystans) do wyboru
     PostcardScreen.tsx    # podgląd pocztówki, wybór tła (gradient / przezroczyste / mapa) i motywu mapy, „Download PNG”/SVG
     RouteThumb.tsx        # miniatura trasy na zarysie mapy (profil THUMB, kolory z tokenów CSS --map-*)
-    useMapLayers.ts       # hook: projekcja -> ścieżki i obiekty mapy {layers, objects, failed}, anulowanie przy odmontowaniu
+    useMapLayers.ts       # hook: projekcja -> ścieżki mapy {layers, failed}, anulowanie przy odmontowaniu
 
   assets/brand/strava/    # oficjalne zasoby Stravy (przycisk Connect, znaki Powered by), bez modyfikacji
 
@@ -62,12 +61,10 @@ src/
     exportPng.ts          # SVG -> XMLSerializer -> Blob URL -> Image -> canvas 1080x1920 -> toBlob -> pobranie
     fonts.ts              # font pocztówki (TTF) jako data URL wstrzykiwany do <style> w SVG (img nie pobiera zewnętrznych fontów)
     dataUrl.ts            # fetch -> data URL z cache w pamięci (font)
-    routePath.ts          # fitRoute: polyline -> d3-geo geoMercator().fitExtent -> {projection, d, points}; routePath = samo d
-    random.ts             # hashSeed (FNV-1a) + mulberry32: deterministyczna losowość motywów (ziarno = id biegu)
-    random.test.ts
+    routePath.ts          # fitRoute: polyline -> d3-geo geoMercator().fitExtent -> {projection, d}; routePath = samo d
     mapTiles.ts           # czysta funkcja: projekcja trasy + tileUnits -> kafelki XYZ pokrywające płótno; tileUrlFrom (ADR 0004)
     mapTiles.test.ts
-    vectorMap.ts          # OpenFreeMap: TileJSON, kolejka ≤4, cache kafelków, dekodowanie MVT, buildMapLayers/buildMapObjects, profile POSTCARD/THUMB/PIXEL
+    vectorMap.ts          # OpenFreeMap: TileJSON, kolejka ≤4, cache kafelków, dekodowanie MVT, buildMapLayers (scalone budynki dzielone na osobne poligony), profile POSTCARD/THUMB
     vectorMap.test.ts
 
 public/fonts/             # Barlow Condensed Bold (TTF) + OFL.txt
@@ -100,7 +97,7 @@ docs/
 - **Testy: Vitest**: współdzieli konfigurację Vite, zero dodatkowej konfiguracji; testy tylko dla logiki (polyline, format, stravaToken).
 - **Jednostki: tylko km** w etapie 1.
 - **Mapa wektorowa z OpenFreeMap rysowana jako SVG** (bez klucza i bez biblioteki map): kafelki liczone z tej samej projekcji co trasa, dekodowane przez `@mapbox/vector-tile` + `pbf`, jedna ścieżka na warstwę; CARTO usunięte (ADR 0004, zastępuje 0003).
-- **Motywy mapy rysowane kodem w SVG** (minimal, 8-bit, fantasy): z tych samych danych OSM plus obiekty (budynki, zieleń, woda), ikony jako `<symbol>`/`<use>` rozmieszczane deterministycznie (ziarno = id biegu), trasa zawsze dokładna i na wierzchu mapy, bez plików graficznych i nowych zależności; miniatury bez zmian (ADR 0005).
+- **Motywy mapy tylko stylistyczne** (dark, light, neon): te same warstwy mapy, inne kolory, grubości i filtry SVG (lokalne `url(#…)`, więc eksport działa); bez ikon, bez plików graficznych i nowych zależności; miniatury bez zmian (ADR 0005).
 
 ## Otwarte pytania
 
