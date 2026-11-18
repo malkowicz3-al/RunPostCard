@@ -4,19 +4,46 @@ Turn one of your Strava runs into a postcard: a modern graphic with the route an
 
 Status: stage 1 (Strava login, list of recent runs, default 9:16 postcard, PNG download).
 
-## Strava app registration
+## Strava app registration (required)
 
-Every user runs their own copy of the app with their own Strava API application, so you need to register one:
+Every user runs their own copy of the app with their own Strava API application. Without it, the login button does not work. This takes about 5 minutes and you do it once.
 
-1. Go to <https://www.strava.com/settings/api> and create an application.
-2. Set **Authorization Callback Domain**:
-   - local development: `localhost`
-   - Vercel: your deployment domain, e.g. `your-app.vercel.app`
-3. Note the **Client ID** and **Client Secret**.
+### Step 1. Create the application
+
+1. Log in to Strava in your browser, then open <https://www.strava.com/settings/api>.
+2. Fill in the form:
+   - **Application name:** anything, e.g. `RunPostcard`.
+   - **Category:** any, e.g. `Visualizer`.
+   - **Website** (required): any public page for your project, e.g. your GitHub repository URL.
+   - **Authorization Callback Domain** (required):
+     - local development: exactly `localhost` (no `http://`, no port),
+     - Vercel: your deployment domain only, e.g. `your-app.vercel.app`.
+   - Accept the Strava API Agreement and click **Create**.
+
+![Create application form](docs/setup/1-strava-create-app.svg)
+
+3. Strava asks for an app icon. You can upload [docs/assets/app-icon.png](docs/assets/app-icon.png) or your own image.
+
+### Step 2. Copy the Client ID and Client Secret
+
+After creating the app, the application page shows:
+
+- **Client ID** (a number). It is public. Copy it.
+- **Client secret**. Click **Show**, then copy it. It is secret.
+
+![Where to find the values](docs/setup/2-strava-credentials.svg)
+
+Do not use the **Your access token** section. The app gets its own token when you log in.
+
+### Step 3. Create the `.env` file
+
+In the project root (next to `package.json`), copy `.env.example` to `.env`. On Windows you can copy the file in Explorer and rename it, or run `copy .env.example .env` in a terminal.
+
+![The .env file](docs/setup/3-env-file.svg)
 
 ## Environment variables
 
-Copy `.env.example` to `.env` and fill in the values:
+Fill in the two values in `.env`:
 
 ```
 VITE_STRAVA_CLIENT_ID=your-client-id
@@ -36,6 +63,26 @@ npm run dev
 Open <http://localhost:5173>. The local dev server serves `POST /api/strava/token` itself.
 
 Other scripts: `npm test` (Vitest), `npm run typecheck`, `npm run build`, `npm run preview`.
+
+Restart `npm run dev` after changing `.env`. Vite reads it only at startup.
+
+### Testing the login
+
+1. Open <http://localhost:5173> and click **Connect with Strava**.
+2. Strava asks you to log in (if you are not logged in) and to allow access to your activities.
+3. You are sent back to the app, and your recent runs appear in the list.
+
+If something goes wrong, see **Troubleshooting** below.
+
+## Troubleshooting
+
+| What you see | Cause | Fix |
+| --- | --- | --- |
+| Strava page says `client_id: undefined` or `"code":"invalid"` | `.env` is missing or `VITE_STRAVA_CLIENT_ID` is empty | Check `.env` is in the project root, restart `npm run dev` |
+| Strava page says the redirect URI is invalid | Callback domain in Strava is not `localhost` | Set **Authorization Callback Domain** to exactly `localhost` |
+| The token request returns `500` "not configured" | `STRAVA_CLIENT_SECRET` is empty | Paste the secret into `.env`, restart `npm run dev` |
+| The token request returns `401` "Strava rejected the code or token" | Wrong secret, or the login code expired | Check the secret, then click **Connect with Strava** again |
+| The list is empty | You have no runs with GPS (they are hidden on purpose) | Expected; try another account or a run with a route |
 
 ## Deploy on Vercel
 

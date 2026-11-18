@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 560" font-family="Segoe UI, Arial, sans-serif">
+  <rect width="800" height="560" fill="#ffffff"/>
+  <text x="40" y="50" font-size="24" font-weight="700" fill="#1f2328">Create an application (schematic)</text>
+
+  <g font-size="14" fill="#444">
+    <text x="40" y="100">Application name</text>
+    <rect x="40" y="110" width="360" height="36" rx="4" fill="#f6f8fa" stroke="#d0d7de"/>
+    <text x="54" y="134" fill="#1f2328">RunPostcard</text>
+
+    <text x="40" y="170">Category</text>
+    <rect x="40" y="180" width="360" height="36" rx="4" fill="#f6f8fa" stroke="#d0d7de"/>
+    <text x="54" y="204" fill="#1f2328">Visualizer</text>
+
+    <text x="40" y="240">Website <tspan fill="#cf222e">(required)</tspan></text>
+    <rect x="40" y="250" width="360" height="36" rx="4" fill="#fff" stroke="#fc4c02" stroke-width="2"/>
+    <text x="54" y="274" fill="#1f2328">https://github.com/your-name/RunPostCard</text>
+
+    <text x="40" y="310">Authorization Callback Domain <tspan fill="#cf222e">(required)</tspan></text>
+    <rect x="40" y="320" width="360" height="36" rx="4" fill="#fff" stroke="#fc4c02" stroke-width="2"/>
+    <text x="54" y="344" fill="#1f2328">localhost</text>
+  </g>
+
+  <rect x="40" y="390" width="200" height="40" rx="6" fill="#fc4c02"/>
+  <text x="140" y="415" font-size="15" font-weight="600" fill="#fff" text-anchor="middle">Create</text>
+
+  <!-- callouts -->
+  <g fill="#fc4c02" font-size="14" font-weight="600">
+    <text x="430" y="274">&#8592; any public page for your project</text>
+    <text x="430" y="344">&#8592; exactly: localhost (no http://, no port)</text>
+    <text x="430" y="110">&#8592; anything you like</text>
+  </g>
+  <text x="40" y="500" font-size="13" fill="#57606a">Leave the other fields as they are. The description is optional.</text>
+  <text x="40" y="524" font-size="13" fill="#57606a">Strava also asks for an app icon. You can upload docs/assets/app-icon.png.</text>
+</svg>
