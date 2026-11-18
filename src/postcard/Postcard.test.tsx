@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { mockActivities, mockStreams } from '../dev/mockActivities';
 import { MAP_ATTRIBUTION } from '../lib/vectorMap';
 import { Postcard } from './Postcard';
+import { ROUTE_BOX } from './Route';
 
 const LAYERS = { water: 'M0 0L50 0L50 50Z', major: 'M0 100L500 100' };
 const hills = mockActivities().find((r) => r.name === 'Hill repeats')!;
@@ -22,6 +23,33 @@ describe('Postcard 3D i markery', () => {
     expect(svg.replaceAll('http://www.w3.org/2000/svg', '')).not.toMatch(/https?:\/\//);
     expect(svg).toContain('MAX HR');
     expect(svg).toContain('stroke="#ff9a3d"'); // trasa 3D kolorowana nachyleniem
+  });
+
+  it('3D: kamera w SVG, wypełniona kurtyna, podpis przewyższenia u góry pola trasy', () => {
+    const svg = renderToStaticMarkup(
+      <Postcard
+        activity={hills}
+        background="map"
+        map={LAYERS}
+        theme="neon"
+        streams={streams}
+        view="3d"
+        highlights
+        camera={{ zoom: 2, x: 10, y: -20 }}
+      />,
+    );
+    // Skala 2 wokół (540, 720) + przesunięcie (10, -20).
+    expect(svg).toContain('transform="translate(-530 -740) scale(2)"');
+    expect(svg).toContain('id="iso-curtain-grad"');
+    expect(svg).toContain('fill="url(#iso-curtain-grad)"');
+    expect(svg).toContain('filter="url(#neon-route)"');
+    for (const [, ref] of svg.matchAll(/url\(#([\w-]+)\)/g)) expect(svg).toContain(`id="${ref}"`);
+    const ids = [...svg.matchAll(/id="([^"]+)"/g)].map(([, id]) => id);
+    expect(new Set(ids).size).toBe(ids.length);
+    const label = svg.match(/<text[^>]* y="([\d.]+)"[^>]*>elevation ×/);
+    expect(label).not.toBeNull();
+    expect(Number(label![1])).toBeGreaterThanOrEqual(ROUTE_BOX[0][1]);
+    expect(Number(label![1])).toBeLessThan(ROUTE_BOX[0][1] + 100);
   });
 
   it('widok płaski z markerami pokazuje MAX HR', () => {

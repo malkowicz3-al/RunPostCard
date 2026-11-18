@@ -7,9 +7,20 @@ const MAX_DRAWN = 800; // rysujemy co k-ty punkt; markery dalej używają pełny
 
 const pt = ([x, y]: [number, number]) => `${x.toFixed(1)} ${y.toFixed(1)}`;
 
-// flat: kolor płaskich odcinków i podpisu (biały na gradiencie, kolor trasy motywu na mapie).
-export function IsoRoute({ iso, flat = '#ffffff', text = '#ffffff' }: { iso: Iso; flat?: string; text?: string }) {
-  const { curtain, shadow, runs, bottom } = useMemo(() => {
+// flat: kolor płaskich odcinków i kurtyny (biały na gradiencie, kolor trasy motywu na mapie).
+// zoom: skala kamery nad tą grupą; grubości linii dzielimy przez nią, żeby trasa nie grubła po przybliżeniu.
+export function IsoRoute({
+  iso,
+  flat = '#ffffff',
+  filter,
+  zoom = 1,
+}: {
+  iso: Iso;
+  flat?: string;
+  filter?: string;
+  zoom?: number;
+}) {
+  const { curtain, shadow, runs, top, bottom } = useMemo(() => {
     const { points, ground, slope } = iso;
     const k = Math.ceil(points.length / MAX_DRAWN);
     const idx = points.map((_, i) => i).filter((i) => i % k === 0 || i === points.length - 1);
@@ -28,31 +39,27 @@ export function IsoRoute({ iso, flat = '#ffffff', text = '#ffffff' }: { iso: Iso
       if (lastRun?.color === color) lastRun.d += `L${pt(points[i])}`;
       else runs.push({ color, d: `M${pt(points[idx[j]])}L${pt(points[i])}` });
     });
-    const bottom = [...points, ...ground].reduce((max, [, y]) => Math.max(max, y), -Infinity);
-    return { curtain, shadow, runs, bottom };
+    const top = points.reduce((min, [, y]) => Math.min(min, y), Infinity);
+    const bottom = ground.reduce((max, [, y]) => Math.max(max, y), -Infinity);
+    return { curtain, shadow, runs, top, bottom };
   }, [iso, flat]);
 
   return (
     <g>
-      <path d={curtain} fill={flat} fillOpacity={0.07} stroke="none" />
-      <path d={shadow} fill="none" stroke="#000000" strokeOpacity={0.2} strokeWidth={6} strokeLinecap="round" strokeLinejoin="round" />
-      {runs.map((r, i) => (
-        <path key={i} d={r.d} fill="none" stroke={r.color} strokeWidth={7} strokeLinecap="round" strokeLinejoin="round" />
-      ))}
-      {iso.exaggeration > 1.05 && (
-        <text
-          x={540}
-          y={Math.min(bottom + 48, 1230)}
-          fontSize={28}
-          fontWeight={700}
-          fontFamily="'Barlow Condensed', system-ui, sans-serif"
-          textAnchor="middle"
-          fill={text}
-          opacity={0.8}
-        >
-          elevation ×{iso.exaggeration.toFixed(1)}
-        </text>
-      )}
+      <defs>
+        {/* Pionowy gradient kurtyny: mocniej przy trasie, prawie przezroczysto przy podłożu. */}
+        <linearGradient id="iso-curtain-grad" gradientUnits="userSpaceOnUse" x1={0} y1={top} x2={0} y2={Math.max(bottom, top + 1)}>
+          <stop offset="0" stopColor={flat} stopOpacity={0.45} />
+          <stop offset="1" stopColor={flat} stopOpacity={0.08} />
+        </linearGradient>
+      </defs>
+      <path d={curtain} fill="url(#iso-curtain-grad)" stroke="none" />
+      <path d={shadow} fill="none" stroke="#000000" strokeOpacity={0.2} strokeWidth={6 / zoom} strokeLinecap="round" strokeLinejoin="round" />
+      <g filter={filter}>
+        {runs.map((r, i) => (
+          <path key={i} d={r.d} fill="none" stroke={r.color} strokeWidth={7 / zoom} strokeLinecap="round" strokeLinejoin="round" />
+        ))}
+      </g>
     </g>
   );
 }

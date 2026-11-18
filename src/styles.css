@@ -335,6 +335,12 @@ button.text-button {
   background: conic-gradient(#3a3a3f 25%, #2c2c30 0 50%, #3a3a3f 0 75%, #2c2c30 0) 0 0 / 32px 32px;
 }
 
+/* 3D: przeciąganie przesuwa kamerę, więc jeden palec nie przewija strony. */
+.postcard-frame.pannable {
+  touch-action: none;
+  cursor: grab;
+}
+
 .postcard {
   display: block;
   width: 100%;
@@ -451,6 +457,15 @@ button.toggle {
 button.toggle[aria-pressed='true'] {
   border-color: var(--text);
   color: var(--text);
+}
+
+.zoom-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  font-size: 15px;
+  color: var(--text-secondary);
 }
 
 .swatches {
