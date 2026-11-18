@@ -81,6 +81,10 @@ export function App() {
 
   return (
     <main className="app">
+      <header className="app-header">
+        <h1>RunPostcard</h1>
+        <p>Turn one of your runs into a postcard.</p>
+      </header>
       {error && <p className="error">{error}</p>}
       {screen === 'login' && <LoginScreen />}
       {screen === 'list' && <ActivityList runs={runs} loading={loading} onSelect={onSelect} />}

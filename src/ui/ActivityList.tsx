@@ -1,5 +1,6 @@
 import type { Activity } from '../strava/api';
 import { formatDate, formatDistanceKm } from '../lib/format';
+import { RouteThumb } from './RouteThumb';
 
 export function ActivityList({
   runs,
@@ -16,7 +17,8 @@ export function ActivityList({
     <ul className="runs">
       {runs.map((a) => (
         <li key={a.id}>
-          <button onClick={() => onSelect(a)}>
+          <button className="run-tile" onClick={() => onSelect(a)}>
+            <RouteThumb polyline={a.map.summary_polyline} />
             <span className="run-name">{a.name}</span>
             <span className="run-meta">
               {formatDate(a.start_date_local)} · {formatDistanceKm(a.distance)} km
