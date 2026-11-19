@@ -267,6 +267,64 @@ button.text-button {
   animation: login-in 0.8s ease-out;
 }
 
+/* Ładowanie kolażu: bieżnia 400 m pod panelem logowania, biegacz okrąża ją co 4 s. */
+.login-track {
+  --track: #a8442b;
+  position: relative;
+  z-index: 1; /* nad przyciemnieniem kolażu (::after) */
+  align-self: center;
+  width: min(92vw, 820px);
+  opacity: 0.6;
+  animation: login-in 0.8s ease-out;
+}
+
+.login-track-runner,
+.login-track-trail {
+  fill: none;
+  stroke: var(--select);
+  stroke-linecap: round;
+  animation: login-lap 4s linear infinite;
+}
+
+.login-track-runner {
+  stroke: #fff;
+  stroke-width: 1.6;
+  stroke-dasharray: 0.01 99.99;
+  filter: drop-shadow(0 0 2px var(--select));
+}
+
+/* Smuga kończy się na biegaczu: przesunięta o własną długość do tyłu. */
+.login-track-trail {
+  stroke-width: 1.2;
+  stroke-dasharray: 12 88;
+  animation-name: login-lap-trail;
+}
+
+@keyframes login-lap {
+  from {
+    stroke-dashoffset: 100;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes login-lap-trail {
+  from {
+    stroke-dashoffset: 112;
+  }
+  to {
+    stroke-dashoffset: 12;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-track-runner,
+  .login-track-trail {
+    animation: none;
+  }
+}
+
 @keyframes login-in {
   from {
     opacity: 0;

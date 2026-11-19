@@ -197,8 +197,27 @@ const Collage = memo(function Collage() {
       made.forEach((u) => URL.revokeObjectURL(u));
     };
   }, []);
-  return <CollageColumns urls={urls} />;
+  return urls.length ? <CollageColumns urls={urls} /> : <TrackLoader />;
 });
+
+// Bieżnia 400 m (proste 84,39 m, łuk toru 1 r = 36,5 m, 8 torów po 1,22 m) z biegaczem, póki liczy się kolaż.
+const STRAIGHT = 84.39;
+const lane = (r: number) => `M${-STRAIGHT / 2} ${r}h${STRAIGHT}a${r} ${r} 0 0 0 0 ${-2 * r}h${-STRAIGHT}a${r} ${r} 0 0 0 0 ${2 * r}Z`;
+function TrackLoader() {
+  const runner = lane(37.1); // linia biegu 30 cm od krawężnika; kierunek przeciwny do wskazówek zegara
+  return (
+    <div className="login-collage" aria-hidden="true">
+      <svg className="login-track" viewBox="-90 -50 180 100">
+        <path d={lane(41.38)} fill="none" stroke="var(--track)" strokeWidth={9.76} />
+        {Array.from({ length: 9 }, (_, i) => (
+          <path key={i} d={lane(36.5 + i * 1.22)} fill="none" stroke="rgb(255 255 255 / 0.35)" strokeWidth={0.15} />
+        ))}
+        <path className="login-track-trail" d={runner} pathLength={100} />
+        <path className="login-track-runner" d={runner} pathLength={100} />
+      </svg>
+    </div>
+  );
+}
 
 export function LoginScreen() {
   return (
