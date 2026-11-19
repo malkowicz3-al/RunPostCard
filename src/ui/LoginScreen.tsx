@@ -6,7 +6,10 @@ import { loadPhoto } from '../lib/photo';
 import { Postcard } from '../postcard/Postcard';
 import { resolveLayout, type LayoutId } from '../postcard/slots';
 import { THEMES, type ThemeId } from '../postcard/themes';
-import { demoRun } from './demoRuns';
+import { DEMO_RUN_COUNT, demoRun } from './demoRuns';
+import type { Cutout } from '../lib/cutout';
+import type { Rect } from '../lib/mapTiles';
+import RECTS from '../assets/collage/cutouts/rects.json';
 
 // Bez motywu = tło gradientowe. Karta i = bieg i z demoRuns. font: lżejszy krój zamiast domyślnego motywu,
 // bo każda karta osadza cały plik fontu (Lobster, Pacifico, Teko to 300–400 kB).
@@ -23,9 +26,9 @@ const COLUMNS: Card[][] = [
   [
     { layout: 'classic', theme: 'dark' },
     { layout: 'pulse', theme: 'neon', photo: { n: 0, layout: 'hero' } },
-    { layout: 'hero', photo: { n: 2, layout: 'minimal', route: false } },
+    { layout: 'hero', photo: { n: 2, layout: 'minimal' } },
     { layout: 'climb', theme: 'dune', view: '3d' },
-    { layout: 'magazine', theme: 'vintage', font: 'bebas', photo: { n: 5, layout: 'bigPair', route: false } },
+    { layout: 'magazine', theme: 'vintage', font: 'bebas', photo: { n: 5, layout: 'bigPair' } },
     { layout: 'duo', theme: 'terminal' },
   ],
   [
@@ -40,25 +43,64 @@ const COLUMNS: Card[][] = [
     { layout: 'poster', theme: 'watercolor', font: 'marker', photo: { n: 3, layout: 'classic', route: false } },
     { layout: 'splits', theme: 'light' },
     { layout: 'corners', theme: 'overworld' },
-    { layout: 'dashboard', theme: 'riso', photo: { n: 6, layout: 'hero', route: false } },
+    { layout: 'dashboard', theme: 'riso', photo: { n: 6, layout: 'hero' } },
     { layout: 'bigPair' },
     { layout: 'stackLeft', theme: 'spellbook', font: 'righteous' },
+  ],
+  [
+    { layout: 'grid', theme: 'galaxy' },
+    { layout: 'classic', theme: 'halftone', photo: { n: 2, layout: 'poster' } },
+    { layout: 'table', theme: 'nightvision' },
+    { layout: 'hud', theme: 'popcomic', photo: { n: 7, layout: 'hero' } },
+    { layout: 'scoreboard', theme: 'chalk' },
+    { layout: 'minimal', theme: 'digitalrain', view: '3d' },
+  ],
+  [
+    { layout: 'strip', theme: 'redfog', photo: { n: 5, layout: 'classic' } },
+    { layout: 'pulse', theme: 'lightgrid' },
+    { layout: 'duo', theme: 'bricks' },
+    { layout: 'corners', theme: 'dollhouse', font: 'righteous', photo: { n: 1, layout: 'minimal', route: false } },
+    { layout: 'magazine', theme: 'handheld' },
+    { layout: 'splits', theme: 'pinball' },
   ],
 ];
 
 // Zdjęcia CC0 (autorzy w README), już przycięte do 9:16; brak pliku = karta z mapą/gradientem.
+// Wycinanki postaci (Behind) zrobione raz w dev przez src/dev/collageCutouts.ts: tu bez modelu MediaPipe i bez sieci.
+const CUTOUTS = import.meta.glob('../assets/collage/cutouts/*.png', { eager: true, query: '?url', import: 'default' });
 const PHOTOS = Object.entries(
   import.meta.glob('../assets/collage/*.jpg', { eager: true, query: '?url', import: 'default' }),
 )
   .sort(([a], [b]) => a.localeCompare(b))
-  .map(([, url]) => url as string);
+  .map(([path, url]) => {
+    const name = path.match(/(\w+)\.jpg$/)![1];
+    return { url: url as string, cutout: CUTOUTS[`../assets/collage/cutouts/${name}.png`] as string | undefined, rect: (RECTS as Record<string, number[]>)[name] as Rect | undefined };
+  });
 
 // Zdjęcie zmniejszone (karty mają ~200 px) i zakodowane od nowa jako JPEG (bez EXIF); błąd = karta bez zdjęcia.
 async function photoFor(card: Card): Promise<string | undefined> {
-  const url = card.photo && PHOTOS[card.photo.n];
+  const url = card.photo && PHOTOS[card.photo.n]?.url;
   if (!url) return undefined;
   try {
     return await loadPhoto(await (await fetch(url)).blob(), 0.5);
+  } catch {
+    return undefined;
+  }
+}
+
+// Postać przed górną połową trasy, gdy zdjęcie ma wycinankę i kartę z trasą; siatka pusta (reguła pokrycia nieużywana).
+async function personFor(card: Card): Promise<Cutout | undefined> {
+  const p = card.photo && card.photo.route !== false ? PHOTOS[card.photo.n] : undefined;
+  if (!p?.cutout || !p.rect) return undefined;
+  try {
+    const blob = await (await fetch(p.cutout)).blob();
+    const href = await new Promise<string>((ok, fail) => {
+      const r = new FileReader();
+      r.onload = () => ok(r.result as string);
+      r.onerror = () => fail(r.error);
+      r.readAsDataURL(blob); // PNG z alfą jako data URL: obrazek SVG nie wczyta osobnego pliku
+    });
+    return { href, rect: p.rect, grid: new Uint8Array(0) };
   } catch {
     return undefined;
   }
@@ -88,8 +130,9 @@ export async function collageSvgs(onColumn: (svgs: string[]) => void, alive = ()
       await new Promise((r) => setTimeout(r));
       if (!alive()) return;
       const card = CARDS[i];
-      const { activity, streams, map } = demoRun(i);
+      const { activity, streams, map } = demoRun(i % DEMO_RUN_COUNT);
       const photo = await photoFor(card);
+      const person = photo ? await personFor(card) : undefined;
       if (!alive()) return;
       svgCache.push(
         renderToStaticMarkup(
@@ -98,6 +141,7 @@ export async function collageSvgs(onColumn: (svgs: string[]) => void, alive = ()
             background={photo ? 'photo' : card.theme ? 'map' : 'gradient'}
             map={map}
             photo={photo ? { href: photo, dim: 0.3 } : undefined}
+            person={person}
             theme={card.theme}
             font={fontOf(card)}
             fontCss={fonts[fontOf(card)]}

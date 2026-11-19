@@ -237,7 +237,7 @@ button.text-button {
   animation: login-down 80s linear infinite;
 }
 
-.login-column:nth-child(2) {
+.login-column:nth-child(even) {
   animation-name: login-up;
   animation-duration: 70s;
 }
@@ -246,10 +246,18 @@ button.text-button {
   animation-duration: 90s;
 }
 
+.login-column:nth-child(4) {
+  animation-duration: 76s;
+}
+
+.login-column:nth-child(5) {
+  animation-duration: 86s;
+}
+
 .login-card {
   display: block;
   flex: none;
-  width: clamp(150px, 22vw, 300px);
+  width: clamp(130px, 17vw, 280px);
   aspect-ratio: 9 / 16;
   margin-bottom: 28px;
   border-radius: 16px;
@@ -280,12 +288,16 @@ button.text-button {
 }
 
 @media (max-width: 600px) {
-  .login-column:nth-child(3) {
+  .login-collage {
+    gap: 16px;
+  }
+
+  .login-column:nth-child(n + 4) {
     display: none;
   }
 
   .login-card {
-    width: 44vw;
+    width: 32vw;
   }
 }
 

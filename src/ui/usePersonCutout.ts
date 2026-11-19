@@ -20,7 +20,7 @@ function canvas(width: number, height: number): HTMLCanvasElement {
 const free = (...cs: HTMLCanvasElement[]) => cs.forEach((c) => (c.width = c.height = 0));
 
 // Wycinanka osoby albo obiektu pod tap (PNG z alfą) w prostokącie płótna 1080x1920; null gdy nic nie znaleziono.
-async function cutout(href: string, tap: Tap | null): Promise<Cutout | null> {
+export async function cutout(href: string, tap: Tap | null): Promise<Cutout | null> {
   const img = new Image();
   img.src = href;
   await img.decode();
