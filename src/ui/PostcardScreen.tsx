@@ -97,6 +97,7 @@ export function PostcardScreen({
   const [accent, setAccent] = useState(DEFAULT_ACCENT);
   const [mapFailed, setMapFailed] = useState(false);
   const [view, setView] = useState<'flat' | '3d'>('flat');
+  const [showRoute, setShowRoute] = useState(true);
   const [terrainPick, setTerrainPick] = useState<boolean | null>(null); // null = automatycznie z przewyższenia
   const [layoutId, setLayoutId] = useState<LayoutId>('classic');
   const [overrides, setOverrides] = useState<Partial<Record<LayoutId, Overrides>>>({});
@@ -413,6 +414,7 @@ export function PostcardScreen({
             refined={zoomed.refined}
             terrain={terrainImage}
             layout={items}
+            route={showRoute}
           />
           {/* Nakładka w HTML obok <svg>, żeby nie trafiła do eksportu. */}
           {items.map((item) => {
@@ -470,7 +472,7 @@ export function PostcardScreen({
           <p className="panel-hint">
             Click a stat to change it.{fit && ' Drag, Ctrl + scroll or pinch to move and zoom the map.'}
           </p>
-          {fit && (has3d || hasTerrain || moved) && (
+          {fit && (
             <section className="panel-section">
               <h3 className="panel-heading">View</h3>
               <div className="toggle-row">
@@ -484,6 +486,9 @@ export function PostcardScreen({
                     </button>
                   </div>
                 )}
+                <button className="toggle" aria-pressed={showRoute} onClick={() => setShowRoute(!showRoute)}>
+                  Route
+                </button>
                 {hasTerrain && (
                   <button className="toggle" aria-pressed={terrainOn} onClick={() => setTerrainPick(!terrainOn)}>
                     Terrain

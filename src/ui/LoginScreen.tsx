@@ -2,6 +2,7 @@ import { memo, useEffect, useState } from 'react';
 import { buildAuthUrl } from '../strava/auth';
 import connectWithStrava from '../assets/brand/strava/connect-with-strava-orange.svg';
 import { DEFAULT_FONT, loadFontCss, type FontId } from '../lib/fonts';
+import { loadPhoto } from '../lib/photo';
 import { Postcard } from '../postcard/Postcard';
 import { resolveLayout, type LayoutId } from '../postcard/slots';
 import { THEMES, type ThemeId } from '../postcard/themes';
@@ -9,34 +10,60 @@ import { demoRun } from './demoRuns';
 
 // Bez motywu = tło gradientowe. Karta i = bieg i z demoRuns. font: lżejszy krój zamiast domyślnego motywu,
 // bo każda karta osadza cały plik fontu (Lobster, Pacifico, Teko to 300–400 kB).
-type Card = { layout: LayoutId; theme?: ThemeId; view?: '3d'; font?: FontId };
+// photo: n-te zdjęcie z lokalnego folderu (jeśli jest) zamiast tła, z własnym układem i bez trasy, gdy route: false.
+type Card = {
+  layout: LayoutId;
+  theme?: ThemeId;
+  view?: '3d';
+  font?: FontId;
+  photo?: { n: number; layout: LayoutId; route?: false };
+};
 
 const COLUMNS: Card[][] = [
   [
     { layout: 'classic', theme: 'dark' },
-    { layout: 'pulse', theme: 'neon' },
-    { layout: 'hero' },
+    { layout: 'pulse', theme: 'neon', photo: { n: 0, layout: 'hero' } },
+    { layout: 'hero', photo: { n: 2, layout: 'minimal', route: false } },
     { layout: 'climb', theme: 'dune', view: '3d' },
-    { layout: 'magazine', theme: 'vintage', font: 'bebas' },
+    { layout: 'magazine', theme: 'vintage', font: 'bebas', photo: { n: 5, layout: 'bigPair', route: false } },
     { layout: 'duo', theme: 'terminal' },
   ],
   [
-    { layout: 'hud', theme: 'synthwave' },
+    { layout: 'hud', theme: 'synthwave', photo: { n: 4, layout: 'stackLeft', route: false } },
     { layout: 'grid', theme: 'blueprint' },
     { layout: 'table', theme: 'arcademaze' },
-    { layout: 'minimal', theme: 'pencil' },
+    { layout: 'minimal', theme: 'pencil', photo: { n: 1, layout: 'poster' } },
     { layout: 'scoreboard', theme: 'kartrace' },
-    { layout: 'strip', theme: 'cyberhud', view: '3d', font: 'orbitron' },
+    { layout: 'strip', theme: 'cyberhud', view: '3d', font: 'orbitron', photo: { n: 7, layout: 'corners', route: false } },
   ],
   [
-    { layout: 'poster', theme: 'watercolor', font: 'marker' },
+    { layout: 'poster', theme: 'watercolor', font: 'marker', photo: { n: 3, layout: 'classic', route: false } },
     { layout: 'splits', theme: 'light' },
     { layout: 'corners', theme: 'overworld' },
-    { layout: 'dashboard', theme: 'riso' },
+    { layout: 'dashboard', theme: 'riso', photo: { n: 6, layout: 'hero', route: false } },
     { layout: 'bigPair' },
     { layout: 'stackLeft', theme: 'spellbook', font: 'righteous' },
   ],
 ];
+
+// shortcut: zdjęcia tylko z lokalnego folderu w .gitignore (brak praw do publikacji); w repo ich nie ma, karty
+// wracają wtedy do mapy/gradientu. Podmienić na zdjęcia z wolną licencją, jeśli mają być w repo.
+const PHOTOS = Object.entries(
+  import.meta.glob('../assets/collage-local/*.{jpg,jpeg,png,webp}', { eager: true, query: '?url', import: 'default' }),
+)
+  .sort(([a], [b]) => a.localeCompare(b))
+  .map(([, url]) => url as string);
+
+// Zdjęcie zmniejszone (karty mają ~200 px) i zakodowane od nowa jako JPEG (bez EXIF); błąd = karta bez zdjęcia.
+async function photoFor(card: Card): Promise<string | undefined> {
+  const url = card.photo && PHOTOS[card.photo.n];
+  if (!url) return undefined;
+  try {
+    return await loadPhoto(await (await fetch(url)).blob(), 0.5);
+  } catch {
+    return undefined;
+  }
+}
 const CARDS = COLUMNS.flat();
 const PER_COLUMN = COLUMNS[0].length;
 const fontOf = (card: Card): FontId => card.font ?? (card.theme ? THEMES[card.theme].font : DEFAULT_FONT);
@@ -63,18 +90,22 @@ export async function collageSvgs(onColumn: (svgs: string[]) => void, alive = ()
       if (!alive()) return;
       const card = CARDS[i];
       const { activity, streams, map } = demoRun(i);
+      const photo = await photoFor(card);
+      if (!alive()) return;
       svgCache.push(
         renderToStaticMarkup(
           <Postcard
             activity={activity}
-            background={card.theme ? 'map' : 'gradient'}
+            background={photo ? 'photo' : card.theme ? 'map' : 'gradient'}
             map={map}
+            photo={photo ? { href: photo, dim: 0.3 } : undefined}
             theme={card.theme}
             font={fontOf(card)}
             fontCss={fonts[fontOf(card)]}
             streams={streams}
-            view={card.view}
-            layout={resolveLayout(card.layout)}
+            view={photo ? undefined : card.view}
+            layout={resolveLayout(photo ? card.photo!.layout : card.layout)}
+            route={!photo || card.photo!.route !== false}
           />,
         ),
       );

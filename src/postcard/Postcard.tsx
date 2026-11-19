@@ -45,6 +45,7 @@ export function Postcard({
   refined,
   terrain,
   layout = defaultLayout,
+  route = true,
 }: {
   activity: Activity;
   fontCss?: string;
@@ -61,6 +62,7 @@ export function Postcard({
   refined?: { rect: Rect; layers: MapLayers }; // ostrzejsza mapa przybliżonego fragmentu (płasko lub podłoga 3D)
   terrain?: TerrainImage; // tylko z tłem map: 3D relief zamiast podłogi i brył, płasko cieniowanie nad mapą
   layout?: LayoutItem[];
+  route?: boolean; // false: tylko tło i statystyki (np. na własnym zdjęciu)
 }) {
   // Jedna projekcja dla mapy i trasy („scena”).
   const polyline = activity.map.summary_polyline;
@@ -145,7 +147,7 @@ export function Postcard({
           </g>
           {/* Faktura papieru w przestrzeni płótna (jak w widoku płaskim), nie na pochylonej i powiększanej podłodze. */}
           {out?.overlay}
-          <g transform={cameraTransform(camera)}>
+          {route && (<g transform={cameraTransform(camera)}>
             <IsoRoute
               iso={iso}
               flat={out?.route.stroke}
@@ -154,7 +156,7 @@ export function Postcard({
               zoom={camera.zoom}
               onSurface={!!relief}
             />
-          </g>
+          </g>)}
         </g>
       ) : (
         <g>
@@ -166,7 +168,7 @@ export function Postcard({
             {relief && terrainImage(relief)}
           </g>
           {out?.overlay}
-          {fit && (
+          {fit && route && (
             <g transform={cameraTransform(camera)}>
               <Route {...out?.route} d={fit.d} zoom={camera.zoom} />
             </g>

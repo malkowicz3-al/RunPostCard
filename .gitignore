@@ -6,3 +6,6 @@ node_modules/
 dist/
 .vercel/
 *.tsbuildinfo
+
+# Zdjęcia do kolażu logowania tylko lokalnie (bez praw do publikacji w repo)
+src/assets/collage-local/
