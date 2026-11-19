@@ -31,6 +31,7 @@ export function App() {
   const [error, setError] = useState<string>();
   const [loadingMore, setLoadingMore] = useState(false);
   const [selection, setSelection] = useState<number[] | null>(null); // null = bez trybu Select
+  const [heat, setHeat] = useState(false); // Together ze wszystkimi biegami: kolory Heat
 
   const together = useMemo(() => runs.filter((r) => selection?.includes(r.id)), [runs, selection]);
 
@@ -131,7 +132,9 @@ export function App() {
     setScreen('generating');
   };
 
-  const onTogether = () => {
+  const onTogether = (all = false) => {
+    if (all) setSelection(runs.map((r) => r.id));
+    setHeat(all);
     history.pushState({ screen: 'together' }, '');
     setScreen('together');
   };
@@ -184,7 +187,7 @@ export function App() {
       )}
       {screen === 'together' && selection && (
         <Suspense fallback={<p>Loading…</p>}>
-          <TogetherScreen runs={together} onBack={() => history.back()} onSessionExpired={onSessionExpired} />
+          <TogetherScreen runs={together} heat={heat} onBack={() => history.back()} onSessionExpired={onSessionExpired} />
         </Suspense>
       )}
       <footer>

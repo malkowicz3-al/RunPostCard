@@ -45,22 +45,24 @@ async function loadStreams(run: Activity): Promise<RunStreams | null> {
 
 export function TogetherScreen({
   runs,
+  heat = false,
   onBack,
   onSessionExpired,
 }: {
   runs: Activity[];
+  heat?: boolean; // wszystkie biegi z listy: domyślnie kolory Heat
   onBack: () => void;
   onSessionExpired: () => void;
 }) {
   const previewRef = useRef<HTMLDivElement>(null);
-  const [layout, setLayout] = useState<TogetherLayout>('overlay');
-  const [pickedBackground, setBackground] = useState<TogetherBackground>('gradient');
+  const [layout, setLayout] = useState<TogetherLayout>('geo');
+  const [pickedBackground, setBackground] = useState<TogetherBackground>('map');
   // Overlay nie jest jednym światem, więc mapy nie ma; wybór Map wraca po przełączeniu na Geographic.
   const background = layout === 'overlay' && pickedBackground === 'map' ? 'gradient' : pickedBackground;
   const [theme, setTheme] = useState<ThemeId>('dark');
-  const [colors, setColors] = useState<TogetherColors>('run');
+  const [colors, setColors] = useState<TogetherColors>(heat ? 'heat' : 'run');
   const [sync, setSync] = useState<TogetherSync>('real');
-  const [view, setView] = useState<'flat' | '3d'>('flat');
+  const [view, setView] = useState<'flat' | '3d'>('3d');
   const [playing, setPlaying] = useState(true);
   const progress = usePreviewProgress(playing);
   const [streams, setStreams] = useState<Record<number, RunStreams | null>>({});

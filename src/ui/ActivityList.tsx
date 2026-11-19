@@ -162,7 +162,7 @@ export function ActivityList({
   onLoadMore: () => void;
   selection: number[] | null; // null = zwykły tryb (kafelek otwiera pocztówkę)
   onSelection: Dispatch<SetStateAction<number[] | null>>;
-  onTogether: () => void;
+  onTogether: (all?: boolean) => void; // all = wszystkie wczytane biegi, kolory Heat
 }) {
   const selecting = selection !== null;
   useEffect(() => {
@@ -180,6 +180,11 @@ export function ActivityList({
           {!loading && runs.length > 1 && (
             <button className="toggle" aria-pressed={selecting} onClick={() => onSelection(selecting ? null : [])}>
               Select
+            </button>
+          )}
+          {!loading && runs.length > 1 && (
+            <button className="toggle" onClick={() => onTogether(true)}>
+              All together
             </button>
           )}
           <button className="text-button" onClick={onLogout}>
@@ -206,7 +211,7 @@ export function ActivityList({
           <button className="text-button" disabled={selection.length === 0} onClick={() => onSelection([])}>
             Clear
           </button>
-          <button className="primary" disabled={!canAnimateTogether(selection.length)} onClick={onTogether}>
+          <button className="primary" disabled={!canAnimateTogether(selection.length)} onClick={() => onTogether()}>
             Animate together
           </button>
         </div>
