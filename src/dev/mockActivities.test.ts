@@ -28,7 +28,8 @@ describe('encodePolyline', () => {
 
   it('mock daje biegi z trasą, którą da się zdekodować', () => {
     const runs = mockActivities();
-    expect(runs).toHaveLength(7);
+    expect(runs).toHaveLength(40);
+    expect(new Set(runs.map((r) => r.id)).size).toBe(40);
     for (const run of runs) {
       expect(decodePolyline(run.map.summary_polyline).length).toBeGreaterThan(10);
     }

@@ -13,6 +13,7 @@
   --error: #ff8a8a;
   --primary-bg: var(--text);
   --primary-text: var(--bg);
+  --select: #fc4c02; /* zaznaczony kafelek: wyraźny kolor zamiast przygaszenia */
   --map-water: #1a2530;
   --map-road: #2a2a2f;
   background: var(--bg);
@@ -431,6 +432,59 @@ button.text-button {
   from {
     stroke-dashoffset: 1;
   }
+}
+
+.run-check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  box-sizing: border-box;
+  font-size: 15px;
+  font-weight: 700;
+  background: rgb(0 0 0 / 0.35);
+}
+
+.run-tile[aria-checked='true'] {
+  background: var(--surface-hover);
+  outline: 3px solid var(--select);
+  outline-offset: -3px;
+}
+
+.run-tile[aria-checked='true'] .run-check {
+  border-color: var(--select);
+  background: var(--select);
+  color: #ffffff;
+}
+
+.load-more {
+  margin: 16px auto 0;
+}
+
+/* Pasek zaznaczenia przyklejony do dołu ekranu listy. */
+.select-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 1120px;
+  margin-top: 16px;
+  padding: 12px 16px;
+  box-sizing: border-box;
+  background: var(--bg);
+  box-shadow: 0 -8px 24px rgb(0 0 0 / 0.25);
+}
+
+.select-bar [role='status'] {
+  flex: 1;
 }
 
 .run-badge {

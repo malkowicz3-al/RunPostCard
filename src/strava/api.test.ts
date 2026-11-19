@@ -103,9 +103,18 @@ describe('fetchRuns', () => {
 
   it('ok: tylko biegi z trasą', async () => {
     respond(200, [run(1, 'Run'), run(2, 'Ride'), run(3, 'TrailRun', ''), run(4, 'VirtualRun')]);
-    const runs = await fetchRuns();
+    const { runs, done } = await fetchRuns();
     expect(runs.map((r) => r.id)).toEqual([1, 4]);
-    expect(fetchMock.mock.calls[0][0]).toBe('https://www.strava.com/api/v3/athlete/activities?per_page=30');
+    expect(done).toBe(true);
+    expect(fetchMock.mock.calls[0][0]).toBe('https://www.strava.com/api/v3/athlete/activities?per_page=50');
+  });
+
+  it('stronicowanie: page w URL; pełna strona (przed filtrem) to jeszcze nie koniec', async () => {
+    respond(200, [run(1, 'Run'), run(2, 'Ride')]);
+    const { runs, done } = await fetchRuns(3, 2);
+    expect(runs.map((r) => r.id)).toEqual([1]);
+    expect(done).toBe(false);
+    expect(fetchMock.mock.calls[0][0]).toBe('https://www.strava.com/api/v3/athlete/activities?per_page=2&page=3');
   });
 
   it('401 -> SessionExpiredError i czyszczenie sesji', async () => {

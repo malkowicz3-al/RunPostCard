@@ -57,7 +57,8 @@ async function stravaGet<T>(path: string): Promise<T> {
   return (await res.json()) as T;
 }
 
-const getActivities = (perPage: number) => stravaGet<unknown[]>(`/athlete/activities?per_page=${perPage}`);
+const getActivities = (perPage: number, page = 1) =>
+  stravaGet<unknown[]>(`/athlete/activities?per_page=${perPage}${page > 1 ? `&page=${page}` : ''}`);
 
 // Odpowiedź key_by_type: { latlng: { data: [...] }, ... }. Brak opcjonalnego klucza jest normalny
 // (np. bez pulsometru); tablica o innej długości niż latlng jest odrzucana, żeby indeksy się zgadzały.
@@ -97,9 +98,13 @@ export async function fetchStreams(id: number): Promise<RunStreams | null> {
   );
 }
 
-export async function fetchRuns(): Promise<Activity[]> {
-  const activities = (await getActivities(30)) as Activity[];
-  return activities.filter((a) => a.map.summary_polyline && RUN_TYPES.has(a.sport_type));
+// Jedna strona aktywności; done = Strava zwróciła mniej niż perPage (dalej nic nie ma). Liczy się przed filtrem biegów.
+export async function fetchRuns(page = 1, perPage = 50): Promise<{ runs: Activity[]; done: boolean }> {
+  const activities = (await getActivities(perPage, page)) as Activity[];
+  return {
+    runs: activities.filter((a) => a.map.summary_polyline && RUN_TYPES.has(a.sport_type)),
+    done: activities.length < perPage,
+  };
 }
 
 // Tylko dev (?debug=1): surowa odpowiedź bez filtra, do podglądu struktury danych.

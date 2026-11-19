@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import { useEffect, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
 import type { Activity } from '../strava/api';
 import {
   formatDate,
@@ -23,6 +23,18 @@ export function summarize(runs: Activity[]) {
     if (!longest || a.distance > longest.distance) longest = a;
   }
   return { count: runs.length, distance, time, elevation, longestId: runs.length > 1 ? longest?.id : undefined };
+}
+
+// Widok „Together”: od 2 do 50 biegów naraz.
+export const MAX_TOGETHER = 50;
+export const canAnimateTogether = (count: number) => count >= 2 && count <= MAX_TOGETHER;
+export const toggleId = (ids: number[], id: number) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]);
+
+// Strona dopisana do listy: bez powtórek id (nowy bieg w trakcie przesuwa strony), najwyżej max biegów.
+export function mergePage(base: Activity[], more: Activity[], done: boolean, max: number) {
+  const seen = new Set(base.map((r) => r.id));
+  const runs = [...base, ...more.filter((r) => !seen.has(r.id))].slice(0, max);
+  return { runs, hasMore: !done && runs.length < max };
 }
 
 function Skeleton() {
@@ -66,7 +78,17 @@ function Summary({ s }: { s: ReturnType<typeof summarize> }) {
   );
 }
 
-function Runs({ runs, onSelect }: { runs: Activity[]; onSelect: (activity: Activity) => void }) {
+function Runs({
+  runs,
+  onSelect,
+  selection,
+  onToggle,
+}: {
+  runs: Activity[];
+  onSelect: (activity: Activity) => void;
+  selection: number[] | null;
+  onToggle: (id: number) => void;
+}) {
   if (runs.length === 0)
     return (
       <div className="empty">
@@ -79,28 +101,41 @@ function Runs({ runs, onSelect }: { runs: Activity[]; onSelect: (activity: Activ
     <>
       <Summary s={s} />
       <ul className="runs">
-        {runs.map((a, i) => (
-          <li key={a.id} style={{ '--i': i } as CSSProperties}>
-            <button className="run-tile" onClick={() => onSelect(a)}>
-              <span className="run-thumb">
-                <RouteThumb polyline={a.map.summary_polyline} />
-                {a.id === s.longestId && <span className="run-badge">Longest</span>}
-              </span>
-              <span className="run-distance">
-                {formatDistanceKm(a.distance)}
-                <span className="unit"> km</span>
-              </span>
-              <span className="run-name">{a.name}</span>
-              <span className="run-stats">
-                <span>{formatPace(a.distance, a.moving_time)} /km</span>
-                <span>{formatDuration(a.moving_time)}</span>
-                <span>{formatElevation(a.total_elevation_gain)} m up</span>
-                {a.average_heartrate ? <span>{formatHeartRate(a.average_heartrate)} bpm</span> : null}
-              </span>
-              <span className="run-meta">{formatDate(a.start_date_local)}</span>
-            </button>
-          </li>
-        ))}
+        {runs.map((a, i) => {
+          const checked = selection?.includes(a.id) ?? false;
+          return (
+            <li key={a.id} style={{ '--i': i } as CSSProperties}>
+              <button
+                className="run-tile"
+                role={selection ? 'checkbox' : undefined}
+                aria-checked={selection ? checked : undefined}
+                onClick={() => (selection ? onToggle(a.id) : onSelect(a))}
+              >
+                <span className="run-thumb">
+                  <RouteThumb polyline={a.map.summary_polyline} />
+                  {a.id === s.longestId && <span className="run-badge">Longest</span>}
+                  {selection && (
+                    <span className="run-check" aria-hidden="true">
+                      {checked ? '✓' : ''}
+                    </span>
+                  )}
+                </span>
+                <span className="run-distance">
+                  {formatDistanceKm(a.distance)}
+                  <span className="unit"> km</span>
+                </span>
+                <span className="run-name">{a.name}</span>
+                <span className="run-stats">
+                  <span>{formatPace(a.distance, a.moving_time)} /km</span>
+                  <span>{formatDuration(a.moving_time)}</span>
+                  <span>{formatElevation(a.total_elevation_gain)} m up</span>
+                  {a.average_heartrate ? <span>{formatHeartRate(a.average_heartrate)} bpm</span> : null}
+                </span>
+                <span className="run-meta">{formatDate(a.start_date_local)}</span>
+              </button>
+            </li>
+          );
+        })}
       </ul>
     </>
   );
@@ -111,21 +146,71 @@ export function ActivityList({
   loading,
   onSelect,
   onLogout,
+  hasMore,
+  loadingMore,
+  onLoadMore,
+  selection,
+  onSelection,
+  onTogether,
 }: {
   runs: Activity[];
   loading: boolean;
   onSelect: (activity: Activity) => void;
   onLogout: () => void;
+  hasMore: boolean;
+  loadingMore: boolean;
+  onLoadMore: () => void;
+  selection: number[] | null; // null = zwykły tryb (kafelek otwiera pocztówkę)
+  onSelection: Dispatch<SetStateAction<number[] | null>>;
+  onTogether: () => void;
 }) {
+  const selecting = selection !== null;
+  useEffect(() => {
+    if (!selecting) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onSelection(null);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selecting, onSelection]);
+
   return (
     <div className="screen list-screen">
       <div className="top-bar">
         <h1 className="screen-title">Your runs</h1>
-        <button className="text-button" onClick={onLogout}>
-          Log Out
-        </button>
+        <div className="toggle-row">
+          {!loading && runs.length > 1 && (
+            <button className="toggle" aria-pressed={selecting} onClick={() => onSelection(selecting ? null : [])}>
+              Select
+            </button>
+          )}
+          <button className="text-button" onClick={onLogout}>
+            Log Out
+          </button>
+        </div>
       </div>
-      {loading ? <Skeleton /> : <Runs runs={runs} onSelect={onSelect} />}
+      {loading ? (
+        <Skeleton />
+      ) : (
+        <Runs runs={runs} onSelect={onSelect} selection={selection} onToggle={(id) => onSelection((s) => toggleId(s ?? [], id))} />
+      )}
+      {!loading && hasMore && (
+        <button className="load-more" disabled={loadingMore} onClick={onLoadMore}>
+          {loadingMore ? 'Loading…' : 'Load more'}
+        </button>
+      )}
+      {selection && (
+        <div className="select-bar">
+          <span role="status">
+            {selection.length} selected
+            {selection.length > MAX_TOGETHER && ` (up to ${MAX_TOGETHER})`}
+          </span>
+          <button className="text-button" disabled={selection.length === 0} onClick={() => onSelection([])}>
+            Clear
+          </button>
+          <button className="primary" disabled={!canAnimateTogether(selection.length)} onClick={onTogether}>
+            Animate together
+          </button>
+        </div>
+      )}
     </div>
   );
 }

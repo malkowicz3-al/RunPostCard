@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { RunStreams } from '../strava/api';
 import { ROUTE_BOX } from '../postcard/Route';
-import { isoRoute } from './isoRoute';
+import { isoRoute, isoRoutes } from './isoRoute';
 import { geoMercator } from 'd3-geo';
 import type { Dem } from './dem';
 
@@ -107,5 +107,25 @@ describe('isoRoute', () => {
     const k = (rise[30] - rise[70]) / (xs[30] - xs[70]);
     expect((rise[10] - rise[70]) / (xs[10] - xs[70])).toBeCloseTo(k, 6);
     expect(k).toBeGreaterThan(0);
+  });
+});
+
+describe('isoRoutes', () => {
+  it('kolejność wejścia, null zostaje na miejscu, wspólna macierz i podstawa wysokości', () => {
+    const run = (dLat: number, base: number): RunStreams => ({
+      latlng: Array.from({ length: 20 }, (_, i) => [50 + dLat + i * 0.0005, 19 + i * 0.0003] as [number, number]),
+      distance: Array.from({ length: 20 }, (_, i) => i * 60),
+      altitude: Array.from({ length: 20 }, (_, i) => base + i),
+    });
+    const a = run(0, 200);
+    const b = run(0.01, 300);
+    const p = geoMercator().scale(200000).center([19, 50]).translate([540, 700]);
+    const out = isoRoutes([a, null, b], ROUTE_BOX, p);
+    expect(out).toHaveLength(3);
+    expect(out[1]).toBeNull();
+    expect(out[0]!.matrix).toEqual(out[2]!.matrix);
+    expect(out[0]!.baseM).toBe(out[2]!.baseM);
+    expect(Math.abs(out[0]!.baseM - 200)).toBeLessThan(2); // najniższy punkt obu tras (po wygładzeniu)
+    expect(out[0]!.points).toHaveLength(20);
   });
 });

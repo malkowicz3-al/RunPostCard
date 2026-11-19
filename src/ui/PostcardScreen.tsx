@@ -9,16 +9,12 @@ import {
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
-import { flushSync } from 'react-dom';
-import { createRoot } from 'react-dom/client';
 import type { Activity } from '../strava/api';
 import { Postcard } from '../postcard/Postcard';
 import { ROUTE_BOX } from '../postcard/Route';
 import { colorScale, type RouteColor } from '../postcard/routeColor';
 import { CAMERA_CENTER, DEFAULT_CAMERA, clampCamera, keepCamera, type Camera } from '../lib/camera';
 import { backdropArea, nextBackdropArea, type LoadedArea } from '../lib/backdrop';
-import { download, exportPng, exportSvg } from '../lib/exportPng';
-import { canEncodeMp4, encodeGif, encodeMp4 } from '../lib/encodeVideo';
 import { DEFAULT_FONT, FONTS, loadFontCss, type FontId } from '../lib/fonts';
 import { NO_EDIT, loadPhoto, type PhotoEdit } from '../lib/photo';
 import { isoRoute } from '../lib/isoRoute';
@@ -32,7 +28,7 @@ import { THEMES, type ThemeId } from '../postcard/themes';
 import { DEFAULT_ACCENT } from '../postcard/themes/neon';
 import { DataModal } from './DataModal';
 import { PhotoEditor } from './PhotoEditor';
-import { DownloadMenu } from './DownloadMenu';
+import { ExportControls } from './ExportControls';
 import { FontPicker } from './FontPicker';
 import { LayoutPicker } from './LayoutPicker';
 import { LinePicker } from './LinePicker';
@@ -110,11 +106,6 @@ export function PostcardScreen({
   const [pickAt, setPickAt] = useState<(Point & { href?: string }) | null>(null);
   const [photoError, setPhotoError] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
-  const [exportFailed, setExportFailed] = useState<string | null>(null); // format, którego nie udało się zrobić
-  const [encoding, setEncoding] = useState<{ format: 'mp4' | 'gif'; pct: number } | null>(null); // null = nie trwa
-  const encodeAbort = useRef<AbortController | null>(null);
-  const [shareFile, setShareFile] = useState<File | null>(null);
-  const [mp4Ok, setMp4Ok] = useState(false);
   const [look, setLook] = useState<Look>('gradient');
   const [accent, setAccent] = useState(DEFAULT_ACCENT);
   const [mapFailed, setMapFailed] = useState(false);
@@ -375,80 +366,7 @@ export function PostcardScreen({
   }), [activity, fontCss?.css, font, isMap, mapMissing, look, photo, map.layers, dim, accent, streams, is3d, camera, iso, zoomed.refined, terrainImage, items, showRoute, routeColor, person]);
   const previewCard = useMemo(() => <Postcard {...postcardProps} />, [postcardProps]);
 
-  // Plik do udostępnienia dotyczy pocztówki z chwili eksportu; po zmianie już nie.
-  useEffect(() => setShareFile(null), [postcardProps]);
-
-  // Po eksporcie fokus na Share, a bez niego z powrotem na Download (był wyłączony w trakcie).
-  const shareRef = useRef<HTMLButtonElement>(null);
-  const wasEncoding = useRef(false);
-  useEffect(() => {
-    if (encoding) wasEncoding.current = true;
-    else if (wasEncoding.current) {
-      wasEncoding.current = false;
-      (shareRef.current ?? document.querySelector<HTMLButtonElement>('.download > button'))?.focus();
-    }
-  }, [encoding]);
-
   const currentSvg = () => previewRef.current?.querySelector('svg') ?? null;
-
-  const downloadPng = () => {
-    const svg = currentSvg();
-    if (!svg) return;
-    setExportFailed(null);
-    exportPng(svg, `runpostcard-${activity.id}.png`).catch(() => setExportFailed('PNG'));
-  };
-
-  useEffect(() => {
-    canEncodeMp4().then(setMp4Ok);
-  }, []);
-  useEffect(() => () => encodeAbort.current?.abort(), []);
-
-  // Klatki animacji: ta sama pocztówka z postępem, renderowana poza ekranem (odłączony div).
-  const downloadAnimation = async (format: 'mp4' | 'gif') => {
-    const props = postcardProps;
-    const host = document.createElement('div');
-    const root = createRoot(host);
-    const frame = (p: number) => {
-      flushSync(() => root.render(<Postcard {...props} progress={p} />));
-      return host.querySelector('svg')!;
-    };
-    const abort = new AbortController();
-    encodeAbort.current = abort;
-    setExportFailed(null);
-    setShareFile(null);
-    setEncoding({ format, pct: 0 });
-    // Stan tylko przy zmianie pełnego procentu, nie w każdej klatce.
-    const onProgress = (done: number) => {
-      const pct = Math.floor(done * 100);
-      setEncoding((e) => (e && e.pct !== pct ? { ...e, pct } : e));
-    };
-    try {
-      const opts = { onProgress, signal: abort.signal };
-      const blob = format === 'mp4' ? await encodeMp4(frame, opts) : await encodeGif(frame, opts);
-      if (abort.signal.aborted) return; // Cancel w chwili domykania pliku
-      const file = new File([blob], `runpostcard-${activity.id}.${format}`, { type: blob.type });
-      download(file, file.name);
-      if (navigator.canShare?.({ files: [file] })) setShareFile(file);
-    } catch {
-      if (!abort.signal.aborted) setExportFailed(format === 'mp4' ? 'video' : 'GIF');
-    } finally {
-      root.unmount();
-      if (encodeAbort.current === abort) {
-        encodeAbort.current = null;
-        setEncoding(null);
-      }
-    }
-  };
-
-  const share = () => {
-    // Anulowanie arkusza udostępniania to też odrzucenie: bez komunikatu.
-    if (shareFile) navigator.share({ files: [shareFile] }).catch(() => {});
-  };
-
-  const downloadSvg = () => {
-    const svg = currentSvg();
-    if (svg) exportSvg(svg, `runpostcard-${activity.id}.svg`);
-  };
 
   const choose = (value: Look) => {
     setMapFailed(false);
@@ -708,29 +626,13 @@ export function PostcardScreen({
             onApply={applyPhotoEdit}
             onClose={() => setEditingPhoto(false)}
           />
-          <DownloadMenu
-            disabled={loading || !fontReady || encoding !== null}
-            onPng={downloadPng}
-            onSvg={downloadSvg}
-            onMp4={() => downloadAnimation('mp4')}
-            onGif={() => downloadAnimation('gif')}
-            mp4Supported={mp4Ok}
+          <ExportControls
+            name={`runpostcard-${activity.id}`}
+            svg={currentSvg}
+            frame={(p) => <Postcard {...postcardProps} progress={p} />}
+            resetKey={postcardProps}
+            disabled={loading || !fontReady}
           />
-          {encoding !== null && (
-            <div className="encoding">
-              <span role="status">{encoding.format === 'mp4' ? 'Creating video…' : 'Creating GIF…'}</span>
-              <progress value={encoding.pct} max={100} aria-label="Progress" />
-              <span aria-hidden="true">{encoding.pct}%</span>
-              <button autoFocus onClick={() => encodeAbort.current?.abort()}>
-                Cancel
-              </button>
-            </div>
-          )}
-          {shareFile && encoding === null && (
-            <button ref={shareRef} onClick={share}>
-              Share
-            </button>
-          )}
           {loading && (
             <p className="hint" role="status">
               {cutout.loading ? 'Finding runner…' : terrainLoading ? 'Loading terrain…' : 'Loading map…'}
@@ -744,7 +646,6 @@ export function PostcardScreen({
             </p>
           )}
           {mapFailed && <p className="error">Could not load the map.</p>}
-          {exportFailed && <p className="error">Could not create the {exportFailed}.</p>}
         </div>
       </div>
     </div>

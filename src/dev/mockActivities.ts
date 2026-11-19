@@ -67,8 +67,26 @@ const RUNS: {
   { name: 'A very long title to check how the tile wraps onto two lines', shape: 'loop', km: 12.0, minutes: 66, hr: 135, elev: 41, cad: 87, date: '2026-11-17T06:50:00Z' },
 ];
 
+// Dodatkowe biegi do stronicowania i zaznaczania wielu (deterministyczne, starsze od powyższych, wokół Krakowa).
+const NAMES = ['Easy run', 'Tempo run', 'Recovery jog', 'Park loop', 'Evening run', 'River run'];
+const SHAPE_IDS = Object.keys(SHAPES) as (keyof typeof SHAPES)[];
+const EXTRA: typeof RUNS = Array.from({ length: 33 }, (_, i) => {
+  const km = 4 + ((i * 37) % 13);
+  return {
+    name: `${NAMES[i % NAMES.length]} ${i + 1}`,
+    shape: SHAPE_IDS[i % SHAPE_IDS.length],
+    km,
+    minutes: Math.round((km * (280 + ((i * 53) % 100))) / 60),
+    hr: i % 5 === 4 ? undefined : 135 + ((i * 7) % 30),
+    elev: 10 + ((i * 29) % 90),
+    cad: i % 5 === 4 ? undefined : 82 + (i % 8),
+    date: new Date(Date.UTC(2026, 10, 9, 7) - (i + 1) * 2 * 86400000).toISOString().replace('.000', ''),
+    center: [CENTER[0] + (((i * 13) % 11) - 5) * 0.006, CENTER[1] + (((i * 17) % 11) - 5) * 0.009],
+  };
+});
+
 export function mockActivities(): Activity[] {
-  return RUNS.map((r, i) => {
+  return [...RUNS, ...EXTRA].map((r, i) => {
     const speed = (r.km * 1000) / (r.minutes * 60);
     return {
       id: 1000000001 + i,
@@ -87,6 +105,13 @@ export function mockActivities(): Activity[] {
       map: { summary_polyline: route(r.shape, r.center) },
     };
   });
+}
+
+// Strona listy jak z API (z krótkim opóźnieniem, żeby było widać ładowanie).
+export async function mockPage(page: number, perPage: number): Promise<{ runs: Activity[]; done: boolean }> {
+  await new Promise((r) => setTimeout(r, 400));
+  const all = mockActivities();
+  return { runs: all.slice((page - 1) * perPage, page * perPage), done: page * perPage >= all.length };
 }
 
 function haversine([lat1, lng1]: [number, number], [lat2, lng2]: [number, number]): number {

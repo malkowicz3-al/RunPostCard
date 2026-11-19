@@ -87,11 +87,10 @@ function extent(values: number[]): [number, number] {
   return [lo, hi];
 }
 
-// Izometria na płaskim płótnie pocztówki (projection = fit.projection, ta sama co mapa):
-// obrót o 45°, oś Y × 0,5, podniesienie o wysokość; całość dopasowana do box. Przekształcenie podłoża
-// jest afiniczne, więc mapa trafia pod trasę jako <g transform="matrix(...)">.
-// dem: wysokości z terenu zamiast zegarka, żeby trasa leżała na reliefie (ADR 0008).
-export function isoRoute(s: RunStreams, box: Box, projection: GeoProjection, dem?: Dem): IsoRoute | null {
+type Prepared = { flat: [number, number][]; alt: number[]; k0: number; distance: number[] };
+
+// Trasa obrócona o 45° na płaskim płótnie i jej wysokości (przed dopasowaniem do box).
+function prepare(s: RunStreams, projection: GeoProjection, dem?: Dem): Prepared | null {
   const n = s.latlng.length;
   if (!s.altitude || n < 2) return null;
 
@@ -105,11 +104,19 @@ export function isoRoute(s: RunStreams, box: Box, projection: GeoProjection, dem
   const k0 = projection.scale() / (EARTH_RADIUS_M * Math.cos((meanLat * Math.PI) / 180));
   // DEM jest już gładki (~30 m); wygładzanie odkleiłoby trasę od grzbietów i dolin.
   const alt = dem ? canvas.map(([x, y]) => demAt(dem, x, y)) : smoothByDistance(s.altitude, s.distance, ALT_HALF_M);
-  const [minAlt, maxAlt] = extent(alt);
-  const span = maxAlt - minAlt;
+  return { flat, alt, k0, distance: s.distance };
+}
 
-  const [gx0, gx1] = extent(flat.map(([x]) => x));
-  const [gy0, gy1] = extent(flat.map(([, y]) => y));
+// Wspólne dopasowanie do box: jedna podstawa wysokości, jedno przewyższenie i jedna macierz dla wszystkich tras.
+function build(runs: Prepared[], box: Box): IsoRoute[] {
+  const [minAlt, maxAlt] = extent(runs.flatMap((r) => extent(r.alt)));
+  const span = maxAlt - minAlt;
+  // shortcut: przewyższenie i pxPerM ze średniego k0 (różni się z szerokością geograficzną), dla biegów oddalonych o setki km liczyć osobno.
+  const k0 = runs.reduce((sum, r) => sum + r.k0, 0) / runs.length;
+
+  const flatAll = runs.flatMap((r) => r.flat);
+  const [gx0, gx1] = extent(flatAll.map(([x]) => x));
+  const [gy0, gy1] = extent(flatAll.map(([, y]) => y));
   const groundW = gx1 - gx0;
   const groundH = gy1 - gy0;
   const [[x0, y0], [x1, y1]] = box;
@@ -119,10 +126,9 @@ export function isoRoute(s: RunStreams, box: Box, projection: GeoProjection, dem
   // gdy ogranicza wysokość, L / (groundH + L) >= MIN; gdy szerokość, L * boxW / groundW >= MIN * boxH.
   const minLift = Math.max((MIN_CURTAIN / (1 - MIN_CURTAIN)) * groundH, (MIN_CURTAIN * boxH * groundW) / boxW);
   const exaggeration = span > 0 ? Math.min(MAX_EXAGGERATION, Math.max(1, minLift / (span * k0))) : 1;
-  const lift = (i: number) => (alt[i] - minAlt) * k0 * exaggeration;
 
-  const raised = flat.map(([x, y], i) => [x, y - lift(i)] as [number, number]);
-  const all = [...flat, ...raised];
+  const raised = runs.map((r) => r.flat.map(([x, y], i) => [x, y - (r.alt[i] - minAlt) * r.k0 * exaggeration] as [number, number]));
+  const all = [...flatAll, ...raised.flat()];
   const [minX, maxX] = extent(all.map(([x]) => x));
   const [minY, maxY] = extent(all.map(([, y]) => y));
   let f = Math.min(maxX > minX ? boxW / (maxX - minX) : Infinity, maxY > minY ? boxH / (maxY - minY) : Infinity);
@@ -133,15 +139,43 @@ export function isoRoute(s: RunStreams, box: Box, projection: GeoProjection, dem
   const a = f / Math.SQRT2;
   const b = f / (2 * Math.SQRT2);
 
-  const grade = gradeByDistance(alt, s.distance, GRADE_HALF_M).slice(0, -1);
-  return {
-    points: raised.map(fit),
-    ground: flat.map(fit),
-    distance: s.distance,
-    slope: slopes(grade, s.distance, MIN_RUN_M),
-    exaggeration,
-    matrix: [a, b, -a, b, dx - f * minX, dy - f * minY],
-    pxPerM: k0 * f,
-    baseM: minAlt,
-  };
+  return runs.map((r, k) => {
+    const grade = gradeByDistance(r.alt, r.distance, GRADE_HALF_M).slice(0, -1);
+    return {
+      points: raised[k].map(fit),
+      ground: r.flat.map(fit),
+      distance: r.distance,
+      slope: slopes(grade, r.distance, MIN_RUN_M),
+      exaggeration,
+      matrix: [a, b, -a, b, dx - f * minX, dy - f * minY],
+      pxPerM: k0 * f,
+      baseM: minAlt,
+    };
+  });
+}
+
+// Izometria na płaskim płótnie pocztówki (projection = fit.projection, ta sama co mapa):
+// obrót o 45°, oś Y × 0,5, podniesienie o wysokość; całość dopasowana do box. Przekształcenie podłoża
+// jest afiniczne, więc mapa trafia pod trasę jako <g transform="matrix(...)">.
+// dem: wysokości z terenu zamiast zegarka, żeby trasa leżała na reliefie (ADR 0008).
+export function isoRoute(s: RunStreams, box: Box, projection: GeoProjection, dem?: Dem): IsoRoute | null {
+  const run = prepare(s, projection, dem);
+  return run ? build([run], box)[0] : null;
+}
+
+// Kilka biegów w jednej scenie (wspólna macierz i podstawa wysokości); wynik w kolejności wejścia, null bez wysokości.
+// projection: jedna dla wszystkich (układ geograficzny) albo osobna na bieg (Overlay, starty w jednym punkcie).
+export function isoRoutes(
+  list: (RunStreams | null | undefined)[],
+  box: Box,
+  projection: GeoProjection | (GeoProjection | null)[],
+): (IsoRoute | null)[] {
+  const prepared = list.map((s, i) => {
+    const p = Array.isArray(projection) ? projection[i] : projection;
+    return s && p ? prepare(s, p) : null;
+  });
+  const valid = prepared.filter((r): r is Prepared => r !== null);
+  if (valid.length === 0) return list.map(() => null);
+  const built = build(valid, box);
+  return prepared.map((r) => (r ? built[valid.indexOf(r)] : null));
 }

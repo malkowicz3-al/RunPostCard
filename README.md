@@ -72,6 +72,10 @@ Restart `npm run dev` after changing `.env`. Vite reads it only at startup.
 
 The run list starts with totals for the loaded runs (count, distance, moving time, elevation gain). Each tile shows the route on the map outline, the distance, pace, moving time, elevation gain, average heart rate (if recorded) and the date; the longest run gets a **Longest** badge. Hovering or focusing a tile draws its route. Animations are off when your system asks for reduced motion.
 
+The list loads 50 activities at a time; **Load more** at the bottom fetches the next page, up to 200 runs.
+
+**Select** in the top bar turns the tiles into checkboxes. A bar at the bottom shows how many runs are selected, **Clear** and **Animate together** (2 to 50 runs); Esc leaves select mode. **Animate together** opens one postcard with all selected routes and totals (runs, distance, moving time) and the date range on top. **Layout**: **Overlay** (default) moves every route so they all start at the same point, at one shared scale in metres (gradient or transparent background, no map); **Geographic** keeps the routes where they are on one shared map (any map style), and hides runs more than about 25 km from the rest when they span over 50 km. Colors are **Per run** or **Heat** (one color, see-through, so routes you run often glow); animation timing is **Real time** (all start together and each run moves at its own pace, so shorter runs finish first) or **Together** (all finish at once). **3D** fetches elevation for the first 20 selected runs only when you pick it (two at a time, kept in memory until you log out or close the tab; Strava allows about 100 requests per 15 minutes). Download works as for a single postcard (PNG, SVG, MP4, GIF). Back returns to the list with your selection kept.
+
 If something goes wrong, see **Troubleshooting** below.
 
 ## Troubleshooting
