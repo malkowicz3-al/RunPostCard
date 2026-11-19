@@ -30,6 +30,7 @@ const STYLE: MapStyle = {
   widths: { waterway: 2, path: 1, minor: 1.5, mid: 2.5, major: 3.5, rail: 1.5, tunnel: 1.5, bridge: 7, runway: 7 },
   dashes: { rail: '10 6', tunnel: '4 4' },
   filters: { minor: INK, mid: INK, major: INK },
+  buildings3d: 'castle',
 };
 
 export const spellbook: MapTheme = {

@@ -34,6 +34,7 @@ const STYLE: MapStyle = {
   widths: { waterway: 3, path: 1.5, minor: 3, mid: 4.5, major: 6, rail: 2, tunnel: 2, bridge: 9, runway: 9 },
   dashes: { rail: '10 6', tunnel: '4 4' },
   fills: { building: 'url(#bricks-blocks)' },
+  buildings3d: 'voxel',
 };
 
 export const bricks: MapTheme = {

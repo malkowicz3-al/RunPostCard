@@ -33,6 +33,7 @@ const STYLE: MapStyle = {
   widths: { waterway: 4, path: 2, minor: 4, mid: 6, major: 8, rail: 2, tunnel: 2, bridge: 11, runway: 10 },
   dashes: { rail: '8 8', tunnel: '8 8' },
   fills: { building: 'url(#voxel-planks)' },
+  buildings3d: 'voxel',
 };
 
 export const voxel: MapTheme = {

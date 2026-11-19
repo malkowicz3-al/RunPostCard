@@ -32,6 +32,7 @@ const STYLE: MapStyle = {
   widths: { waterway: 4, path: 1.5, minor: 3, mid: 4.5, major: 6, rail: 2, tunnel: 2, bridge: 9, runway: 8 },
   dashes: { rail: '8 8', tunnel: '4 4' },
   fills: { water: 'url(#overworld-water)' },
+  buildings3d: 'gabled',
 };
 
 export const overworld: MapTheme = {
