@@ -1,7 +1,7 @@
 import { useMemo, type ReactNode } from 'react';
 import type { Activity, RunStreams } from '../strava/api';
-import { DEFAULT_CAMERA, applyCamera, cameraTransform, type Camera } from '../lib/camera';
-import { gridCoverage, partlyCovered, pointsCoverage, type Cutout } from '../lib/cutout';
+import { DEFAULT_CAMERA, cameraTransform, type Camera } from '../lib/camera';
+import { type Cutout } from '../lib/cutout';
 import { isoRoute, type IsoRoute as IsoData } from '../lib/isoRoute';
 import type { Rect } from '../lib/mapTiles';
 import { fitRoute } from '../lib/routePath';
@@ -16,8 +16,7 @@ import { PhotoBackground } from './PhotoBackground';
 import { Route, ROUTE_BOX } from './Route';
 import { StravaMark } from './StravaMark';
 import { SlotNumber } from './SlotNumber';
-import { DATA, chartFor, defaultLayout, fitted, slotBox, type LayoutItem } from './slots';
-import type { SlotProps } from './SlotNumber';
+import { DATA, chartFor, defaultLayout, fitted, type LayoutItem } from './slots';
 import { THEMES, type ThemeId } from './themes';
 
 // Obraz terenu (data URL) i jego prostokąt: płasko w jednostkach płótna mapy, w 3D w jednostkach pocztówki przed kamerą.
@@ -122,21 +121,8 @@ export function Postcard({
     : fit
       ? (fit.bounds[0][1] + fit.bounds[1][1]) / 2
       : 0;
-  // Za obiekt idzie tylko to, co zasłania w 5–50% (ADR 0009, decyzja 4); reszta przed nim. Wykresy zawsze przed.
-  const upperPoints = useMemo(() => (iso ? iso.points : (fit?.points ?? [])).filter(([, y]) => y < mid), [iso, fit, mid]);
-  const splitRoute =
-    route && behind && partlyCovered(pointsCoverage(person!.grid, upperPoints.map((p) => applyCamera(camera, p))));
-  const behindIds = new Set(
-    behind
-      ? layout
-          .filter(
-            (item) =>
-              !chartFor(item, streams) &&
-              partlyCovered(gridCoverage(person!.grid, slotBox(item, DATA[item.slot.data].value(activity), scale))),
-          )
-          .map((item) => item.slot.id)
-      : [],
-  );
+  // Za obiektem zawsze tylko górna część trasy; statystyki zawsze przed (decyzja właściciela, ADR 0009).
+  const splitRoute = route && behind;
   const clipped = (part: 'behind' | 'front' | undefined, node: ReactNode) =>
     part ? <g clipPath={`url(#route-${part})`}>{node}</g> : node;
   const routeLayer = (part?: 'behind' | 'front') =>
@@ -161,23 +147,20 @@ export function Postcard({
         route && (
           <g transform={cameraTransform(camera)}>{clipped(part, <Route {...out?.route} d={fit.d} zoom={camera.zoom} />)}</g>
         );
-  const slotNode = (item: LayoutItem, part?: SlotProps['part']) => {
+  const slotNode = (item: LayoutItem) => {
     const value = DATA[item.slot.data].value(activity);
-    const chart = chartFor(item, streams);
-    // chartFor sprawdza box i streams. Wykresy całe przed osobą (drobny tekst i osie).
+    const chart = chartFor(item, streams); // sprawdza box i streams
     if (chart) {
       return (
-        part !== 'value' && (
-          <chart.Component
-            key={item.slot.id}
-            box={item.box!}
-            streams={streams!}
-            activity={activity}
-            label={chart.label}
-            value={value}
-            scale={scale}
-          />
-        )
+        <chart.Component
+          key={item.slot.id}
+          box={item.box!}
+          streams={streams!}
+          activity={activity}
+          label={chart.label}
+          value={value}
+          scale={scale}
+        />
       );
     }
     const { size, labelSize, label } = fitted(item, value, scale);
@@ -193,7 +176,6 @@ export function Postcard({
         labelSize={labelSize}
         label={label}
         value={value}
-        part={part}
       />
     );
   };
@@ -271,20 +253,15 @@ export function Postcard({
           {(!behind || splitRoute) && routeLayer(splitRoute ? 'behind' : undefined)}
         </g>
       )}
-      <g color={text.color} filter={text.filter}>
-        {(behind ? layout.filter((item) => behindIds.has(item.slot.id)) : layout).map((item) =>
-          slotNode(item, behind ? 'value' : undefined),
-        )}
-      </g>
       {behind && (
         <>
           <g filter="url(#person-dim)">{terrainImage(person)}</g>
           {routeLayer(splitRoute ? 'front' : undefined)}
-          <g color={text.color} filter={text.filter}>
-            {layout.map((item) => slotNode(item, behindIds.has(item.slot.id) ? 'label' : undefined))}
-          </g>
         </>
       )}
+      <g color={text.color} filter={text.filter}>
+        {layout.map((item) => slotNode(item))}
+      </g>
       <StravaMark x={60} y={1820} variant={out?.mark} />
       {out && (
         <text

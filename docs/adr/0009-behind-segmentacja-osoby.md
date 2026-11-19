@@ -49,6 +49,8 @@ Bez `person` kolejność jak dziś (jedno rysowanie, bez klonów).
 - Liczba slotu idzie za obiekt, gdy pokrycie jej `slotBox` przez siatkę jest w przedziale 5–50% (`partlyCovered`); poza nim cały slot przed obiektem. Etykiety i wykresy zawsze przed.
 - Trasa: punkty górnej części (`y < mid`, po kamerze `applyCamera`) — gdy 5–50% z nich leży w siatce, obręcz jak wyżej (`route-behind`/`route-front`); inaczej cała trasa jedną warstwą przed obiektem i bez defs podziału.
 
+**Wycofane (decyzja właściciela, po testach na własnym zdjęciu):** reguła 5–50% ukrywała efekt albo dawała dziwne wyniki. Teraz za obiektem zawsze tylko górna część trasy (obręcz), wszystkie statystyki przed obiektem. Siatka `grid` i funkcje pokrycia zostają w `cutout.ts` na ewentualny powrót.
+
 ### 5. Wasm: importy `?url` z pakietu
 - `import loader from '@mediapipe/tasks-vision/vision_wasm_internal.js?url'` i `import binary from '@mediapipe/tasks-vision/vision_wasm_internal.wasm?url'` (bez segmentu `wasm/`: `exports` pakietu mapuje je na `./wasm/…`), przekazane wprost jako `WasmFileset { wasmLoaderPath, wasmBinaryPath }` do `ImageSegmenter.createFromOptions` (bez `FilesetResolver` i bez CDN). Pakiet udostępnia te ścieżki w `exports`. Vite sam kopiuje pliki do `dist/assets` z hashem; w dev serwuje je z `node_modules`. Bez skryptu kopiującego i bez plików wasm w repo.
 - Model: `'/models/selfie_multiclass_256x256.tflite'` z `public/` (z `import.meta.env.BASE_URL`).
