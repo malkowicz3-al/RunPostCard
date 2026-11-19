@@ -238,6 +238,7 @@ export function TogetherScreen({
             frame={(p) => <TogetherCard {...cardProps} progress={p} />}
             resetKey={cardProps}
             disabled={loading || !fontReady}
+            videoOnly
           />
           {background === 'map' && map.failed && <p className="error">Could not load the map.</p>}
         </div>

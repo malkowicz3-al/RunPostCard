@@ -11,6 +11,7 @@ export function DownloadMenu({
   onGif,
   mp4Supported,
   svgNote,
+  videoOnly,
 }: {
   disabled: boolean;
   onPng: () => void;
@@ -19,6 +20,7 @@ export function DownloadMenu({
   onGif: () => void;
   mp4Supported: boolean; // WebCodecs H.264; bez niego pozycja MP4 nieaktywna
   svgNote?: string; // powód braku SVG (pozycja nieaktywna)
+  videoOnly?: boolean; // tylko MP4 i GIF (widok „Together”)
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -80,12 +82,16 @@ export function DownloadMenu({
       </button>
       {open && (
         <div className="download-menu" role="menu" aria-label="Download format" onKeyDown={onMenuKey}>
-          <button role="menuitem" tabIndex={-1} onClick={() => choose(onPng)}>
-            PNG image
-          </button>
-          <button role="menuitem" tabIndex={-1} disabled={!!svgNote} onClick={() => choose(onSvg)}>
-            SVG (vector){svgNote && ` (${svgNote})`}
-          </button>
+          {!videoOnly && (
+            <>
+              <button role="menuitem" tabIndex={-1} onClick={() => choose(onPng)}>
+                PNG image
+              </button>
+              <button role="menuitem" tabIndex={-1} disabled={!!svgNote} onClick={() => choose(onSvg)}>
+                SVG (vector){svgNote && ` (${svgNote})`}
+              </button>
+            </>
+          )}
           <button role="menuitem" tabIndex={-1} disabled={!mp4Supported} onClick={() => choose(onMp4)}>
             Video (MP4){!mp4Supported && ' (not supported in this browser)'}
           </button>

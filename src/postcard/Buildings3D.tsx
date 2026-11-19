@@ -20,6 +20,13 @@ type Pt = [number, number];
 type Part = { d: string; fill?: string; stroke?: string; width?: number; opacity?: number };
 type Solid = { y: number; parts: Part[] };
 
+const attr = (v: string) => v.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+const partSvg = ({ d, fill, stroke, width, opacity }: Part) =>
+  !d
+    ? ''
+    : `<path d="${d}" fill="${attr(fill ?? 'none')}"${stroke ? ` stroke="${attr(stroke)}"` : ''}` +
+      `${width != null ? ` stroke-width="${width}"` : ''}${opacity != null ? ` opacity="${opacity}"` : ''}/>`;
+
 // Prostokąt minimalny obrysu (kierunek jednej z krawędzi). s: położenie w poprzek kalenicy, -1..1 (0 na kalenicy);
 // krawędzie przecinające kalenicę dostają punkt z s = 0, więc oba spadki dachu są płaskimi wielokątami z prawdziwego obrysu.
 export function gable(ring: Pt[]): { pts: [number, number, number][]; half: number; ratio: number } {
@@ -67,6 +74,10 @@ export function gable(ring: Pt[]): { pts: [number, number, number][]; half: numb
 // Bryły w przestrzeni ekranu (pod kamerą, jak trasa): obrys przez macierz izometrii, dach wyżej o wysokość.
 // Algorytm malarza: od tyłu (mniejsze y podstawy) do przodu; ściany tylko od strony widza. Bez <defs>, więc
 // kilka pocztówek na stronie nie koliduje id. shape zmienia tylko bryłę, obrys zostaje prawdziwy.
+// Bryła na budynek z tym samym widokiem liczona raz: powrót do 3D i doczytana ostrzejsza mapa (te same obiekty
+// budynków bazowych) nie liczą wszystkiego od nowa. WeakMap, więc pamięć znika razem z mapą.
+const solidCache = new WeakMap<Building, { key: string; solid: Solid }>();
+
 export const Buildings3D = memo(function Buildings3D({
   buildings,
   matrix: [a, b, c, d, e, f],
@@ -86,7 +97,7 @@ export const Buildings3D = memo(function Buildings3D({
   shape?: BuildingShape;
   accent?: string; // neon okien i krawędzi dachu w wariancie tower
 }) {
-  const solids = useMemo(() => {
+  const markup = useMemo(() => {
     const s = pxPerM * BUILDING_EXAGGERATION;
     const mPerUnit = (a * Math.SQRT2) / pxPerM; // metry na jednostkę płótna (iso: a = f/√2, pxPerM = k0·f)
     const sx = (x: number, y: number) => a * x + c * y + e;
@@ -148,7 +159,8 @@ export const Buildings3D = memo(function Buildings3D({
       return { d: dd, stroke, width: 0.8, opacity };
     };
 
-    const out: Solid[] = buildings.map(({ ring, h, min }) => {
+    const key = [a, b, c, d, e, f, pxPerM, color, fill, shape, accent, tall].join();
+    const build = ({ ring, h, min }: Building): Solid => {
       let x0 = Infinity, x1 = -Infinity, maxY = -Infinity;
       for (const [x, y] of ring) {
         x0 = Math.min(x0, sx(x, y));
@@ -225,28 +237,19 @@ export const Buildings3D = memo(function Buildings3D({
         }
       }
       return solid;
+    };
+    const out = buildings.map((bld) => {
+      const hit = solidCache.get(bld);
+      if (hit?.key === key) return hit.solid;
+      const solid = build(bld);
+      solidCache.set(bld, { key, solid });
+      return solid;
     });
-    return out.sort((u, v) => u.y - v.y);
+    return out.sort((u, v) => u.y - v.y).map((sol) => sol.parts.map(partSvg).join('')).join('');
   }, [buildings, a, b, c, d, e, f, pxPerM, color, fill, shape, accent]);
 
-  return (
-    <g filter={filter}>
-      {solids.flatMap((sol, i) =>
-        sol.parts
-          .filter((q) => q.d)
-          .map((q, j) => (
-            <path
-              key={`${i}-${j}`}
-              d={q.d}
-              fill={q.fill ?? 'none'}
-              stroke={q.stroke}
-              strokeWidth={q.width}
-              opacity={q.opacity}
-            />
-          )),
-      )}
-    </g>
-  );
+  // Jeden gotowy tekst zamiast tysięcy elementów Reacta: wejście w 3D z ~15 tys. ścian było przez to ok. 2x wolniejsze.
+  return <g filter={filter} dangerouslySetInnerHTML={{ __html: markup }} />;
 });
 
 const p = (v: number) => v.toFixed(1);

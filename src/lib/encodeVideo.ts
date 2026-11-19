@@ -4,8 +4,8 @@ type Frame = FrameOptions['frame'];
 type Progress = { onProgress?: (done: number) => void; signal?: AbortSignal; under?: Under };
 
 const MP4 = { width: 1080, height: 1920, fps: 30, bitrate: 8e6 };
-// 10 kl./s: opóźnienie GIF-a w setnych sekundy wychodzi równe (100 ms), a plik mniejszy do czatów.
-const GIF = { width: 432, height: 768, fps: 10 };
+// 25 kl./s: płynnie jak wideo, a opóźnienie GIF-a w setnych sekundy wychodzi równe (40 ms).
+const GIF = { width: 432, height: 768, fps: 25 };
 const DRAW_S = 6;
 const HOLD_S = 1.5;
 
