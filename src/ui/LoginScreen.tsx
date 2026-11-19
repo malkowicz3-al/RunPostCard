@@ -185,7 +185,10 @@ const Collage = memo(function Collage() {
     collageSvgs(
       (svgs) => {
         for (let i = made.length; i < svgs.length; i++) made.push(URL.createObjectURL(new Blob([svgs[i]], { type: 'image/svg+xml' })));
-        setUrls(made.slice());
+        // Wszystkie kolumny naraz, dopiero po zdekodowaniu obrazków: bez pojawiania się „schodkami”.
+        if (made.length < CARDS.length) return;
+        const all = made.slice();
+        Promise.all(all.map((u) => Object.assign(new Image(), { src: u }).decode().catch(() => {}))).then(() => live && setUrls(all));
       },
       () => live,
     ).catch(() => {}); // ozdoba: bez kolażu ekran logowania dalej działa

@@ -264,6 +264,13 @@ button.text-button {
   border-radius: 16px;
   transform: rotate(-4deg);
   box-shadow: 0 12px 40px rgb(0 0 0 / 0.35);
+  animation: login-in 0.8s ease-out;
+}
+
+@keyframes login-in {
+  from {
+    opacity: 0;
+  }
 }
 
 .login-card:nth-child(even) {
