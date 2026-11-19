@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { DRAW_S, HOLD_S, easeInOutCubic } from '../lib/animate';
 import { fetchStreams, SessionExpiredError, type Activity, type RunStreams } from '../strava/api';
 import { DEFAULT_FONT, loadFontCss } from '../lib/fonts';
@@ -17,7 +17,8 @@ import {
 } from '../postcard/TogetherCard';
 import { THEMES, type ThemeId } from '../postcard/themes';
 import { DEFAULT_ACCENT } from '../postcard/themes/neon';
-import { ExportControls } from './ExportControls';
+import { ExportControls, offscreenFrames } from './ExportControls';
+import { canEncodeMp4, encodeMp4 } from '../lib/encodeVideo';
 import { RouteThumb } from './RouteThumb';
 import { Select } from './Select';
 import { useMapLayers } from './useMapLayers';
@@ -64,7 +65,7 @@ export function TogetherScreen({
   const [sync, setSync] = useState<TogetherSync>('real');
   const [view, setView] = useState<'flat' | '3d'>('3d');
   const [playing, setPlaying] = useState(true);
-  const progress = usePreviewProgress(playing);
+  const [mp4Ok, setMp4Ok] = useState(false);
   const [streams, setStreams] = useState<Record<number, RunStreams | null>>({});
   const [streamsError, setStreamsError] = useState<string>();
   const [retry, setRetry] = useState(0);
@@ -137,6 +138,19 @@ export function TogetherScreen({
     [shown, layout, mapOn, background, map.layers, theme, font, fontCss?.css, colors, sync, isos],
   );
   const loading = (background === 'map' && (!map.layers || map.loading)) || (is3d && !ready3d);
+  // Podgląd jako gotowe MP4 w pętli (rysowanie karty w każdej klatce przycinało); MP4 nie ma przezroczystości,
+  // więc przy Transparent i bez H.264 zostaje animacja na żywo.
+  const videoPreview = mp4Ok && background !== 'transparent';
+  const preview = usePreviewVideo((p) => <TogetherCard {...cardProps} progress={p} />, cardProps, videoPreview && !loading && fontReady);
+  const progress = usePreviewProgress(playing && !videoPreview);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    if (playing) videoRef.current?.play().catch(() => {});
+    else videoRef.current?.pause();
+  }, [playing, preview.url]);
+  useEffect(() => {
+    canEncodeMp4().then(setMp4Ok);
+  }, []);
   const toggle = <T extends string>(label: string, value: T, set: (v: T) => void, options: [T, string, boolean?][]) => (
     <div className="toggle-group" role="group" aria-label={label}>
       {options.map(([id, text, disabled]) => (
@@ -158,6 +172,7 @@ export function TogetherScreen({
       <div className="postcard-layout">
         <div className={`postcard-frame${background === 'transparent' ? ' checkerboard' : ''}`} ref={previewRef}>
           <TogetherCard {...cardProps} progress={progress} />
+          {preview.url && <video className="preview-video" ref={videoRef} src={preview.url} autoPlay={playing} loop muted playsInline />}
         </div>
         <div className="style-panel">
           <h2 className="panel-title">Style</h2>
@@ -223,6 +238,11 @@ export function TogetherScreen({
                 ['together', 'Together'],
               ])}
             </div>
+            {videoPreview && !preview.url && preview.pct !== null && (
+              <p className="hint" role="status">
+                Preparing preview {preview.pct}%
+              </p>
+            )}
             {is3d && near.kept.length > MAX_3D && <p className="panel-hint">3D shows the first {MAX_3D} runs.</p>}
             {is3d && !ready3d && !streamsError && (
               <p className="hint" role="status">
@@ -247,12 +267,54 @@ export function TogetherScreen({
             resetKey={cardProps}
             disabled={loading || !fontReady}
             videoOnly
+            mp4={preview.blob}
           />
           {background === 'map' && map.failed && <p className="error">Could not load the map.</p>}
         </div>
       </div>
     </div>
   );
+}
+
+// MP4 z tej samej karty co eksport, liczone po chwili bez zmian (key = ustawienia karty); zmiana przerywa kodowanie.
+function usePreviewVideo(frame: (p: number) => ReactElement, key: unknown, enabled: boolean) {
+  const [video, setVideo] = useState<{ key: unknown; blob: Blob; url: string }>();
+  const [pct, setPct] = useState<number | null>(null);
+  useEffect(() => {
+    if (!enabled) return;
+    const abort = new AbortController();
+    const timer = setTimeout(async () => {
+      const { frameAt, unmount } = offscreenFrames(frame);
+      setPct(0);
+      try {
+        const blob = await encodeMp4(frameAt, { signal: abort.signal, onProgress: (d) => setPct(Math.floor(d * 100)) });
+        if (abort.signal.aborted) return;
+        setVideo((old) => {
+          if (old) URL.revokeObjectURL(old.url);
+          return { key, blob, url: URL.createObjectURL(blob) };
+        });
+      } catch {
+        // przerwane albo błąd: zostaje gotowa karta bez animacji
+      } finally {
+        unmount();
+        if (!abort.signal.aborted) setPct(null);
+      }
+    }, 500);
+    return () => {
+      clearTimeout(timer);
+      abort.abort();
+    };
+  }, [key, enabled]); // frame zmienia się razem z key
+  const urlRef = useRef<string | undefined>(undefined);
+  urlRef.current = video?.url;
+  useEffect(
+    () => () => {
+      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
+    },
+    [],
+  );
+  const current = enabled && video?.key === key ? video : undefined;
+  return { url: current?.url, blob: current?.blob, pct };
 }
 
 // Podgląd animacji na ekranie (bez pliku): ten sam przebieg co eksport, DRAW_S rysowania + HOLD_S pauzy, w pętli.

@@ -6,6 +6,17 @@ import { download, exportPng, exportSvg } from '../lib/exportPng';
 import { canEncodeMp4, encodeGif, encodeMp4 } from '../lib/encodeVideo';
 import { DownloadMenu } from './DownloadMenu';
 
+// Karta renderowana poza ekranem (odłączony div): frameAt(p) zwraca SVG klatki z postępem p.
+export function offscreenFrames(render: (p: number) => ReactElement) {
+  const host = document.createElement('div');
+  const root = createRoot(host);
+  const frameAt = (p: number) => {
+    flushSync(() => root.render(render(p)));
+    return host.querySelector('svg')!;
+  };
+  return { frameAt, unmount: () => root.unmount() };
+}
+
 // Download (PNG, SVG, MP4, GIF) z paskiem postępu, Cancel i Share; wspólne dla pocztówki i widoku „Together”.
 // svg: podgląd na ekranie (PNG i SVG); frame: ta sama karta z postępem animacji, renderowana poza ekranem.
 // resetKey: zmiana karty unieważnia plik do udostępnienia.
@@ -19,6 +30,7 @@ export function ExportControls({
   under,
   onBusy,
   videoOnly,
+  mp4,
 }: {
   name: string; // nazwa pliku bez rozszerzenia
   svg: () => SVGSVGElement | null;
@@ -28,6 +40,7 @@ export function ExportControls({
   under?: (canvas: HTMLCanvasElement, p?: number) => void;
   onBusy?: (busy: boolean) => void; // MP4/GIF w trakcie
   videoOnly?: boolean; // bez PNG i SVG
+  mp4?: Blob; // gotowe wideo tej karty (podgląd Together): pobranie bez kodowania od nowa
 }) {
   const [exportFailed, setExportFailed] = useState<string | null>(null); // format, którego nie udało się zrobić
   const [encoding, setEncoding] = useState<{ format: 'mp4' | 'gif'; pct: number } | null>(null); // null = nie trwa
@@ -76,13 +89,7 @@ export function ExportControls({
 
   // Klatki animacji: ta sama karta z postępem, renderowana poza ekranem (odłączony div).
   const downloadAnimation = async (format: 'mp4' | 'gif') => {
-    const render = frame;
-    const host = document.createElement('div');
-    const root = createRoot(host);
-    const frameAt = (p: number) => {
-      flushSync(() => root.render(render(p)));
-      return host.querySelector('svg')!;
-    };
+    const { frameAt, unmount } = offscreenFrames(frame);
     const abort = new AbortController();
     encodeAbort.current = abort;
     setExportFailed(null);
@@ -95,7 +102,7 @@ export function ExportControls({
     };
     try {
       const opts = { onProgress, signal: abort.signal, under };
-      const blob = format === 'mp4' ? await encodeMp4(frameAt, opts) : await encodeGif(frameAt, opts);
+      const blob = format === 'mp4' ? (mp4 ?? (await encodeMp4(frameAt, opts))) : await encodeGif(frameAt, opts);
       if (abort.signal.aborted) return; // Cancel w chwili domykania pliku
       const file = new File([blob], `${name}.${format}`, { type: blob.type });
       download(file, file.name);
@@ -103,7 +110,7 @@ export function ExportControls({
     } catch {
       if (!abort.signal.aborted) setExportFailed(format === 'mp4' ? 'video' : 'GIF');
     } finally {
-      root.unmount();
+      unmount();
       if (encodeAbort.current === abort) {
         encodeAbort.current = null;
         setEncoding(null);

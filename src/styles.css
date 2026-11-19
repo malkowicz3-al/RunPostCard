@@ -674,6 +674,14 @@ button.text-button {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
+/* Podgląd Together jako MP4 na gotowej karcie. */
+.preview-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
 .generating .postcard-frame {
   background: var(--surface);
   box-shadow: none;
