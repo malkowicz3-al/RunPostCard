@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import type { Activity, RunStreams } from '../strava/api';
 import { DEFAULT_CAMERA, cameraTransform, type Camera } from '../lib/camera';
 import { isoRoute, type IsoRoute as IsoData } from '../lib/isoRoute';
@@ -16,6 +16,7 @@ import { Route, ROUTE_BOX } from './Route';
 import { StravaMark } from './StravaMark';
 import { SlotNumber } from './SlotNumber';
 import { DATA, chartFor, defaultLayout, fitted, type LayoutItem } from './slots';
+import type { SlotProps } from './SlotNumber';
 import { THEMES, type ThemeId } from './themes';
 
 // Obraz terenu (data URL) i jego prostokąt: płasko w jednostkach płótna mapy, w 3D w jednostkach pocztówki przed kamerą.
@@ -46,6 +47,7 @@ export function Postcard({
   terrain,
   layout = defaultLayout,
   route = true,
+  person,
 }: {
   activity: Activity;
   fontCss?: string;
@@ -63,6 +65,7 @@ export function Postcard({
   terrain?: TerrainImage; // tylko z tłem map: 3D relief zamiast podłogi i brył, płasko cieniowanie nad mapą
   layout?: LayoutItem[];
   route?: boolean; // false: tylko tło i statystyki (np. na własnym zdjęciu)
+  person?: TerrainImage; // wycinanka osoby ze zdjęcia (ADR 0009): przed górą trasy i liczbami
 }) {
   // Jedna projekcja dla mapy i trasy („scena”).
   const polyline = activity.map.summary_polyline;
@@ -111,6 +114,74 @@ export function Postcard({
     </>
   );
 
+  const behind = background === 'photo' && !!photo && !!person;
+  // Linia podziału trasy („obręcz”): środek jej obrysu w układzie trasy, czyli pod transformacją kamery.
+  const mid = iso
+    ? (iso.points.reduce((m, [, y]) => Math.min(m, y), Infinity) + iso.points.reduce((m, [, y]) => Math.max(m, y), -Infinity)) / 2
+    : fit
+      ? (fit.bounds[0][1] + fit.bounds[1][1]) / 2
+      : 0;
+  const clipped = (part: 'behind' | 'front' | undefined, node: ReactNode) =>
+    part ? <g clipPath={`url(#route-${part})`}>{node}</g> : node;
+  const routeLayer = (part?: 'behind' | 'front') =>
+    iso
+      ? route && (
+          <g transform={cameraTransform(camera)}>
+            {clipped(
+              part,
+              <IsoRoute
+                iso={iso}
+                flat={out?.route.stroke}
+                filter={out?.route.filter}
+                dash={out?.route.dash}
+                zoom={camera.zoom}
+                onSurface={!!relief}
+                gradientId={part === 'front' ? 'iso-curtain-grad-front' : undefined}
+              />,
+            )}
+          </g>
+        )
+      : fit &&
+        route && (
+          <g transform={cameraTransform(camera)}>{clipped(part, <Route {...out?.route} d={fit.d} zoom={camera.zoom} />)}</g>
+        );
+  const slotNode = (item: LayoutItem, part?: SlotProps['part']) => {
+    const value = DATA[item.slot.data].value(activity);
+    const chart = chartFor(item, streams);
+    // chartFor sprawdza box i streams. Wykresy całe przed osobą (drobny tekst i osie).
+    if (chart) {
+      return (
+        part !== 'value' && (
+          <chart.Component
+            key={item.slot.id}
+            box={item.box!}
+            streams={streams!}
+            activity={activity}
+            label={chart.label}
+            value={value}
+            scale={scale}
+          />
+        )
+      );
+    }
+    const { size, labelSize, label } = fitted(item, value, scale);
+    return (
+      <SlotNumber
+        key={item.slot.id}
+        x={item.x}
+        y={item.y}
+        size={size}
+        scale={scale}
+        anchor={item.anchor}
+        labelPos={item.labelPos}
+        labelSize={labelSize}
+        label={label}
+        value={value}
+        part={part}
+      />
+    );
+  };
+
   return (
     <svg
       className="postcard"
@@ -121,6 +192,24 @@ export function Postcard({
     >
       {fontCss && <style>{fontCss}</style>}
       {background === 'photo' && photo && <PhotoBackground {...photo} />}
+      {behind && (
+        <defs>
+          <clipPath id="route-behind">
+            <rect x={-1e5} y={-1e5} width={2e5} height={1e5 + mid} />
+          </clipPath>
+          <clipPath id="route-front">
+            <rect x={-1e5} y={mid} width={2e5} height={1e5} />
+          </clipPath>
+          {/* Ten sam wynik co czarny prostokąt Dim z opacity = dim, bez ponownego liczenia wycinanki. */}
+          <filter id="person-dim" colorInterpolationFilters="sRGB">
+            <feComponentTransfer>
+              <feFuncR type="linear" slope={1 - photo.dim} />
+              <feFuncG type="linear" slope={1 - photo.dim} />
+              <feFuncB type="linear" slope={1 - photo.dim} />
+            </feComponentTransfer>
+          </filter>
+        </defs>
+      )}
       {background === 'gradient' && <Background />}
       {iso ? (
         <g>
@@ -147,16 +236,7 @@ export function Postcard({
           </g>
           {/* Faktura papieru w przestrzeni płótna (jak w widoku płaskim), nie na pochylonej i powiększanej podłodze. */}
           {out?.overlay}
-          {route && (<g transform={cameraTransform(camera)}>
-            <IsoRoute
-              iso={iso}
-              flat={out?.route.stroke}
-              filter={out?.route.filter}
-              dash={out?.route.dash}
-              zoom={camera.zoom}
-              onSurface={!!relief}
-            />
-          </g>)}
+          {routeLayer(behind ? 'behind' : undefined)}
         </g>
       ) : (
         <g>
@@ -168,48 +248,21 @@ export function Postcard({
             {relief && terrainImage(relief)}
           </g>
           {out?.overlay}
-          {fit && route && (
-            <g transform={cameraTransform(camera)}>
-              <Route {...out?.route} d={fit.d} zoom={camera.zoom} />
-            </g>
-          )}
+          {routeLayer(behind ? 'behind' : undefined)}
         </g>
       )}
       <g color={text.color} filter={text.filter}>
-        {layout.map((item) => {
-          const value = DATA[item.slot.data].value(activity);
-          const chart = chartFor(item, streams);
-          // chartFor sprawdza box i streams.
-          if (chart) {
-            return (
-              <chart.Component
-                key={item.slot.id}
-                box={item.box!}
-                streams={streams!}
-                activity={activity}
-                label={chart.label}
-                value={value}
-                scale={scale}
-              />
-            );
-          }
-          const { size, labelSize, label } = fitted(item, value, scale);
-          return (
-            <SlotNumber
-              key={item.slot.id}
-              x={item.x}
-              y={item.y}
-              size={size}
-              scale={scale}
-              anchor={item.anchor}
-              labelPos={item.labelPos}
-              labelSize={labelSize}
-              label={label}
-              value={value}
-            />
-          );
-        })}
+        {layout.map((item) => slotNode(item, behind ? 'value' : undefined))}
       </g>
+      {behind && (
+        <>
+          <g filter="url(#person-dim)">{terrainImage(person)}</g>
+          {routeLayer('front')}
+          <g color={text.color} filter={text.filter}>
+            {layout.map((item) => slotNode(item, 'label'))}
+          </g>
+        </>
+      )}
       <StravaMark x={60} y={1820} variant={out?.mark} />
       {out && (
         <text

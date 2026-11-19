@@ -5,7 +5,9 @@ import { MAP_ATTRIBUTION } from '../lib/vectorMap';
 import { TERRAIN_ATTRIBUTION } from '../lib/dem';
 import { Postcard } from './Postcard';
 import { ROUTE_BOX } from './Route';
-import { CHARTS, DATA, resolveLayout } from './slots';
+import { CHARTS, DATA, defaultLayout, fitted, resolveLayout } from './slots';
+import { SlotNumber } from './SlotNumber';
+import { DEFAULT_FONT, FONTS } from '../lib/fonts';
 
 const LAYERS = { water: 'M0 0L50 0L50 50Z', major: 'M0 100L500 100' };
 const hills = mockActivities().find((r) => r.name === 'Hill repeats')!;
@@ -165,5 +167,64 @@ describe('Postcard układy', () => {
       }
     // Linia tętna i pierścień w kolorach stref.
     expect(renderToStaticMarkup(<Postcard activity={run} layout={resolveLayout('hud')} streams={s} />)).toMatch(/stroke="#(3b9cff|3ccf6e|ffa630|ff4d4d|a0a7b4)"/);
+  });
+});
+
+describe('Postcard „Behind”', () => {
+  const photo = { href: 'data:image/jpeg;base64,AAAA', dim: 0.35 };
+  const person = { href: 'data:image/png;base64,BBBB', rect: [100, 200, 700, 800] as [number, number, number, number] };
+  const item = defaultLayout.find((i) => i.slot.data === 'distance')!;
+  const value = DATA.distance.value(hills);
+  const { label } = fitted(item, value, FONTS[DEFAULT_FONT].scale);
+  const count = (svg: string, s: string) => svg.split(s).length - 1;
+
+  for (const view of ['flat', '3d'] as const) {
+    it(`${view}: osoba między liczbami i etykietami, trasa w dwóch częściach, tylko lokalne i unikalne id`, () => {
+      const svg = renderToStaticMarkup(
+        <Postcard activity={hills} background="photo" photo={photo} person={person} streams={streams} view={view} />,
+      );
+      for (const [, ref] of svg.matchAll(/url\(#([\w-]+)\)/g)) expect(svg).toContain(`id="${ref}"`);
+      const ids = [...svg.matchAll(/id="([^"]+)"/g)].map(([, id]) => id);
+      expect(new Set(ids).size).toBe(ids.length);
+      expect(svg.replaceAll('http://www.w3.org/2000/svg', '')).not.toMatch(/https?:\/\//);
+      expect(svg).toContain('id="person-dim"');
+      expect(svg).toContain('slope="0.65"');
+      expect(count(svg, `>${value}<`)).toBe(1);
+      expect(count(svg, `>${label}<`)).toBe(1);
+      const at = (s: string) => svg.indexOf(s);
+      const img = at('data:image/png');
+      expect(at('url(#route-behind)')).toBeGreaterThan(-1);
+      expect(at('url(#route-behind)')).toBeLessThan(img);
+      expect(at(`>${value}<`)).toBeLessThan(img);
+      expect(at('url(#route-front)')).toBeGreaterThan(img);
+      expect(at(`>${label}<`)).toBeGreaterThan(img);
+      expect(at('data:image/svg+xml')).toBeGreaterThan(img); // znak Stravy na wierzchu
+    });
+  }
+
+  it('bez osoby albo bez tła ze zdjęcia: nic z „Behind”', () => {
+    const svgs = [
+      renderToStaticMarkup(<Postcard activity={hills} background="photo" photo={photo} />),
+      renderToStaticMarkup(<Postcard activity={hills} background="gradient" photo={photo} person={person} />),
+      renderToStaticMarkup(<Postcard activity={hills} background="photo" person={person} streams={streams} view="3d" />),
+    ];
+    for (const svg of svgs) {
+      for (const bad of ['person-dim', 'route-behind', 'route-front', 'data:image/png']) expect(svg).not.toContain(bad);
+    }
+  });
+});
+
+describe('SlotNumber part', () => {
+  const props = { x: 0, y: 0, size: 100, label: 'LBL', value: 'VAL' };
+  it('tylko wartość, tylko etykieta albo obie', () => {
+    const both = renderToStaticMarkup(<svg><SlotNumber {...props} /></svg>);
+    const value = renderToStaticMarkup(<svg><SlotNumber {...props} part="value" /></svg>);
+    const label = renderToStaticMarkup(<svg><SlotNumber {...props} part="label" /></svg>);
+    expect(both).toContain('VAL');
+    expect(both).toContain('LBL');
+    expect(value).toContain('VAL');
+    expect(value).not.toContain('LBL');
+    expect(label).toContain('LBL');
+    expect(label).not.toContain('VAL');
   });
 });

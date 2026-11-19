@@ -11,6 +11,7 @@ export type SlotProps = {
   anchor?: SlotAnchor;
   labelPos?: LabelPos;
   labelSize?: number; // przed mnożnikiem fontu
+  part?: 'value' | 'label'; // tylko jedna część (warstwy „Behind”, ADR 0009); bez = obie
 };
 
 // Linia bazowa etykiety nad wartością (size = rozmiar wartości po skali).
@@ -28,13 +29,16 @@ export function SlotNumber({
   anchor = 'middle',
   labelPos = 'below',
   labelSize = 36,
+  part,
 }: SlotProps) {
   return (
     <g>
-      <text x={x} y={y} fontSize={size} textAnchor={anchor} fill="currentColor">
-        {value}
-      </text>
-      {labelPos !== 'none' && (
+      {part !== 'label' && (
+        <text x={x} y={y} fontSize={size} textAnchor={anchor} fill="currentColor">
+          {value}
+        </text>
+      )}
+      {part !== 'value' && labelPos !== 'none' && (
         <text
           x={x}
           y={labelPos === 'below' ? y + 60 : labelAboveY(y, size)}

@@ -33,6 +33,7 @@ import { LookPicker, type Look } from './LookPicker';
 import { MapBackdrop } from './MapBackdrop';
 import { useMapLayers } from './useMapLayers';
 import { useRegionLayers } from './useRegionLayers';
+import { usePersonCutout } from './usePersonCutout';
 import { useRunStreams } from './useRunStreams';
 import { toDataUrl, useTerrain } from './useTerrain';
 
@@ -90,6 +91,7 @@ export function PostcardScreen({
   const fontReady = fontCss?.id === font;
   const [photo, setPhoto] = useState<string>();
   const [dim, setDim] = useState(35);
+  const [behind, setBehind] = useState(false);
   const [photoError, setPhotoError] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
   const [exportFailed, setExportFailed] = useState(false);
@@ -207,7 +209,8 @@ export function PostcardScreen({
   }, [iso, terrainOn, terrain.loading, dem, isMap, settled]);
   const zoomed = useRegionLayers(fit?.projection ?? null, region, profile, isMap);
   const terrainLoading = terrainOn && terrain.loading;
-  const loading = mapLoading || zoomed.loading || terrainLoading;
+  const cutout = usePersonCutout(photo, behind && look === 'photo');
+  const loading = mapLoading || zoomed.loading || terrainLoading || cutout.loading;
 
   useEffect(() => {
     let cancelled = false;
@@ -415,6 +418,7 @@ export function PostcardScreen({
             terrain={terrainImage}
             layout={items}
             route={showRoute}
+            person={look === 'photo' ? (cutout.person ?? undefined) : undefined}
           />
           {/* Nakładka w HTML obok <svg>, żeby nie trafiła do eksportu. */}
           {items.map((item) => {
@@ -467,6 +471,11 @@ export function PostcardScreen({
                   onChange={(e) => setDim(Number(e.target.value))}
                 />
               </label>
+              {photo && (
+                <button className="toggle" aria-pressed={behind} onClick={() => setBehind(!behind)}>
+                  Behind
+                </button>
+              )}
             </div>
           )}
           <p className="panel-hint">
@@ -520,7 +529,7 @@ export function PostcardScreen({
           <DownloadMenu disabled={loading || !fontReady} onPng={downloadPng} onSvg={downloadSvg} />
           {loading && (
             <p className="hint" role="status">
-              {terrainLoading ? 'Loading terrain…' : 'Loading map…'}
+              {cutout.loading ? 'Finding runner…' : terrainLoading ? 'Loading terrain…' : 'Loading map…'}
             </p>
           )}
           {terrainImage && (
