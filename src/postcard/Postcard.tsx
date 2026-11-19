@@ -17,7 +17,7 @@ import { Route, ROUTE_BOX } from './Route';
 import { colorScale, routeLegend, type RouteColor } from './routeColor';
 import { RouteLegend } from './RouteLegend';
 import { StravaMark } from './StravaMark';
-import { SlotNumber } from './SlotNumber';
+import { SlotNumber, type TextStyle } from './SlotNumber';
 import { DATA, chartFor, defaultLayout, fitted, type LayoutItem } from './slots';
 import { THEMES, type ThemeId } from './themes';
 
@@ -52,6 +52,7 @@ export function Postcard({
   route = true,
   person,
   routeColor = 'theme',
+  textStyle,
   progress = 1,
   bare = false,
 }: {
@@ -73,6 +74,7 @@ export function Postcard({
   layout?: LayoutItem[];
   route?: boolean; // false: tylko tło i statystyki (np. na własnym zdjęciu)
   person?: Cutout; // wycinanka osoby lub obiektu ze zdjęcia (ADR 0009): przed tym, co zasłania częściowo
+  textStyle?: TextStyle; // pogrubienie, kursywa, kontur, cień tekstu danych
   routeColor?: RouteColor; // styl linii trasy; 'theme' lub brak danych: kolor motywu (3D: nachylenie)
   progress?: number; // animacja rysowania (0..1): trasa do tego ułamka, dystans i czas rosną; 1 = gotowa pocztówka
   bare?: boolean; // nakładka POV (ADR 0010): bez tła, mapy i trasy; statystyki, znak i podpis w kolorach motywu
@@ -198,6 +200,7 @@ export function Postcard({
         labelSize={labelSize}
         label={label}
         value={shown}
+        look={textStyle}
       />
     );
   };
@@ -283,8 +286,17 @@ export function Postcard({
           {routeLayer(splitRoute ? 'front' : undefined)}
         </>
       )}
+      {textStyle?.shadow && (
+        <defs>
+          <filter id="text-shadow" x="-10%" y="-10%" width="120%" height="130%">
+            <feDropShadow dx={0} dy={6} stdDeviation={8} floodColor="#000000" floodOpacity={0.55} />
+          </filter>
+        </defs>
+      )}
       <g color={text.color} filter={bare ? undefined : text.filter}>
-        {layout.map((item) => slotNode(item))}
+        <g fontStyle={textStyle?.italic ? 'italic' : undefined} filter={textStyle?.shadow ? 'url(#text-shadow)' : undefined}>
+          {layout.map((item) => slotNode(item))}
+        </g>
       </g>
       <StravaMark x={60} y={1820} variant={out?.mark} />
       {legend && <RouteLegend legend={legend} color={text.color} />}

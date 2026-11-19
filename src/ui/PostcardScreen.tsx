@@ -11,6 +11,7 @@ import {
 } from 'react';
 import type { Activity } from '../strava/api';
 import { Postcard } from '../postcard/Postcard';
+import type { TextStyle } from '../postcard/SlotNumber';
 import { ROUTE_BOX } from '../postcard/Route';
 import { gradientCss, type GradientId } from '../postcard/Background';
 import { colorScale, type RouteColor } from '../postcard/routeColor';
@@ -117,6 +118,7 @@ export function PostcardScreen({
   const [photoBusy, setPhotoBusy] = useState(false);
   const [accent, setAccent] = useState(DEFAULT_ACCENT);
   const [gradient, setGradient] = useState<GradientId>('dusk');
+  const [textStyle, setTextStyle] = useState<TextStyle>({});
   const [mapFailed, setMapFailed] = useState(false);
   const [view, setView] = useState<'flat' | '3d' | 'pov'>('flat');
   const [povReady, setPovReady] = useState(false);
@@ -394,9 +396,10 @@ export function PostcardScreen({
     layout: items,
     route: showRoute,
     routeColor,
+    textStyle,
     person,
     bare: isPov,
-  }), [activity, fontCss?.css, font, isMap, mapMissing, look, gradient, photo, map.layers, dim, accent, streams, is3d, camera, iso, zoomed.refined, terrainImage, items, showRoute, routeColor, person, isPov, povTheme]);
+  }), [textStyle, activity, fontCss?.css, font, isMap, mapMissing, look, gradient, photo, map.layers, dim, accent, streams, is3d, camera, iso, zoomed.refined, terrainImage, items, showRoute, routeColor, person, isPov, povTheme]);
   const previewCard = useMemo(() => <Postcard {...postcardProps} />, [postcardProps]);
 
   const currentSvg = () => previewRef.current?.querySelector('svg') ?? null;
@@ -666,6 +669,21 @@ export function PostcardScreen({
           <div className="panel-pair">
             <FontPicker font={font} onFont={setFont} />
             <LayoutPicker layout={layoutId} onLayout={setLayoutId} />
+          </div>
+          <div className="toggle-row" role="group" aria-label="Text style">
+            Text
+            {(
+              [
+                ['bold', 'Bold'],
+                ['italic', 'Italic'],
+                ['outline', 'Outline'],
+                ['shadow', 'Shadow'],
+              ] as const
+            ).map(([k, label]) => (
+              <button key={k} className="toggle" aria-pressed={!!textStyle[k]} onClick={() => setTextStyle((t) => ({ ...t, [k]: !t[k] }))}>
+                {label}
+              </button>
+            ))}
           </div>
           <DataModal
             slot={editingItem}
