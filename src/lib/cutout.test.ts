@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cropSquare, cutoutPixels, personBox } from './cutout';
+import { CELL, GRID_H, GRID_W, cropSquare, cutoutPixels, gridCoverage, gridFromCutout, partlyCovered, personBox, pointsCoverage } from './cutout';
 
 const block = (w: number, h: number, [x0, y0, x1, y1]: number[], p = 0.9) => {
   const m = new Float32Array(w * h);
@@ -63,5 +63,39 @@ describe('cutoutPixels', () => {
     const half = cutoutPixels(photo(5), 5, new Float32Array([0, 1, 0, 1]), 2, 2);
     expect(half[3]).toBe(0); // lewy brzeg
     expect(half[4 * 4 + 3]).toBe(255); // prawy brzeg
+  });
+});
+
+describe('siatka zasłonięcia', () => {
+  // Wycinanka 40x40 w (95, 95): lewa połowa nieprzezroczysta.
+  const side = 40;
+  const rgba = new Uint8ClampedArray(side * side * 4);
+  for (let y = 0; y < side; y++) for (let x = 0; x < 20; x++) rgba[(y * side + x) * 4 + 3] = 255;
+  const grid = gridFromCutout(rgba, [95, 95, 135, 135]);
+
+  it('gridFromCutout: komórki ze środkiem nad nieprzezroczystą częścią', () => {
+    expect(grid.length).toBe(GRID_W * GRID_H);
+    const on = [...grid.keys()].filter((k) => grid[k]).map((k) => [(k % GRID_W) * CELL, Math.floor(k / GRID_W) * CELL]);
+    // Nieprzezroczyste x 95..115, y 95..135; środki komórek 95 i 105 w x, 95..125 w y.
+    expect(on).toEqual([90, 100, 110, 120].flatMap((y) => [[90, y], [100, y]]));
+    // Wycinanka wystająca poza płótno nie psuje siatki.
+    expect(gridFromCutout(new Uint8ClampedArray(2000 * 2000 * 4).fill(255), [-500, -40, 1500, 1960]).every((v) => v === 1)).toBe(true);
+  });
+
+  it('gridCoverage: udział w prostokącie, przycięty do płótna, pusty = 0', () => {
+    expect(gridCoverage(grid, { x0: 90, y0: 90, x1: 130, y1: 130 })).toBe(0.5);
+    const full = new Uint8Array(GRID_W * GRID_H).fill(1);
+    expect(gridCoverage(full, { x0: -500, y0: -500, x1: 20, y1: 20 })).toBe(1);
+    expect(gridCoverage(full, { x0: 2000, y0: 0, x1: 2100, y1: 50 })).toBe(0);
+    expect(gridCoverage(full, { x0: 50, y0: 50, x1: 50, y1: 90 })).toBe(0);
+  });
+
+  it('pointsCoverage: punkty w zasłoniętych komórkach; poza płótnem i pusto = 0', () => {
+    expect(pointsCoverage(grid, [[105, 105], [125, 105], [-5, 105], [105, 5000]])).toBe(0.25);
+    expect(pointsCoverage(grid, [])).toBe(0);
+  });
+
+  it('partlyCovered: 5–50% włącznie', () => {
+    expect([0.049, 0.05, 0.5, 0.51].map(partlyCovered)).toEqual([false, true, true, false]);
   });
 });

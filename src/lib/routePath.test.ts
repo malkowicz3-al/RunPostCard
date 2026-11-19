@@ -29,4 +29,11 @@ describe('routePath', () => {
     expect(y1).toBeLessThanOrEqual(by1 + 1e-6);
     expect(y0).toBeLessThan(y1);
   });
+
+  it('points: rzutowany punkt na każdy punkt polilinii, w obszarze', () => {
+    const { points } = fitRoute('_p~iF~ps|U_ulLnnqC_mqNvxq`@', ROUTE_BOX)!;
+    expect(points).toHaveLength(3);
+    const [[bx0, by0], [bx1, by1]] = ROUTE_BOX;
+    for (const [x, y] of points) expect(x >= bx0 - 1e-6 && x <= bx1 + 1e-6 && y >= by0 - 1e-6 && y <= by1 + 1e-6).toBe(true);
+  });
 });

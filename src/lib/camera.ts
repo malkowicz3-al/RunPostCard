@@ -13,6 +13,11 @@ const HALF_BOX: [number, number] = [(bx1 - bx0) / 2, (by1 - by0) / 2];
 
 export const cameraTransform = ({ zoom, x, y }: Camera) =>
   `translate(${CX * (1 - zoom) + x} ${CY * (1 - zoom) + y}) scale(${zoom})`;
+// Punkt po tej samej transformacji co cameraTransform.
+export const applyCamera = ({ zoom, x, y }: Camera, [px, py]: [number, number]): [number, number] => [
+  CX * (1 - zoom) + x + px * zoom,
+  CY * (1 - zoom) + y + py * zoom,
+];
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 // Środek trasy nie wychodzi poza płótno, a przy zoomie każdy punkt pola trasy da się przesunąć na środek.

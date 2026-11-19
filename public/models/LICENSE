@@ -14,3 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 Source: https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/latest/selfie_multiclass_256x256.tflite (MediaPipe Selfie Segmentation multiclass, Google)
+
+magic_touch.tflite
+
+MediaPipe Interactive Segmenter (Magic Touch), Copyright Google LLC.
+Licensed under the Apache License, Version 2.0 (same text as above):
+
+    https://www.apache.org/licenses/LICENSE-2.0
+
+Source: https://storage.googleapis.com/mediapipe-models/interactive_segmenter/magic_touch/float32/latest/magic_touch.tflite (MediaPipe Interactive Segmenter, Google)

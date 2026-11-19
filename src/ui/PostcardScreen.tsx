@@ -92,6 +92,9 @@ export function PostcardScreen({
   const [photo, setPhoto] = useState<string>();
   const [dim, setDim] = useState(35);
   const [behind, setBehind] = useState(false);
+  // „Pick object”: następny klik w zdjęcie wskazuje obiekt (pickAt, 0..1); null = osoba automatycznie.
+  const [pickArmed, setPickArmed] = useState(false);
+  const [pickAt, setPickAt] = useState<(Point & { href?: string }) | null>(null);
   const [photoError, setPhotoError] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
   const [exportFailed, setExportFailed] = useState(false);
@@ -209,7 +212,8 @@ export function PostcardScreen({
   }, [iso, terrainOn, terrain.loading, dem, isMap, settled]);
   const zoomed = useRegionLayers(fit?.projection ?? null, region, profile, isMap);
   const terrainLoading = terrainOn && terrain.loading;
-  const cutout = usePersonCutout(photo, behind && look === 'photo');
+  // Punkt należy do zdjęcia, przy którym go kliknięto: po zmianie zdjęcia nie liczymy go na nowym ani przez jeden render.
+  const cutout = usePersonCutout(photo, behind && look === 'photo', pickAt?.href === photo ? pickAt : null);
   const loading = mapLoading || zoomed.loading || terrainLoading || cutout.loading;
 
   useEffect(() => {
@@ -248,6 +252,18 @@ export function PostcardScreen({
     setTerrainPick(null);
   }, [activity]);
 
+  useEffect(() => {
+    setPickArmed(false);
+    setPickAt(null);
+  }, [photo, behind, activity]);
+
+  useEffect(() => {
+    if (!pickArmed) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setPickArmed(false);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [pickArmed]);
+
   const opens = (e: { clientX: number; clientY: number }, keyboard = false) =>
     shouldOpenSlot({ down: tap.current, up: { x: e.clientX, y: e.clientY }, multiTouch: multiTouch.current, keyboard });
 
@@ -255,6 +271,7 @@ export function PostcardScreen({
     if (pointers.current.size > 0) multiTouch.current = true;
     const hit = (e.target as Element).closest?.('[data-slot]');
     tap.current = { x: e.clientX, y: e.clientY, id: hit?.getAttribute('data-slot') ?? null };
+    if (pickArmed) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
   };
@@ -263,7 +280,7 @@ export function PostcardScreen({
     const all = pointers.current;
     const prev = all.get(e.pointerId);
     const svg = currentSvg();
-    if (!prev || !svg) return;
+    if (pickArmed || !prev || !svg) return;
     const next = { x: e.clientX, y: e.clientY };
     const units = SIZE[0] / svg.getBoundingClientRect().width; // px ekranu -> jednostki SVG
     const other = [...all].find(([id]) => id !== e.pointerId)?.[1];
@@ -279,6 +296,16 @@ export function PostcardScreen({
 
   const onPointerUp = (e: ReactPointerEvent) => {
     // Ramka przechwytuje wskaźnik, więc klik może nie dojść do przycisku slotu; dotknięcie łapiemy tutaj.
+    if (pickArmed) {
+      const r = currentSvg()?.getBoundingClientRect();
+      if (e.type !== 'pointerup' || !r || !opens(e)) return;
+      const x = (e.clientX - r.left) / r.width;
+      const y = (e.clientY - r.top) / r.height;
+      if (x < 0 || x > 1 || y < 0 || y > 1) return;
+      setPickAt({ x, y, href: photo });
+      setPickArmed(false);
+      return;
+    }
     const id = tap.current?.id;
     if (e.type === 'pointerup' && id && opens(e)) setEditing(id);
     pointers.current.delete(e.pointerId);
@@ -366,7 +393,7 @@ export function PostcardScreen({
       <div className="postcard-layout">
         {/* Szachownica tylko na otoczce podglądu, żeby nie trafiła do eksportu. */}
         <div
-          className={`postcard-frame${look === 'transparent' ? ' checkerboard' : ''}${fit ? ' pannable' : ''}${scrollsPage ? ' scrolls-page' : ''}`}
+          className={`postcard-frame${look === 'transparent' ? ' checkerboard' : ''}${fit ? ' pannable' : ''}${scrollsPage ? ' scrolls-page' : ''}${pickArmed ? ' picking' : ''}`}
           ref={previewRef}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
@@ -476,13 +503,26 @@ export function PostcardScreen({
                   Behind
                 </button>
               )}
+              {photo && behind && (
+                <button className="toggle" aria-pressed={pickArmed} onClick={() => setPickArmed(!pickArmed)}>
+                  Pick object
+                </button>
+              )}
+              {photo && behind && pickAt && (
+                <button className="toggle" onClick={() => setPickAt(null)}>
+                  Auto
+                </button>
+              )}
             </div>
           )}
+          {look === 'photo' && pickArmed && <p className="panel-hint">Tap the object on the photo</p>}
           {look === 'photo' && cutout.failed && (
             <p className="error" role="status">
-              {cutout.failed === 'none'
-                ? 'No runner found in this photo. Try one where the person is larger.'
-                : 'Could not load the runner detector. Turn Behind off and on to retry.'}
+              {pickAt && cutout.failed === 'none'
+                ? 'No object found there. Try another spot.'
+                : cutout.failed === 'none'
+                  ? 'No runner found in this photo. Try one where the person is larger.'
+                  : 'Could not load the runner detector. Turn Behind off and on to retry.'}
             </p>
           )}
           <p className="panel-hint">

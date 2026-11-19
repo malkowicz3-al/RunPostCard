@@ -1192,3 +1192,12 @@ footer {
     transition: none !important;
   }
 }
+
+/* „Pick object”: następny klik w zdjęcie wskazuje obiekt, nie przesuwa mapy ani nie otwiera slotu. */
+.postcard-frame.picking {
+  cursor: crosshair;
+}
+
+.picking .slot-hit {
+  pointer-events: none;
+}

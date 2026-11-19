@@ -1,6 +1,7 @@
 import { useMemo, type ReactNode } from 'react';
 import type { Activity, RunStreams } from '../strava/api';
-import { DEFAULT_CAMERA, cameraTransform, type Camera } from '../lib/camera';
+import { DEFAULT_CAMERA, applyCamera, cameraTransform, type Camera } from '../lib/camera';
+import { gridCoverage, partlyCovered, pointsCoverage, type Cutout } from '../lib/cutout';
 import { isoRoute, type IsoRoute as IsoData } from '../lib/isoRoute';
 import type { Rect } from '../lib/mapTiles';
 import { fitRoute } from '../lib/routePath';
@@ -15,7 +16,7 @@ import { PhotoBackground } from './PhotoBackground';
 import { Route, ROUTE_BOX } from './Route';
 import { StravaMark } from './StravaMark';
 import { SlotNumber } from './SlotNumber';
-import { DATA, chartFor, defaultLayout, fitted, type LayoutItem } from './slots';
+import { DATA, chartFor, defaultLayout, fitted, slotBox, type LayoutItem } from './slots';
 import type { SlotProps } from './SlotNumber';
 import { THEMES, type ThemeId } from './themes';
 
@@ -65,7 +66,7 @@ export function Postcard({
   terrain?: TerrainImage; // tylko z tłem map: 3D relief zamiast podłogi i brył, płasko cieniowanie nad mapą
   layout?: LayoutItem[];
   route?: boolean; // false: tylko tło i statystyki (np. na własnym zdjęciu)
-  person?: TerrainImage; // wycinanka osoby ze zdjęcia (ADR 0009): przed górą trasy i liczbami
+  person?: Cutout; // wycinanka osoby lub obiektu ze zdjęcia (ADR 0009): przed tym, co zasłania częściowo
 }) {
   // Jedna projekcja dla mapy i trasy („scena”).
   const polyline = activity.map.summary_polyline;
@@ -121,6 +122,21 @@ export function Postcard({
     : fit
       ? (fit.bounds[0][1] + fit.bounds[1][1]) / 2
       : 0;
+  // Za obiekt idzie tylko to, co zasłania w 5–50% (ADR 0009, decyzja 4); reszta przed nim. Wykresy zawsze przed.
+  const upperPoints = useMemo(() => (iso ? iso.points : (fit?.points ?? [])).filter(([, y]) => y < mid), [iso, fit, mid]);
+  const splitRoute =
+    route && behind && partlyCovered(pointsCoverage(person!.grid, upperPoints.map((p) => applyCamera(camera, p))));
+  const behindIds = new Set(
+    behind
+      ? layout
+          .filter(
+            (item) =>
+              !chartFor(item, streams) &&
+              partlyCovered(gridCoverage(person!.grid, slotBox(item, DATA[item.slot.data].value(activity), scale))),
+          )
+          .map((item) => item.slot.id)
+      : [],
+  );
   const clipped = (part: 'behind' | 'front' | undefined, node: ReactNode) =>
     part ? <g clipPath={`url(#route-${part})`}>{node}</g> : node;
   const routeLayer = (part?: 'behind' | 'front') =>
@@ -194,12 +210,16 @@ export function Postcard({
       {background === 'photo' && photo && <PhotoBackground {...photo} />}
       {behind && (
         <defs>
-          <clipPath id="route-behind">
-            <rect x={-1e5} y={-1e5} width={2e5} height={1e5 + mid} />
-          </clipPath>
-          <clipPath id="route-front">
-            <rect x={-1e5} y={mid} width={2e5} height={1e5} />
-          </clipPath>
+          {splitRoute && (
+            <>
+              <clipPath id="route-behind">
+                <rect x={-1e5} y={-1e5} width={2e5} height={1e5 + mid} />
+              </clipPath>
+              <clipPath id="route-front">
+                <rect x={-1e5} y={mid} width={2e5} height={1e5} />
+              </clipPath>
+            </>
+          )}
           {/* Ten sam wynik co czarny prostokąt Dim z opacity = dim, bez ponownego liczenia wycinanki. */}
           <filter id="person-dim" colorInterpolationFilters="sRGB">
             <feComponentTransfer>
@@ -236,7 +256,7 @@ export function Postcard({
           </g>
           {/* Faktura papieru w przestrzeni płótna (jak w widoku płaskim), nie na pochylonej i powiększanej podłodze. */}
           {out?.overlay}
-          {routeLayer(behind ? 'behind' : undefined)}
+          {(!behind || splitRoute) && routeLayer(splitRoute ? 'behind' : undefined)}
         </g>
       ) : (
         <g>
@@ -248,18 +268,20 @@ export function Postcard({
             {relief && terrainImage(relief)}
           </g>
           {out?.overlay}
-          {routeLayer(behind ? 'behind' : undefined)}
+          {(!behind || splitRoute) && routeLayer(splitRoute ? 'behind' : undefined)}
         </g>
       )}
       <g color={text.color} filter={text.filter}>
-        {layout.map((item) => slotNode(item, behind ? 'value' : undefined))}
+        {(behind ? layout.filter((item) => behindIds.has(item.slot.id)) : layout).map((item) =>
+          slotNode(item, behind ? 'value' : undefined),
+        )}
       </g>
       {behind && (
         <>
           <g filter="url(#person-dim)">{terrainImage(person)}</g>
-          {routeLayer('front')}
+          {routeLayer(splitRoute ? 'front' : undefined)}
           <g color={text.color} filter={text.filter}>
-            {layout.map((item) => slotNode(item, 'label'))}
+            {layout.map((item) => slotNode(item, behindIds.has(item.slot.id) ? 'label' : undefined))}
           </g>
         </>
       )}

@@ -5,7 +5,10 @@ import { MAP_ATTRIBUTION } from '../lib/vectorMap';
 import { TERRAIN_ATTRIBUTION } from '../lib/dem';
 import { Postcard } from './Postcard';
 import { ROUTE_BOX } from './Route';
-import { CHARTS, DATA, defaultLayout, fitted, resolveLayout } from './slots';
+import { CHARTS, DATA, defaultLayout, fitted, resolveLayout, slotBox } from './slots';
+import { CELL, GRID_H, GRID_W, gridCoverage, partlyCovered, pointsCoverage } from '../lib/cutout';
+import { fitRoute } from '../lib/routePath';
+import type { Rect } from '../lib/mapTiles';
 import { SlotNumber } from './SlotNumber';
 import { DEFAULT_FONT, FONTS } from '../lib/fonts';
 
@@ -172,17 +175,35 @@ describe('Postcard układy', () => {
 
 describe('Postcard „Behind”', () => {
   const photo = { href: 'data:image/jpeg;base64,AAAA', dim: 0.35 };
-  const person = { href: 'data:image/png;base64,BBBB', rect: [100, 200, 700, 800] as [number, number, number, number] };
+  const scale = FONTS[DEFAULT_FONT].scale;
   const item = defaultLayout.find((i) => i.slot.data === 'distance')!;
   const value = DATA.distance.value(hills);
-  const { label } = fitted(item, value, FONTS[DEFAULT_FONT].scale);
+  const { label } = fitted(item, value, scale);
+  const box = slotBox(item, value, scale);
+  const lit = (on: (x: number, y: number) => boolean) => {
+    const grid = new Uint8Array(GRID_W * GRID_H);
+    for (let j = 0; j < GRID_H; j++) for (let i = 0; i < GRID_W; i++) grid[j * GRID_W + i] = on(i * CELL, j * CELL) ? 1 : 0;
+    return grid;
+  };
+  const cut = (grid: Uint8Array) => ({ href: 'data:image/png;base64,BBBB', rect: [100, 200, 700, 800] as Rect, grid });
+  // Lewe ~30% prostokąta liczby dystansu.
+  const overSlot = cut(lit((x, y) => x >= box.x0 - CELL && x < box.x0 + 0.3 * (box.x1 - box.x0) && y >= box.y0 - CELL && y < box.y1));
   const count = (svg: string, s: string) => svg.split(s).length - 1;
+  const render = (person: ReturnType<typeof cut>, view: 'flat' | '3d' = 'flat') =>
+    renderToStaticMarkup(
+      <Postcard activity={hills} background="photo" photo={photo} person={person} streams={streams} view={view} />,
+    );
+  const others = defaultLayout
+    .filter((i) => i !== item && !i.box)
+    .map((i) => DATA[i.slot.data].value(hills));
+
+  it('siatka pokrywa ~30% dystansu', () => {
+    expect(partlyCovered(gridCoverage(overSlot.grid, box))).toBe(true);
+  });
 
   for (const view of ['flat', '3d'] as const) {
-    it(`${view}: osoba między liczbami i etykietami, trasa w dwóch częściach, tylko lokalne i unikalne id`, () => {
-      const svg = renderToStaticMarkup(
-        <Postcard activity={hills} background="photo" photo={photo} person={person} streams={streams} view={view} />,
-      );
+    it(`${view}: częściowo zasłonięta liczba za osobą, etykieta i reszta przed, tylko lokalne i unikalne id`, () => {
+      const svg = render(overSlot, view);
       for (const [, ref] of svg.matchAll(/url\(#([\w-]+)\)/g)) expect(svg).toContain(`id="${ref}"`);
       const ids = [...svg.matchAll(/id="([^"]+)"/g)].map(([, id]) => id);
       expect(new Set(ids).size).toBe(ids.length);
@@ -193,16 +214,42 @@ describe('Postcard „Behind”', () => {
       expect(count(svg, `>${label}<`)).toBe(1);
       const at = (s: string) => svg.indexOf(s);
       const img = at('data:image/png');
-      expect(at('url(#route-behind)')).toBeGreaterThan(-1);
-      expect(at('url(#route-behind)')).toBeLessThan(img);
       expect(at(`>${value}<`)).toBeLessThan(img);
-      expect(at('url(#route-front)')).toBeGreaterThan(img);
       expect(at(`>${label}<`)).toBeGreaterThan(img);
+      for (const v of others) expect(at(`>${v}<`)).toBeGreaterThan(img);
       expect(at('data:image/svg+xml')).toBeGreaterThan(img); // znak Stravy na wierzchu
     });
   }
 
+  it('pełna lub pusta siatka: wszystko przed osobą, trasa w całości raz', () => {
+    const d = fitRoute(hills.map.summary_polyline, ROUTE_BOX)!.d;
+    for (const person of [cut(lit(() => true)), cut(lit(() => false))]) {
+      const svg = render(person);
+      const img = svg.indexOf('data:image/png');
+      for (const v of [value, ...others]) expect(svg.indexOf(`>${v}<`)).toBeGreaterThan(img);
+      expect(svg).not.toContain('url(#route-behind)');
+      expect(count(svg, `d="${d}"`)).toBe(1);
+      expect(svg.indexOf(`d="${d}"`)).toBeGreaterThan(img);
+      expect(render(person, '3d')).not.toContain('route-behind');
+    }
+  });
+
+  it('częściowo zasłonięta góra trasy: trasa w dwóch częściach wokół osoby', () => {
+    const { points, bounds } = fitRoute(hills.map.summary_polyline, ROUTE_BOX)!;
+    const upper = points.filter(([, y]) => y < (bounds[0][1] + bounds[1][1]) / 2);
+    // Pierwsza kolumna, od której odsłonięta lewa część zasłania ≥ 20% górnych punktów.
+    let grid = lit(() => false);
+    for (let x = 0; x <= 1080 && pointsCoverage(grid, upper) < 0.2; x += CELL) grid = lit((cx) => cx < x);
+    expect(partlyCovered(pointsCoverage(grid, upper))).toBe(true);
+    const svg = render(cut(grid));
+    const img = svg.indexOf('data:image/png');
+    expect(svg.indexOf('url(#route-behind)')).toBeGreaterThan(-1);
+    expect(svg.indexOf('url(#route-behind)')).toBeLessThan(img);
+    expect(svg.indexOf('url(#route-front)')).toBeGreaterThan(img);
+  });
+
   it('bez osoby albo bez tła ze zdjęcia: nic z „Behind”', () => {
+    const person = overSlot;
     const svgs = [
       renderToStaticMarkup(<Postcard activity={hills} background="photo" photo={photo} />),
       renderToStaticMarkup(<Postcard activity={hills} background="gradient" photo={photo} person={person} />),

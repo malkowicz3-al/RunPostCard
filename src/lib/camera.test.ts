@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cameraTransform, clampCamera } from './camera';
+import { applyCamera, cameraTransform, clampCamera } from './camera';
 
 describe('clampCamera', () => {
   it('ogranicza zoom do 1–4', () => {
@@ -21,5 +21,12 @@ describe('clampCamera', () => {
 describe('cameraTransform', () => {
   it('skala wokół środka pola trasy (540, 720) + przesunięcie', () => {
     expect(cameraTransform({ zoom: 2, x: 10, y: -20 })).toBe('translate(-530 -740) scale(2)');
+  });
+});
+
+describe('applyCamera', () => {
+  it('ten sam punkt co cameraTransform', () => {
+    // translate(-530 -740) scale(2): (100, 50) -> (-330, -640)
+    expect(applyCamera({ zoom: 2, x: 10, y: -20 }, [100, 50])).toEqual([-330, -640]);
   });
 });

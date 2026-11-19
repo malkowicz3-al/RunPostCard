@@ -52,3 +52,49 @@ export function cutoutPixels(photo: Uint8ClampedArray, side: number, mask: Float
   }
   return photo;
 }
+
+// Siatka zasłonięcia płótna 1080x1920 w komórkach 10x10 px: 1 tam, gdzie wycinanka jest nieprzezroczysta (ADR 0009).
+export const CELL = 10;
+export const GRID_W = 108;
+export const GRID_H = 192;
+
+export type Cutout = { href: string; rect: Rect; grid: Uint8Array };
+
+// rgba: wycinanka side x side położona w rect (rect może wystawać poza płótno).
+export function gridFromCutout(rgba: Uint8ClampedArray, [rx, ry, rx1]: Rect): Uint8Array {
+  const side = rx1 - rx;
+  const grid = new Uint8Array(GRID_W * GRID_H);
+  for (let j = 0; j < GRID_H; j++) {
+    const py = Math.floor(j * CELL + CELL / 2 - ry);
+    if (py < 0 || py >= side) continue;
+    for (let i = 0; i < GRID_W; i++) {
+      const px = Math.floor(i * CELL + CELL / 2 - rx);
+      if (px >= 0 && px < side && rgba[(py * side + px) * 4 + 3] > 127) grid[j * GRID_W + i] = 1;
+    }
+  }
+  return grid;
+}
+
+// Udział zasłoniętych komórek w prostokącie przyciętym do płótna; pusty prostokąt = 0.
+export function gridCoverage(grid: Uint8Array, { x0, y0, x1, y1 }: { x0: number; y0: number; x1: number; y1: number }): number {
+  const i0 = Math.max(0, Math.floor(x0 / CELL)), i1 = Math.min(GRID_W, Math.ceil(x1 / CELL));
+  const j0 = Math.max(0, Math.floor(y0 / CELL)), j1 = Math.min(GRID_H, Math.ceil(y1 / CELL));
+  if (i1 <= i0 || j1 <= j0) return 0;
+  let lit = 0;
+  for (let j = j0; j < j1; j++) for (let i = i0; i < i1; i++) lit += grid[j * GRID_W + i];
+  return lit / ((i1 - i0) * (j1 - j0));
+}
+
+// Udział punktów w zasłoniętych komórkach; punkt poza płótnem nie jest zasłonięty.
+export function pointsCoverage(grid: Uint8Array, pts: [number, number][]): number {
+  if (!pts.length) return 0;
+  let lit = 0;
+  for (const [x, y] of pts) {
+    const i = Math.floor(x / CELL), j = Math.floor(y / CELL);
+    if (i >= 0 && i < GRID_W && j >= 0 && j < GRID_H) lit += grid[j * GRID_W + i];
+  }
+  return lit / pts.length;
+}
+
+// Za obiekt idzie tylko to, co obiekt zasłania częściowo; ponad połowę zasłonięte byłoby nieczytelne (decyzja właściciela).
+export const partlyCovered = (c: number) => c >= 0.05 && c <= 0.5;

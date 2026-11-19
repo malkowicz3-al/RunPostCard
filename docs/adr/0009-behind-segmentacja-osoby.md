@@ -44,6 +44,11 @@ Bez `person` kolejność jak dziś (jedno rysowanie, bez klonów).
 
 **Podział slotów:** `SlotNumber` dostaje prop `part?: 'value' | 'label'` (brak = oba, jak dziś). `Postcard` przy `person` mapuje `layout` dwa razy: liczby (`part="value"`) za osobą, etykiety (`part="label"`) i wykresy przed nią. Wspólna funkcja renderująca slot w `Postcard`, żeby nie dublować kodu `fitted`/`chartFor`.
 
+**Zmiana (Behind 2.0): reguła zasłonięcia 5–50%** (decyzja właściciela). Za obiekt idzie tylko to, co obiekt zasłania częściowo; zasłonięte w ponad połowie byłoby nieczytelne, a niezasłonięte nie daje efektu.
+- Wycinanka niesie siatkę `grid` 108x192 (komórki 10x10 px płótna, 1 gdy alfa w środku komórki > 127; `gridFromCutout` w `cutout.ts`). `Postcard` sam liczy decyzje z siatki, bez stanu w ekranie.
+- Liczba slotu idzie za obiekt, gdy pokrycie jej `slotBox` przez siatkę jest w przedziale 5–50% (`partlyCovered`); poza nim cały slot przed obiektem. Etykiety i wykresy zawsze przed.
+- Trasa: punkty górnej części (`y < mid`, po kamerze `applyCamera`) — gdy 5–50% z nich leży w siatce, obręcz jak wyżej (`route-behind`/`route-front`); inaczej cała trasa jedną warstwą przed obiektem i bez defs podziału.
+
 ### 5. Wasm: importy `?url` z pakietu
 - `import loader from '@mediapipe/tasks-vision/vision_wasm_internal.js?url'` i `import binary from '@mediapipe/tasks-vision/vision_wasm_internal.wasm?url'` (bez segmentu `wasm/`: `exports` pakietu mapuje je na `./wasm/…`), przekazane wprost jako `WasmFileset { wasmLoaderPath, wasmBinaryPath }` do `ImageSegmenter.createFromOptions` (bez `FilesetResolver` i bez CDN). Pakiet udostępnia te ścieżki w `exports`. Vite sam kopiuje pliki do `dist/assets` z hashem; w dev serwuje je z `node_modules`. Bez skryptu kopiującego i bez plików wasm w repo.
 - Model: `'/models/selfie_multiclass_256x256.tflite'` z `public/` (z `import.meta.env.BASE_URL`).
@@ -56,9 +61,15 @@ Bez `person` kolejność jak dziś (jedno rysowanie, bez klonów).
 - Wątek główny, nie Web Worker: jedno wywołanie po wybraniu zdjęcia/włączeniu (~0,3–1 s z inicjalizacją wasm), bez ruchu w trakcie. Worker dopiero, jeśli UI wyraźnie przytnie na telefonie.
 - `src/ui/PostcardScreen.tsx`: przełącznik **„Behind”** w sekcji zdjęcia (obok Dim), widoczny tylko przy wyglądzie Photo z wczytanym zdjęciem; domyślnie wyłączony (chunk ~kilkaset KB JS + ~10 MB wasm + 16 MB modelu ładuje się dopiero po włączeniu); w trakcie: stan „Finding runner…” i zablokowany Download; bez osoby przełącznik zostaje włączony, ale pocztówka wygląda jak bez niego.
 
+### 7. „Auto + tap”: wskazanie obiektu kliknięciem
+- Domyślnie jak wyżej: osoba automatycznie (`selfie_multiclass`). Przycisk **Pick object** uzbraja następny klik w zdjęcie; punkt (0..1) idzie do `InteractiveSegmenterLegacy` z modelem `magic_touch.tflite` (~6,2 MB, Apache 2.0, Google MediaPipe, `public/models/`), `segment(image, { keypoint })`, maska `confidenceMasks[0]`. **Auto** wraca do osoby.
+- Ten sam przepływ dwóch przebiegów (przebieg 1 na 540x960, bo obiekt może być mały; przebieg 2 na kwadracie z punktem przeliczonym do jego układu), ta sama wycinanka i siatka.
+- Model ładowany leniwie przy pierwszym kliknięciu, w tym samym module `segment.ts` z tą samą blokadą telemetrii. `InteractiveSegmenter` (nie-legacy, API pociągnięć) świadomie nieużyty.
+- W trybie wskazywania ramka ma kursor celownika, klik nie przesuwa mapy ani nie otwiera slotu; Esc lub ponowny klik przycisku anuluje.
+
 ## Poza zakresem
-- Ręczna korekta maski (pędzel, punkt „to jest osoba”, `InteractiveSegmenter`), wybór jednej z kilku osób (wszystkie osoby trafiają do wycinanki).
-- Ręczne ustawienie linii podziału trasy, inne elementy za osobą (wykresy, etykiety, znak Stravy).
+- Ręczna korekta maski pędzlem/pociągnięciem (scribble), kilka obiektów naraz; w trybie Auto wszystkie osoby trafiają do wycinanki (pojedynczy punkt: decyzja 7).
+- Ręczne ustawienie linii podziału trasy i progów zasłonięcia, inne elementy za osobą (wykresy, etykiety, znak Stravy).
 - Matowanie włosów, cień osoby na trasie, wygładzanie krawędzi filtrem.
 - Web Worker, delegat GPU, inne modele w UI.
 - Proporcje 4:5 i 1:1 (dojdą razem z resztą etapu 3; wycinanka liczona na tym samym płótnie co zdjęcie).
@@ -72,3 +83,4 @@ Bez `person` kolejność jak dziś (jedno rysowanie, bez klonów).
 - Jakość zależy od zdjęcia: tłum, osoba bardzo mała (< ~15% wysokości) lub silnie nieostra da słabą maskę; wtedy użytkownik wyłącza „Behind”.
 - Linia podziału trasy to środek jej obrysu, nie sylwetka: przy trasie daleko od osoby efekt obręczy nie wystąpi (część trasy nad osobą i tak jest za nią tylko tam, gdzie się nakładają).
 - Do sprawdzenia przy implementacji: rozmiar pliku modelu i wasm po instalacji, czas na telefonie (iOS Safari, pamięć wasm), czy filtr `person-dim` daje ten sam odcień co prostokąt Dim w Chrome/Safari/Firefox.
+- Pick object (decyzja 7): repo +6,2 MB (`magic_touch.tflite`); po pierwszym kliknięciu druga instancja wasm w pamięci obok segmentera osoby. Do sprawdzenia na prawdziwym zdjęciu: czy `confidenceMasks[0]` to pewność „obiekt” (a nie tło) i jaki ma rozmiar.
