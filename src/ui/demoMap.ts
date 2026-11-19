@@ -20,6 +20,25 @@ const hash = (i: number) => (Math.sin(i * 12.9898) * 43758.5453) % 1;
 const riverY = (x: number) => 900 + 80 * Math.sin(x / 260) + 60 * Math.sin(x / 730 + 1);
 const validRow = (j: number) => j <= NORTH_ROW || j >= SOUTH_ROW;
 
+// Graf jest kratką, a miasto nie: gładkie wygięcie płaszczyzny (do ~240 m, nachylenie < 0,3, więc bez zawinięć).
+// Długie fale obracają dzielnice o różne kąty (ulice prawie proste), krótka dodaje lekki łuk.
+// Mapa i trasy przechodzą przez nie przy wyjściu.
+export const warp = ([x, y]: Pt): Pt => [
+  x + 180 * Math.sin(y / 1300 + 0.4) + 30 * Math.sin((x - y) / 480),
+  y + 180 * Math.sin(x / 1100 + 1.3) + 30 * Math.sin((x + y) / 520),
+];
+
+// Odcinki dłuższe niż 40 m dzielimy, żeby po wygięciu były łukiem, a nie cięciwą.
+export function densify(pts: Pt[]): Pt[] {
+  const out: Pt[] = [pts[0]];
+  for (let i = 1; i < pts.length; i++) {
+    const [a, b] = [pts[i - 1], pts[i]];
+    const n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 40);
+    for (let s = 1; s <= n; s++) out.push([a[0] + ((b[0] - a[0]) * s) / n, a[1] + ((b[1] - a[1]) * s) / n]);
+  }
+  return out;
+}
+
 export const gridAt = (k: number, j: number): Pt => [
   k * BLOCK_X + 10 * hash(k * 31 + j * 7),
   j * BLOCK_Y + 10 * hash(j * 17 - k * 3 + 100),
@@ -89,17 +108,27 @@ function inCell(k: number, j: number, u: number, v: number): Pt {
 
 // Mapa okna świata [x0, y0, x1, y1] w układzie płótna (toCanvas: świat -> px pocztówki).
 // trails: ścieżki leśne (świat); pxPerM: skala, przy małej szczegóły znikają jak na prawdziwej mapie (i SVG jest lżejszy).
-export function demoMap(toCanvas: (p: Pt) => Pt, [x0, y0, x1, y1]: number[], trails: Pt[][], pxPerM: number): MapLayers {
+// ran: klucze krawędzi przebiegniętych przez trasę; małe uliczki z trasy rysujemy też przy małej skali.
+export function demoMap(
+  toCanvas: (p: Pt) => Pt,
+  [x0, y0, x1, y1]: number[],
+  trails: Pt[][],
+  pxPerM: number,
+  ran: Set<string> = new Set(),
+): MapLayers {
   const buildings = pxPerM > 0.3;
-  const fmt = (p: Pt) => toCanvas(p).map(Math.round).join(' ');
-  const poly = (pts: Pt[]) => `M${pts.map(fmt).join('L')}`;
+  const fmt = (p: Pt) => toCanvas(warp(p)).map(Math.round).join(' ');
+  const poly = (pts: Pt[]) => `M${densify(pts).map(fmt).join('L')}`;
+  // Okno jest w świecie po wygięciu; zapas na przesunięcie (max ~210 m).
+  [x0, y0, x1, y1] = [x0 - 250, y0 - 250, x1 + 250, y1 + 250];
   const quad = (k: number, j: number, u0: number, v0: number, u1: number, v1: number) =>
     poly([inCell(k, j, u0, v0), inCell(k, j, u1, v0), inCell(k, j, u1, v1), inCell(k, j, u0, v1)]) + 'Z';
   const roads: Record<Kind, string[]> = { minor: [], mid: [], major: [] };
   const water: string[] = [];
   const green: string[] = [];
   const building: string[] = [];
-  const path = trails.map(poly);
+  // Szlaki są już gęste i wygięte (demoRuns), więc bez warp/densify.
+  const path = trails.map((t) => `M${t.map((p) => toCanvas(p).map(Math.round).join(' ')).join('L')}`);
   const seen = new Set<string>();
   const k0 = Math.max(K_MIN, Math.floor(x0 / BLOCK_X) - 1);
   const k1 = Math.ceil(x1 / BLOCK_X) + 1;
@@ -114,7 +143,7 @@ export function demoMap(toCanvas: (p: Pt) => Pt, [x0, y0, x1, y1]: number[], tra
           const key = [id, e.to].sort().join('|');
           if (seen.has(key)) continue;
           seen.add(key);
-          if (e.kind !== 'minor' || pxPerM > 0.12) roads[e.kind].push(poly(e.pts));
+          if (e.kind !== 'minor' || pxPerM > 0.12 || ran.has(key)) roads[e.kind].push(poly(e.pts));
         }
       }
       if (!validRow(j) || !validRow(j + 1)) continue;

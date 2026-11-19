@@ -53,7 +53,7 @@ describe('demoRuns', () => {
       const near = pts.filter((p) => roads.some((s) => toSegment(p as [number, number], s) < tol)).length;
       expect(near / pts.length, activity.name).toBeGreaterThan(0.95);
     }
-  });
+  }, 30000); // łuki ulic to dużo odcinków, a sprawdzenie jest punkt × odcinek
 });
 
 describe('LoginScreen', () => {

@@ -9,7 +9,7 @@ import { fitRoute } from '../lib/routePath';
 import type { MapLayers } from '../lib/vectorMap';
 import { encodePolyline } from '../dev/mockActivities';
 import { ROUTE_BOX } from '../postcard/Route';
-import { FOREST_X, NORTH_ROW, SOUTH_ROW, demoMap, edges, gridAt, isPark, nodePos, type Pt } from './demoMap';
+import { FOREST_X, NORTH_ROW, SOUTH_ROW, demoMap, edges, gridAt, isPark, nodePos, warp, type Pt } from './demoMap';
 
 export type DemoRun = { activity: Activity; streams: RunStreams; map: MapLayers };
 
@@ -106,7 +106,8 @@ class Walk {
             (dist(back, here) * dist(here, next))
           : 0;
         const fresh = this.used.has([this.node, e.to].sort().join('|')) ? 0.2 : 1;
-        return (straight > 0.7 ? 6 : 1.2) * fresh;
+        // Prosto ~85%: dłuższe proste odcinki zamiast „schodków” co kwartał.
+        return (straight > 0.7 ? 16 : 1.2) * fresh;
       });
       let r = rnd() * weights.reduce((a, b) => a + b, 0);
       const pick = options.find((_, i) => (r -= weights[i]) <= 0) ?? options[0];
@@ -115,11 +116,12 @@ class Walk {
   }
 }
 
-function cityRoute(spec: Spec, rnd: () => number): Pt[] {
+function cityRoute(spec: Spec, rnd: () => number, ran: Set<string>): Pt[] {
   const k = Math.floor(rnd() * 24) - 6;
   const j = rnd() < 0.5 ? Math.floor(rnd() * 8) - 4 : SOUTH_ROW + Math.floor(rnd() * 8);
   const start = `g:${k}:${j}`;
   const w = new Walk(start);
+  w.used = ran;
   const target = spec.km * 1000;
   if (spec.kind === 'wander') {
     w.wander(target, rnd, nodePos(start));
@@ -213,8 +215,10 @@ function altitude([x, y]: Pt): number {
 
 function build(spec: Spec, i: number): DemoRun {
   const rnd = prng(1000 + i * 7919);
-  const raw = spec.kind === 'trail' ? trailRoute(spec, rnd) : cityRoute(spec, rnd);
-  const clean = resample(raw, POINTS).map((p, idx, a): Pt => {
+  const ran = new Set<string>();
+  const raw = spec.kind === 'trail' ? trailRoute(spec, rnd) : cityRoute(spec, rnd, ran);
+  // Graf to kratka; wygięcie po gęstym próbkowaniu daje łuki zgodne z mapą (demoMap robi to samo).
+  const clean = resample(raw, POINTS).map(warp).map((p, idx, a): Pt => {
     // Zegarek ścina zakręty: średnia z sąsiadów.
     const [p0, p2] = [a[Math.max(0, idx - 1)], a[Math.min(a.length - 1, idx + 1)]];
     return [(p0[0] + 2 * p[0] + p2[0]) / 4, (p0[1] + 2 * p[1] + p2[1]) / 4];
@@ -275,20 +279,20 @@ function build(spec: Spec, i: number): DemoRun {
     map: { summary_polyline: polyline },
   };
   const streams: RunStreams = { latlng, distance, time, altitude: alt, heartrate, velocity, cadence };
-  return { activity, streams, map: mapFor(polyline) };
+  return { activity, streams, map: mapFor(polyline, ran) };
 }
 
 // Szlaki biegów leśnych są też ścieżkami na mapie (jak prawdziwe szlaki pod trasą); to samo ziarno co w build.
-const TRAILS = SPECS.flatMap((s, i) => (s.kind === 'trail' ? [trailRoute(s, prng(1000 + i * 7919))] : []));
+const TRAILS = SPECS.flatMap((s, i) => (s.kind === 'trail' ? [trailRoute(s, prng(1000 + i * 7919)).map(warp)] : []));
 
 // Mapa pod trasą w tej samej projekcji, w której Postcard rysuje trasę; okno z zapasem na podłogę 3D.
-function mapFor(polyline: string): MapLayers {
+function mapFor(polyline: string, ran: Set<string>): MapLayers {
   const fit = fitRoute(polyline, ROUTE_BOX)!;
   const toCanvas = (p: Pt) => fit.projection(BASE.invert!(p)!)! as Pt;
   const toWorld = (c: Pt) => BASE(fit.projection.invert!(c)!)! as Pt;
   const [a, b] = [toWorld([-150, -150]), toWorld([1230, 2070])];
   const pxPerM = dist(toCanvas([0, 0]), toCanvas([100, 0])) / 100;
-  return demoMap(toCanvas, [a[0], a[1], b[0], b[1]], TRAILS, pxPerM);
+  return demoMap(toCanvas, [a[0], a[1], b[0], b[1]], TRAILS, pxPerM, ran);
 }
 
 export const DEMO_RUN_COUNT = SPECS.length;
