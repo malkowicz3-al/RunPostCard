@@ -47,13 +47,18 @@ function kmEnds(total: number): number[] {
   return ends;
 }
 
+// Czas w ruchu narastająco, bez pauz.
+function movingTime(t: number[]): number[] {
+  const moving = [0];
+  for (let i = 1; i < t.length; i++) moving.push(moving[i - 1] + gap(t, i));
+  return moving;
+}
+
 // Tempo (s/km) kolejnych odcinków kmEnds, bez filtrowania (indeks = numer km - 1).
 function rawSplits(s: RunStreams): { km: number; pace: number }[] {
   const { distance: d, time: t } = s;
   if (!t || d.length < 2) return [];
-  // Czas w ruchu narastająco, bez pauz.
-  const moving = [0];
-  for (let i = 1; i < t.length; i++) moving.push(moving[i - 1] + gap(t, i));
+  const moving = movingTime(t);
   let prev = 0;
   let prevT = 0;
   return kmEnds(d[d.length - 1]).map((end) => {
@@ -107,10 +112,14 @@ export function gainSeries(s: RunStreams, n = 200): number[] {
   return alt.map((a, i) => (sum += i > 0 ? Math.max(0, a - alt[i - 1]) : 0));
 }
 
-// Udział czasu w przedziałach tętna co `width` bpm (lo = dolna granica); skrajne przedziały poniżej 0,5%
+// Udział czasu w przedziałach tętna (albo kadencji) co `width` bpm (lo = dolna granica); skrajne przedziały poniżej 0,5%
 // obcinamy, żeby pojedyncze odczyty na starcie nie rozciągały osi.
-export function hrBins(s: RunStreams, width = 5): { lo: number; share: number }[] {
-  const hr = s.heartrate;
+export const hrBins = (s: RunStreams, width = 5) => shareBins(s, 'heartrate', width);
+// Kadencja jednej nogi (jak w Stravie), więc 2 spm tu to 4 kroki obu nóg.
+export const cadenceBins = (s: RunStreams, width = 2) => shareBins(s, 'cadence', width);
+
+function shareBins(s: RunStreams, key: 'heartrate' | 'cadence', width: number): { lo: number; share: number }[] {
+  const hr = s[key];
   if (!hr) return [];
   const sums = new Map<number, number>();
   let total = 0;
@@ -148,4 +157,51 @@ export function speedHr(s: RunStreams, n = 120): { speed: number; hr: number }[]
   const hr = series(s, 'heartrate', n);
   if (!v.length || !hr.length) return [];
   return v.map((speed, i) => ({ speed, hr: hr[i] })).filter((p) => p.speed >= 0.5);
+}
+
+// Tempo (s/km) pierwszej i drugiej połowy dystansu z czasu w ruchu; null bez czasu albo przy zerowym czasie połowy.
+export function halfSplits(s: RunStreams): [number, number] | null {
+  const { distance: d, time: t } = s;
+  const total = d[d.length - 1];
+  if (!t || d.length < 2 || !(total > 0)) return null;
+  const moving = movingTime(t);
+  const half = lerpAt(d, moving, total / 2);
+  const km = total / 2000;
+  const out: [number, number] = [half / km, (moving[moving.length - 1] - half) / km];
+  return out.every((p) => Number.isFinite(p) && p > 0) ? out : null;
+}
+
+// Prędkość pionowa (m/h, ujemna w dół) w n równych odcinkach dystansu, z czasu w ruchu.
+export function climbRates(s: RunStreams, n = 30): number[] {
+  const { distance: d, time: t, altitude: a } = s;
+  const total = d[d.length - 1];
+  if (!t || !a || d.length < 2 || !(total > 0)) return [];
+  const moving = movingTime(t);
+  return Array.from({ length: n }, (_, k) => {
+    const [x0, x1] = [(total * k) / n, (total * (k + 1)) / n];
+    const dt = lerpAt(d, moving, x1) - lerpAt(d, moving, x0);
+    return dt > 0 ? ((lerpAt(d, a, x1) - lerpAt(d, a, x0)) / dt) * 3600 : 0;
+  });
+}
+
+// Najbliższy okrągły cel (km) nie mniejszy od dystansu; 1% zapasu, bo GPS rzadko daje równe 10,00 czy 42,195.
+const GOALS = [1, 3, 5, 10, 15, 21.0975, 30, 42.195, 50];
+export function distanceGoal(meters: number): number {
+  const km = (meters * 0.99) / 1000;
+  return GOALS.find((g) => g >= km) ?? Math.ceil(km / 50) * 50;
+}
+
+// Poziomy kropek (0, 1, -1, 2, -2…) tak, by kropki na jednym poziomie były od siebie co najmniej o gap.
+export function swarm(xs: number[], gap: number): number[] {
+  const levels: number[] = [];
+  xs.forEach((x, i) => {
+    for (let k = 0; ; k++) {
+      const level = k % 2 ? (k + 1) / 2 : -k / 2;
+      if (xs.slice(0, i).every((y, j) => levels[j] !== level || Math.abs(y - x) >= gap)) {
+        levels.push(level === 0 ? 0 : level);
+        return;
+      }
+    }
+  });
+  return levels;
 }

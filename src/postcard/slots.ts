@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react';
 import type { Activity, RunStreams } from '../strava/api';
-import { bestSplits, hrBins, kmGrades, kmSplits, series, speedHr } from '../lib/chartData';
+import { bestSplits, cadenceBins, climbRates, halfSplits, hrBins, kmGrades, kmSplits, series, speedHr } from '../lib/chartData';
 import {
   formatCadence,
   formatDate,
@@ -29,6 +29,22 @@ import {
   SpeedChart,
   type ChartProps,
 } from './SlotChart';
+import {
+  CadenceHistChart,
+  ClimbRateChart,
+  EcgChart,
+  GaugeChart,
+  GoalChart,
+  HalvesChart,
+  PaceElevChart,
+  PaceLineChart,
+  PolarChart,
+  SkylineChart,
+  SplitListChart,
+  SwarmChart,
+  TrioChart,
+  ZoneBarChart,
+} from './SlotCharts2';
 import { labelAboveY, type LabelPos, type SlotAnchor } from './SlotNumber';
 
 // Slot = co pokazać (data) + jak narysować (form). Nowe dane/formy dopisujemy tylko do rejestrów.
@@ -46,7 +62,33 @@ export type SlotData =
   | 'date'
   | 'start'
   | 'name';
-export type ChartForm = 'area' | 'line' | 'bars' | 'ring' | 'speed' | 'cadence' | 'hrbins' | 'grade' | 'gain' | 'scatter' | 'best' | 'spark';
+export type ChartForm =
+  | 'area'
+  | 'line'
+  | 'bars'
+  | 'ring'
+  | 'speed'
+  | 'cadence'
+  | 'hrbins'
+  | 'grade'
+  | 'gain'
+  | 'scatter'
+  | 'best'
+  | 'spark'
+  | 'paceline'
+  | 'zonebar'
+  | 'splitlist'
+  | 'paceelev'
+  | 'polar'
+  | 'gauge'
+  | 'goal'
+  | 'swarm'
+  | 'skyline'
+  | 'cadhist'
+  | 'ecg'
+  | 'halves'
+  | 'climbrate'
+  | 'trio';
 export type SlotForm = 'number' | ChartForm;
 
 // id to klucz pozycji w układzie ('main', 'a', 'b'…), nie rodzaj danych.
@@ -98,6 +140,26 @@ export const CHARTS: Record<
   scatter: { data: 'pace', menu: 'Speed vs heart rate', label: 'SPEED VS HR', has: (s) => speedHr(s).length > 1, Component: ScatterChart },
   best: { data: 'pace', menu: 'Fastest km', label: 'FASTEST KM', has: (s) => bestSplits(s).length > 0, Component: BestChart },
   spark: { data: 'elevation', menu: 'Elevation spark', label: 'ELEVATION GAIN', has: (s) => series(s, 'altitude', 2).length > 0, Component: SparkChart },
+  paceline: { data: 'pace', menu: 'Pace line', label: 'PACE', has: (s) => series(s, 'velocity', 2).length > 0, Component: PaceLineChart },
+  zonebar: { data: 'heartrate', menu: 'Zone bar', label: 'TIME IN ZONES', has: (s) => series(s, 'heartrate', 2).length > 0, Component: ZoneBarChart },
+  splitlist: { data: 'pace', menu: 'Split list', label: 'SPLITS', has: (s) => kmSplits(s).length > 0, Component: SplitListChart },
+  paceelev: {
+    data: 'pace',
+    menu: 'Pace and elevation',
+    label: 'PACE + HILLS',
+    has: (s) => series(s, 'velocity', 2).length > 0 && series(s, 'altitude', 2).length > 0,
+    Component: PaceElevChart,
+  },
+  polar: { data: 'pace', menu: 'Pace wheel', label: 'KM WHEEL', has: (s) => kmSplits(s).length > 1, Component: PolarChart },
+  gauge: { data: 'heartrate', menu: 'Heart rate gauge', label: 'HR GAUGE', has: (s) => series(s, 'heartrate', 2).length > 0, Component: GaugeChart },
+  goal: { data: 'distance', menu: 'Distance goal', label: 'DISTANCE GOAL', has: (s) => s.distance.length > 1, Component: GoalChart },
+  swarm: { data: 'pace', menu: 'Pace dots', label: 'KM SPREAD', has: (s) => kmSplits(s).length > 1, Component: SwarmChart },
+  skyline: { data: 'elevation', menu: 'Elevation skyline', label: 'PROFILE', has: (s) => series(s, 'altitude', 2).length > 0, Component: SkylineChart },
+  cadhist: { data: 'cadence', menu: 'Cadence histogram', label: 'STEP SPREAD', has: (s) => cadenceBins(s).length > 0, Component: CadenceHistChart },
+  ecg: { data: 'heartrate', menu: 'Pulse line', label: 'PULSE', has: (s) => series(s, 'heartrate', 2).length > 0, Component: EcgChart },
+  halves: { data: 'pace', menu: 'Half splits', label: 'HALVES', has: (s) => halfSplits(s) !== null, Component: HalvesChart },
+  climbrate: { data: 'elevation', menu: 'Climb rate', label: 'CLIMB RATE', has: (s) => climbRates(s).length > 0, Component: ClimbRateChart },
+  trio: { data: 'elapsed', menu: 'Highlights', label: 'HIGHLIGHTS', has: (s) => s.distance.length > 1, Component: TrioChart },
 };
 
 export const slotMenu = (s: Slot) => (s.form === 'number' ? DATA[s.data].menu : CHARTS[s.form].menu);
@@ -127,7 +189,12 @@ export type LayoutId =
   | 'duo'
   | 'climb'
   | 'strip'
-  | 'table';
+  | 'table'
+  | 'sidebar'
+  | 'ticker'
+  | 'halfPair'
+  | 'stacked'
+  | 'compare';
 
 const item = (
   id: string,
@@ -342,6 +409,54 @@ export const LAYOUTS: Record<LayoutId, { id: LayoutId; name: string; items: Layo
       chart('chart', 'best', 560, 1210, 1020, 1790),
     ],
   },
+  sidebar: {
+    id: 'sidebar',
+    name: 'Sidebar',
+    items: [
+      chart('chart', 'paceline', 60, 1210, 640, 1790),
+      item('a', 'distance', 1020, 1300, 90, 'end', 340),
+      item('b', 'time', 1020, 1510, 90, 'end', 340),
+      item('c', 'heartrate', 1020, 1720, 90, 'end', 340),
+    ],
+  },
+  ticker: {
+    id: 'ticker',
+    name: 'Ticker',
+    items: [
+      chart('chart', 'paceelev', 60, 1200, 1020, 1560),
+      item('a', 'distance', 180, 1700, 80, 'middle', 210),
+      item('b', 'time', 420, 1700, 80, 'middle', 210),
+      item('c', 'pace', 660, 1700, 80, 'middle', 210),
+      item('d', 'heartrate', 900, 1700, 80, 'middle', 210),
+    ],
+  },
+  halfPair: {
+    id: 'halfPair',
+    name: 'Half pair',
+    items: [
+      item('main', 'distance', 540, 1440, 220, 'middle', 960),
+      chart('left', 'polar', 60, 1530, 520, 1800),
+      chart('right', 'gauge', 560, 1530, 1020, 1800),
+    ],
+  },
+  stacked: {
+    id: 'stacked',
+    name: 'Chart stack',
+    items: [
+      chart('goal', 'goal', 60, 40, 1020, 240),
+      chart('chart', 'ecg', 60, 1200, 1020, 1480),
+      chart('zones', 'zonebar', 60, 1510, 1020, 1790),
+    ],
+  },
+  compare: {
+    id: 'compare',
+    name: 'Split compare',
+    items: [
+      chart('chart', 'halves', 60, 1200, 1020, 1500),
+      item('a', 'distance', 300, 1690, 110, 'middle', 440),
+      chart('splits', 'splitlist', 560, 1530, 1020, 1800),
+    ],
+  },
 };
 
 export const LAYOUT_ORDER: LayoutId[] = [
@@ -364,6 +479,11 @@ export const LAYOUT_ORDER: LayoutId[] = [
   'climb',
   'strip',
   'table',
+  'sidebar',
+  'ticker',
+  'halfPair',
+  'stacked',
+  'compare',
 ];
 
 // Zmiany w slotach jednego układu: id slotu -> dane i forma.

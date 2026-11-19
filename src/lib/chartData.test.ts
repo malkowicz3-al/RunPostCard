@@ -1,6 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import type { RunStreams } from '../strava/api';
-import { HR_ZONES, bestSplits, gainSeries, hrBins, kmGrades, kmSplits, series, speedHr, zoneOf, zoneShare } from './chartData';
+import {
+  HR_ZONES,
+  bestSplits,
+  cadenceBins,
+  climbRates,
+  distanceGoal,
+  gainSeries,
+  halfSplits,
+  hrBins,
+  kmGrades,
+  kmSplits,
+  series,
+  speedHr,
+  swarm,
+  zoneOf,
+  zoneShare,
+} from './chartData';
 
 // Prosta trasa: punkt co 10 m, 3 s na 10 m (tempo 5:00), poza km 2 szybszym (2 s na 10 m).
 function run(meters: number): RunStreams {
@@ -108,5 +124,40 @@ describe('bestSplits i speedHr', () => {
       { speed: 3, hr: 150 },
     ]);
     expect(speedHr({ ...s, heartrate: undefined })).toEqual([]);
+  });
+});
+
+describe('halfSplits, climbRates, cadenceBins', () => {
+  it('tempo połówek z czasu w ruchu; bez czasu null', () => {
+    // run(4000): km 2 szybszy (200 s), więc pierwsza połowa 2000 m = 500 s, druga 600 s.
+    expect(halfSplits(run(4000))!.map(Math.round)).toEqual([250, 300]);
+    expect(halfSplits({ ...run(4000), time: undefined })).toBeNull();
+  });
+
+  it('prędkość pionowa w m/h, zjazd ujemny', () => {
+    // km 1: 100 m w górę w 300 s = 1200 m/h; zjazd tak samo, ale ujemny.
+    const down = { ...run(2000), altitude: run(2000).distance.map((m) => (m <= 1000 ? m / 10 : 200 - m / 10)) };
+    expect(climbRates(down, 2).map(Math.round)).toEqual([1200, -1800]);
+    expect(climbRates({ ...down, altitude: undefined })).toEqual([]);
+  });
+
+  it('kadencja w przedziałach co 2, zera pominięte', () => {
+    const cad = [0, 85, 85, 0, 88, 88];
+    const s: RunStreams = { latlng: [], distance: cad.map((_, i) => i), time: cad.map((_, i) => i), cadence: cad };
+    expect(cadenceBins(s).map((b) => [b.lo, b.share])).toEqual([
+      [84, 0.5],
+      [86, 0],
+      [88, 0.5],
+    ]);
+  });
+});
+
+describe('distanceGoal i swarm', () => {
+  it('najbliższy okrągły cel z zapasem 1%', () => {
+    expect([4200, 5030, 9980, 10100, 21000, 25000, 42300, 60000].map(distanceGoal)).toEqual([5, 5, 10, 10, 21.0975, 30, 42.195, 100]);
+  });
+
+  it('bliskie kropki dostają kolejne poziomy, dalekie zostają na 0', () => {
+    expect(swarm([0, 5, 8, 100], 10)).toEqual([0, 1, -1, 0]);
   });
 });

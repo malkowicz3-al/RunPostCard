@@ -95,9 +95,9 @@ describe('resolveLayout', () => {
     }
   });
 
-  it('wykresy tylko w slotach z box, dane zgodne z CHARTS; 11 wykresów w układach', () => {
+  it('wykresy tylko w slotach z box, dane zgodne z CHARTS; 20 wykresów w układach', () => {
     const charts = LAYOUT_ORDER.flatMap((id) => LAYOUTS[id].items.filter((i) => i.slot.form !== 'number'));
-    expect(charts.length).toBe(11);
+    expect(charts.length).toBe(20);
     for (const i of charts) {
       expect(i.box).toBeDefined();
       expect(i.slot.data).toBe(CHARTS[i.slot.form as ChartForm].data);

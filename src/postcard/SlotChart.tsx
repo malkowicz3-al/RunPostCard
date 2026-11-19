@@ -8,14 +8,14 @@ export type ChartProps = { box: Box; streams: RunStreams; activity: Activity; la
 
 // Jedyny wyjątek od currentColor (ADR 0007): strefy tętna Z1–Z5; z nich też podjazd (pomarańcz) i zjazd (niebieski), jak w 3D.
 export const ZONE_COLORS = ['#a0a7b4', '#3b9cff', '#3ccf6e', '#ffa630', '#ff4d4d'];
-const UP = ZONE_COLORS[3];
-const DOWN = ZONE_COLORS[1];
+export const UP = ZONE_COLORS[3];
+export const DOWN = ZONE_COLORS[1];
 
-const r1 = (n: number) => Math.round(n * 10) / 10;
-const pathOf = (pts: [number, number][]) => 'M' + pts.map(([x, y]) => `${r1(x)} ${r1(y)}`).join('L');
+export const r1 = (n: number) => Math.round(n * 10) / 10;
+export const pathOf = (pts: [number, number][]) => 'M' + pts.map(([x, y]) => `${r1(x)} ${r1(y)}`).join('L');
 
 // Etykieta w lewym górnym rogu (jak w SlotNumber), wartość po prawej; reszta box to pole wykresu.
-function Frame({ box, label, value, scale, children }: Omit<ChartProps, 'streams' | 'activity' | 'value'> & {
+export function Frame({ box, label, value, scale, children }: Omit<ChartProps, 'streams' | 'activity' | 'value'> & {
   value?: string;
   children: (plot: Box) => ReactNode;
 }) {
@@ -37,13 +37,13 @@ function Frame({ box, label, value, scale, children }: Omit<ChartProps, 'streams
 }
 
 // Punkty serii w polu: najniższa wartość na 15% wysokości, żeby płaska trasa nie leżała na krawędzi.
-function points(v: number[], p: Box): [number, number][] {
+export function points(v: number[], p: Box): [number, number][] {
   const min = Math.min(...v);
   const range = Math.max(...v) - min || 1;
   return v.map((a, i) => [p.x0 + (i / (v.length - 1)) * (p.x1 - p.x0), p.y1 - (0.15 + (0.85 * (a - min)) / range) * (p.y1 - p.y0)]);
 }
 
-const maxHrOf = (a: Activity, s: RunStreams) => a.max_heartrate ?? (s.heartrate ?? []).reduce((m, x) => Math.max(m, x), 0);
+export const maxHrOf = (a: Activity, s: RunStreams) => a.max_heartrate ?? (s.heartrate ?? []).reduce((m, x) => Math.max(m, x), 0);
 
 export function AreaChart(props: ChartProps) {
   return (
@@ -171,7 +171,7 @@ export function RingChart(props: ChartProps) {
 }
 
 // Średnia ruchoma (okno 2k+1): kadencja i prędkość skaczą z próbki na próbkę.
-function smooth(v: number[], k = 3): number[] {
+export function smooth(v: number[], k = 3): number[] {
   return v.map((_, i) => {
     const w = v.slice(Math.max(0, i - k), i + k + 1);
     return w.reduce((a, b) => a + b, 0) / w.length;
@@ -281,7 +281,7 @@ export function GradeChart(props: ChartProps) {
 }
 
 // Zakres bez skrajnych 2% (skoki GPS w prędkości), żeby reszta kropek nie zbiła się w jednym miejscu.
-function spread(v: number[]): [number, number] {
+export function spread(v: number[]): [number, number] {
   const s = [...v].sort((a, b) => a - b);
   const lo = s[Math.floor(s.length * 0.02)];
   const hi = s[Math.ceil(s.length * 0.98) - 1];
