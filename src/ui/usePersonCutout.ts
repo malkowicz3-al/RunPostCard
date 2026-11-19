@@ -52,21 +52,27 @@ async function cutout(href: string): Promise<Person | null> {
   }
 }
 
+// none: na zdjęciu nie ma osoby; error: model lub obraz się nie wczytał (ponowne włączenie próbuje od nowa).
+export type CutoutFailure = 'none' | 'error';
 // href: dla jakiego zdjęcia jest wynik (stara wycinanka po zmianie zdjęcia nie wycieka ani na jeden render).
-type Loaded = { person: Person | null; href: string };
+type Loaded = { person: Person | null; href: string; failed?: CutoutFailure };
 
-export function usePersonCutout(photoHref: string | undefined, enabled: boolean): { person: Person | null; loading: boolean } {
+export function usePersonCutout(
+  photoHref: string | undefined,
+  enabled: boolean,
+): { person: Person | null; loading: boolean; failed?: CutoutFailure } {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const active = enabled && !!photoHref;
 
   useEffect(() => {
     if (!active) return;
     let cancelled = false;
+    setLoaded(null); // po wyłączeniu i włączeniu: znów „Finding runner…”, nie stary błąd
     cutout(photoHref!).then(
-      (person) => !cancelled && setLoaded({ person, href: photoHref! }),
+      (person) => !cancelled && setLoaded({ person, href: photoHref!, failed: person ? undefined : 'none' }),
       (e) => {
         console.warn('Person cutout failed', e);
-        if (!cancelled) setLoaded({ person: null, href: photoHref! });
+        if (!cancelled) setLoaded({ person: null, href: photoHref!, failed: 'error' });
       },
     );
     return () => {
@@ -75,5 +81,7 @@ export function usePersonCutout(photoHref: string | undefined, enabled: boolean)
   }, [photoHref, active]);
 
   if (!active) return { person: null, loading: false };
-  return loaded?.href === photoHref ? { person: loaded.person, loading: false } : { person: null, loading: true };
+  return loaded?.href === photoHref
+    ? { person: loaded.person, loading: false, failed: loaded.failed }
+    : { person: null, loading: true };
 }

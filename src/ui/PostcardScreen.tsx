@@ -478,6 +478,13 @@ export function PostcardScreen({
               )}
             </div>
           )}
+          {look === 'photo' && cutout.failed && (
+            <p className="error" role="status">
+              {cutout.failed === 'none'
+                ? 'No runner found in this photo. Try one where the person is larger.'
+                : 'Could not load the runner detector. Turn Behind off and on to retry.'}
+            </p>
+          )}
           <p className="panel-hint">
             Click a stat to change it.{fit && ' Drag, Ctrl + scroll or pinch to move and zoom the map.'}
           </p>
