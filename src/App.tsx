@@ -187,7 +187,7 @@ export function App() {
       )}
       {screen === 'together' && selection && (
         <Suspense fallback={<p>Loading…</p>}>
-          <TogetherScreen runs={together} heat={heat} onBack={() => history.back()} onSessionExpired={onSessionExpired} />
+          <TogetherScreen runs={together} heat={heat} onBack={() => history.back()} />
         </Suspense>
       )}
       <footer>

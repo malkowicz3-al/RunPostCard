@@ -1,14 +1,11 @@
 import { useMemo } from 'react';
 import type { Activity } from '../strava/api';
-import type { GeoProjection } from 'd3-geo';
-import type { IsoRoute as IsoData } from '../lib/isoRoute';
 import { decodePolyline } from '../lib/polyline';
-import { fitRoutes, overlayRoutes, type Box, type FittedRoute } from '../lib/routePath';
+import { fitRoutes, type Box } from '../lib/routePath';
 import { DEFAULT_FONT, FONTS, fontStack, type FontId } from '../lib/fonts';
 import { formatDate, formatDistanceKm, formatDuration } from '../lib/format';
 import { MAP_ATTRIBUTION, type MapLayers } from '../lib/vectorMap';
 import { Background } from './Background';
-import { IsoRoute } from './IsoRoute';
 import { Route } from './Route';
 import { SlotNumber } from './SlotNumber';
 import { StravaMark } from './StravaMark';
@@ -22,19 +19,9 @@ export const TOGETHER_BOX: Box = [
 
 export type TogetherColors = 'run' | 'heat';
 export type TogetherSync = 'real' | 'together';
-export type TogetherLayout = 'overlay' | 'geo';
-export type TogetherBackground = 'gradient' | 'transparent' | 'map';
 
-// Trasy w układzie: „geo” = jedna projekcja (mapa możliwa), „overlay” = starty w jednym punkcie, projekcja na bieg.
-export function togetherFit(
-  runs: Activity[],
-  layout: TogetherLayout,
-): { projection?: GeoProjection; projections: (GeoProjection | null)[]; routes: (FittedRoute | null)[] } | null {
-  const polylines = runs.map((r) => r.map.summary_polyline);
-  if (layout === 'overlay') return overlayRoutes(polylines, TOGETHER_BOX);
-  const fit = fitRoutes(polylines, TOGETHER_BOX);
-  return fit && { ...fit, projections: runs.map(() => fit.projection) };
-}
+// Wszystkie trasy w jednej projekcji, płasko na wspólnej mapie.
+export const togetherFit = (runs: Activity[]) => fitRoutes(runs.map((r) => r.map.summary_polyline), TOGETHER_BOX);
 
 const FAR_SPAN_KM = 50;
 const FAR_KM = FAR_SPAN_KM / 2;
@@ -75,8 +62,6 @@ export function runProgress(P: number, movingTime: number, maxTime: number, sync
 
 export function TogetherCard({
   runs,
-  layout = 'overlay',
-  background = 'gradient',
   map,
   theme = 'dark',
   accent,
@@ -85,12 +70,9 @@ export function TogetherCard({
   colors = 'run',
   sync = 'real',
   progress = 1,
-  isos,
 }: {
   runs: Activity[];
-  layout?: TogetherLayout;
-  background?: TogetherBackground; // map tylko w układzie geograficznym
-  map?: MapLayers;
+  map?: MapLayers; // do wczytania mapy gradient
   theme?: ThemeId;
   accent?: string;
   font?: FontId;
@@ -98,10 +80,11 @@ export function TogetherCard({
   colors?: TogetherColors;
   sync?: TogetherSync;
   progress?: number; // animacja 0..1
-  isos?: (IsoData | null)[]; // 3D: trasy w jednej scenie (isoRoutes w tym samym układzie), w kolejności runs
 }) {
-  const fit = useMemo(() => togetherFit(runs, layout), [runs, layout]);
-  const out = background === 'map' && layout === 'geo' && fit && map ? THEMES[theme].render(map, { accent }) : null;
+  const fit = useMemo(() => togetherFit(runs), [runs]);
+  // Mapa liczona raz: w podglądzie animacji zmienia się tylko postęp, więc React pomija całe drzewo mapy.
+  const out = useMemo(() => (fit && map ? THEMES[theme].render(map, { accent }) : null), [fit, map, theme, accent]);
+  const mapBackground = useMemo(() => out && <rect width={1080} height={1920} fill={THEMES[theme].style({ accent }).background} />, [out, theme, accent]);
   const text = out?.text ?? { color: '#ffffff' };
   const { weight, scale } = FONTS[font];
   const heat = colors === 'heat';
@@ -110,38 +93,25 @@ export function TogetherCard({
   const dates = runs.map((r) => r.start_date_local).sort();
   const total = runs.reduce((acc, r) => ({ distance: acc.distance + r.distance, time: acc.time + r.moving_time }), { distance: 0, time: 0 });
   const range = dates.length ? `${formatDate(dates[0])} – ${formatDate(dates[dates.length - 1])}` : '';
-  const floor = isos?.find((i) => i !== null);
   const color = (i: number) => (heat ? heatColor : runColor(i));
   const p = (r: Activity) => runProgress(progress, r.moving_time, maxTime, sync);
 
   return (
     <svg className="postcard" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920" fontFamily={fontStack(font)} fontWeight={weight}>
       {fontCss && <style>{fontCss}</style>}
-      {!out && background !== 'transparent' && <Background />}
-      {out && <rect width={1080} height={1920} fill={THEMES[theme].style({ accent }).background} />}
-      {out && (floor ? <g transform={`matrix(${floor.matrix.join(' ')})`}>{out.scene}</g> : out.scene)}
+      {!out && <Background />}
+      {mapBackground}
+      {out?.scene}
       {out?.overlay}
       <g filter={out?.route.filter}>
-        {floor
-          ? runs.map((r, i) => {
-              const iso = isos?.[i];
-              const c = color(i);
-              return (
-                iso && (
-                  <g key={r.id} opacity={heat ? HEAT_OPACITY : undefined}>
-                    <IsoRoute iso={iso} flat={c} color={() => c} gradientId={`iso-curtain-${i}`} progress={p(r)} />
-                  </g>
-                )
-              );
-            })
-          : fit?.routes.map(
-              (route, i) =>
-                route && (
-                  <g key={runs[i].id} opacity={heat ? HEAT_OPACITY : undefined}>
-                    <Route d={route.d} points={route.points} stroke={color(i)} width={8} progress={p(runs[i])} />
-                  </g>
-                ),
-            )}
+        {fit?.routes.map(
+          (route, i) =>
+            route && (
+              <g key={runs[i].id} opacity={heat ? HEAT_OPACITY : undefined}>
+                <Route d={route.d} points={route.points} stroke={color(i)} width={8} progress={p(runs[i])} />
+              </g>
+            ),
+        )}
       </g>
       <g color={text.color} filter={text.filter}>
         <SlotNumber x={190} y={220} size={110 * scale} scale={scale} label="RUNS" value={String(runs.length)} />

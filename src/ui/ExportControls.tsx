@@ -30,7 +30,6 @@ export function ExportControls({
   under,
   onBusy,
   videoOnly,
-  mp4,
 }: {
   name: string; // nazwa pliku bez rozszerzenia
   svg: () => SVGSVGElement | null;
@@ -40,7 +39,6 @@ export function ExportControls({
   under?: (canvas: HTMLCanvasElement, p?: number) => void;
   onBusy?: (busy: boolean) => void; // MP4/GIF w trakcie
   videoOnly?: boolean; // bez PNG i SVG
-  mp4?: Blob; // gotowe wideo tej karty (podgląd Together): pobranie bez kodowania od nowa
 }) {
   const [exportFailed, setExportFailed] = useState<string | null>(null); // format, którego nie udało się zrobić
   const [encoding, setEncoding] = useState<{ format: 'mp4' | 'gif'; pct: number } | null>(null); // null = nie trwa
@@ -102,7 +100,7 @@ export function ExportControls({
     };
     try {
       const opts = { onProgress, signal: abort.signal, under };
-      const blob = format === 'mp4' ? (mp4 ?? (await encodeMp4(frameAt, opts))) : await encodeGif(frameAt, opts);
+      const blob = format === 'mp4' ? await encodeMp4(frameAt, opts) : await encodeGif(frameAt, opts);
       if (abort.signal.aborted) return; // Cancel w chwili domykania pliku
       const file = new File([blob], `${name}.${format}`, { type: blob.type });
       download(file, file.name);

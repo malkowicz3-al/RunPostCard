@@ -162,20 +162,3 @@ export function isoRoute(s: RunStreams, box: Box, projection: GeoProjection, dem
   const run = prepare(s, projection, dem);
   return run ? build([run], box)[0] : null;
 }
-
-// Kilka biegów w jednej scenie (wspólna macierz i podstawa wysokości); wynik w kolejności wejścia, null bez wysokości.
-// projection: jedna dla wszystkich (układ geograficzny) albo osobna na bieg (Overlay, starty w jednym punkcie).
-export function isoRoutes(
-  list: (RunStreams | null | undefined)[],
-  box: Box,
-  projection: GeoProjection | (GeoProjection | null)[],
-): (IsoRoute | null)[] {
-  const prepared = list.map((s, i) => {
-    const p = Array.isArray(projection) ? projection[i] : projection;
-    return s && p ? prepare(s, p) : null;
-  });
-  const valid = prepared.filter((r): r is Prepared => r !== null);
-  if (valid.length === 0) return list.map(() => null);
-  const built = build(valid, box);
-  return prepared.map((r) => (r ? built[valid.indexOf(r)] : null));
-}
