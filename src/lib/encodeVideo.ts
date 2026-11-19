@@ -1,4 +1,4 @@
-import { drawFrame, renderFrames, type FrameOptions, type Under } from './animate';
+import { DRAW_S, HOLD_S, drawFrame, renderFrames, type FrameOptions, type Under } from './animate';
 
 type Frame = FrameOptions['frame'];
 type Progress = { onProgress?: (done: number) => void; signal?: AbortSignal; under?: Under };
@@ -6,8 +6,6 @@ type Progress = { onProgress?: (done: number) => void; signal?: AbortSignal; und
 const MP4 = { width: 1080, height: 1920, fps: 30, bitrate: 8e6 };
 // 25 kl./s: płynnie jak wideo, a opóźnienie GIF-a w setnych sekundy wychodzi równe (40 ms).
 const GIF = { width: 432, height: 768, fps: 25 };
-const DRAW_S = 6;
-const HOLD_S = 1.5;
 
 const canvasOf = (w: number, h: number) => Object.assign(document.createElement('canvas'), { width: w, height: h });
 

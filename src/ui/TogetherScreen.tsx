@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { DRAW_S, HOLD_S, easeInOutCubic } from '../lib/animate';
 import { fetchStreams, SessionExpiredError, type Activity, type RunStreams } from '../strava/api';
 import { DEFAULT_FONT, loadFontCss } from '../lib/fonts';
 import { isoRoutes } from '../lib/isoRoute';
@@ -60,6 +61,8 @@ export function TogetherScreen({
   const [colors, setColors] = useState<TogetherColors>('run');
   const [sync, setSync] = useState<TogetherSync>('real');
   const [view, setView] = useState<'flat' | '3d'>('flat');
+  const [playing, setPlaying] = useState(true);
+  const progress = usePreviewProgress(playing);
   const [streams, setStreams] = useState<Record<number, RunStreams | null>>({});
   const [streamsError, setStreamsError] = useState<string>();
   const [retry, setRetry] = useState(0);
@@ -152,7 +155,7 @@ export function TogetherScreen({
       </div>
       <div className="postcard-layout">
         <div className={`postcard-frame${background === 'transparent' ? ' checkerboard' : ''}`} ref={previewRef}>
-          <TogetherCard {...cardProps} />
+          <TogetherCard {...cardProps} progress={progress} />
         </div>
         <div className="style-panel">
           <h2 className="panel-title">Style</h2>
@@ -210,6 +213,9 @@ export function TogetherScreen({
             </div>
             <div className="toggle-row">
               Animation
+              <button className="toggle" aria-pressed={playing} onClick={() => setPlaying(!playing)}>
+                {playing ? 'Pause' : 'Play'}
+              </button>
               {toggle('Animation timing', sync, setSync, [
                 ['real', 'Real time'],
                 ['together', 'Together'],
@@ -245,4 +251,24 @@ export function TogetherScreen({
       </div>
     </div>
   );
+}
+
+// Podgląd animacji na ekranie (bez pliku): ten sam przebieg co eksport, DRAW_S rysowania + HOLD_S pauzy, w pętli.
+// Ok. 30 kl./s wystarcza; zatrzymany = gotowa karta (progress pominięty).
+function usePreviewProgress(playing: boolean): number | undefined {
+  const [p, setP] = useState<number>();
+  useEffect(() => {
+    if (!playing) return setP(undefined);
+    const start = performance.now();
+    let last = 0;
+    let raf = requestAnimationFrame(function loop(now) {
+      raf = requestAnimationFrame(loop);
+      if (now - last < 33) return;
+      last = now;
+      const t = ((now - start) / 1000) % (DRAW_S + HOLD_S);
+      setP(t < DRAW_S ? easeInOutCubic(t / DRAW_S) : 1);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [playing]);
+  return p;
 }

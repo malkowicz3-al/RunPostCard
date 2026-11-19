@@ -1,5 +1,9 @@
 import { serialize } from './exportPng';
 
+// Długość animacji (eksport MP4/GIF i podgląd na ekranie): rysowanie trasy i pauza na gotowej karcie.
+export const DRAW_S = 6;
+export const HOLD_S = 1.5;
+
 export const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2);
 
 // Postęp w każdej klatce: rysowanie z wygładzeniem (ostatnia klatka = 1), potem pauza na gotowej pocztówce.
