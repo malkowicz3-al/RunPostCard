@@ -145,9 +145,9 @@ export function PostcardScreen({
     () => (is3d && streams && fit ? isoRoute(streams, ROUTE_BOX, fit.projection) : null),
     [is3d, streams, fit],
   );
-  // Teren (ADR 0008): przy tle map i strumieniach; domyślnie włączony w górach (rozpiętość wysokości zegarka).
-  const hasTerrain = isMap && !mapMissing && !!streams && fit !== null;
-  const autoTerrain = useMemo(() => {
+  // Teren (ADR 0008): tylko dla biegów w górach (rozpiętość wysokości zegarka >= TERRAIN_AUTO_M), wtedy domyślnie włączony.
+  // W mieście i na płaskim przycisku Terrain nie ma wcale (decyzja właściciela).
+  const mountainous = useMemo(() => {
     const alt = streams?.altitude;
     if (!alt?.length) return false;
     let lo = Infinity;
@@ -158,7 +158,8 @@ export function PostcardScreen({
     }
     return hi - lo >= TERRAIN_AUTO_M;
   }, [streams]);
-  const terrainOn = hasTerrain && (terrainPick ?? autoTerrain);
+  const hasTerrain = mountainous && isMap && !mapMissing && fit !== null;
+  const terrainOn = hasTerrain && (terrainPick ?? true);
   // Obszar DEM z iso bez DEM i kamery domyślnej (iso z DEM zależy od DEM); margines pokrywa różnicę dopasowania.
   const demArea = useMemo(
     () => (terrainOn ? backdropArea(CANVAS, DEFAULT_CAMERA, 0.3, baseIso?.matrix ?? IDENTITY) : null),
