@@ -17,6 +17,7 @@ export function IsoRoute({
   dash,
   zoom = 1,
   gradientId = 'iso-curtain-grad',
+  onSurface = false,
 }: {
   iso: Iso;
   flat?: string;
@@ -24,6 +25,7 @@ export function IsoRoute({
   dash?: string; // stroke-dasharray trasy motywu
   zoom?: number;
   gradientId?: string; // tło ekranu to osobny <svg> w tym samym dokumencie: inne id, bez duplikatów
+  onSurface?: boolean; // trasa leży na reliefie terenu: bez kurtyny i cienia, lekko nad powierzchnią
 }) {
   const { curtain, shadow, runs, top, bottom } = useMemo(() => {
     const { points, ground, slope } = iso;
@@ -50,6 +52,14 @@ export function IsoRoute({
   }, [iso, flat]);
 
   const dashed = scaleDash(dash, zoom);
+  const line = (
+    <g filter={filter}>
+      {runs.map((r, i) => (
+        <path key={i} d={r.d} fill="none" stroke={r.color} strokeWidth={7 / zoom} strokeDasharray={dashed} strokeLinecap="round" strokeLinejoin="round" />
+      ))}
+    </g>
+  );
+  if (onSurface) return <g transform={`translate(0 ${-2 / zoom})`}>{line}</g>;
   return (
     <g>
       <defs>
@@ -61,11 +71,7 @@ export function IsoRoute({
       </defs>
       <path d={curtain} fill={`url(#${gradientId})`} stroke="none" />
       <path d={shadow} fill="none" stroke="#000000" strokeOpacity={0.2} strokeWidth={6 / zoom} strokeLinecap="round" strokeLinejoin="round" />
-      <g filter={filter}>
-        {runs.map((r, i) => (
-          <path key={i} d={r.d} fill="none" stroke={r.color} strokeWidth={7 / zoom} strokeDasharray={dashed} strokeLinecap="round" strokeLinejoin="round" />
-        ))}
-      </g>
+      {line}
     </g>
   );
 }

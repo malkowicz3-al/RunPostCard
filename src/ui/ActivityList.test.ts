@@ -6,10 +6,10 @@ describe('summarize', () => {
   it('sumuje dystans, czas i przewyższenie oraz wskazuje najdłuższy bieg', () => {
     const runs = mockActivities();
     const s = summarize(runs);
-    expect(s.count).toBe(6);
-    expect(s.distance).toBeCloseTo(54800);
-    expect(s.time).toBe(310 * 60);
-    expect(s.elevation).toBe(402);
+    expect(s.count).toBe(7);
+    expect(s.distance).toBeCloseTo(64200);
+    expect(s.time).toBe(385 * 60);
+    expect(s.elevation).toBe(1222);
     expect(s.longestId).toBe(runs[2].id);
   });
 

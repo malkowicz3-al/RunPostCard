@@ -1,6 +1,7 @@
 import type { GeoProjection } from 'd3-geo';
 import type { RunStreams } from '../strava/api';
 import type { Box } from './routePath';
+import { demAt, type Dem } from './dem';
 
 export type Slope = -1 | 0 | 1; // z góry, płasko, pod górę
 
@@ -11,6 +12,7 @@ export type IsoRoute = {
   exaggeration: number; // >1 = przewyższenie wzmocnione (najwyżej ×3)
   matrix: [number, number, number, number, number, number]; // SVG matrix: płaskie płótno -> podłoże 3D (mapa)
   pxPerM: number; // px ekranu na metr wysokości (bez przewyższenia trasy)
+  baseM: number; // wysokość [m] na poziomie podłoża (min. na trasie); relief terenu podnosi o (h − baseM) · pxPerM · exaggeration
 };
 
 const EARTH_RADIUS_M = 6371000;
@@ -87,21 +89,21 @@ function extent(values: number[]): [number, number] {
 // Izometria na płaskim płótnie pocztówki (projection = fit.projection, ta sama co mapa):
 // obrót o 45°, oś Y × 0,5, podniesienie o wysokość; całość dopasowana do box. Przekształcenie podłoża
 // jest afiniczne, więc mapa trafia pod trasę jako <g transform="matrix(...)">.
-export function isoRoute(s: RunStreams, box: Box, projection: GeoProjection): IsoRoute | null {
+// dem: wysokości z terenu zamiast zegarka, żeby trasa leżała na reliefie (ADR 0008).
+export function isoRoute(s: RunStreams, box: Box, projection: GeoProjection, dem?: Dem): IsoRoute | null {
   const n = s.latlng.length;
   if (!s.altitude || n < 2) return null;
 
   const lat = smooth(s.latlng.map(([la]) => la), LATLNG_SMOOTH);
   const lng = smooth(s.latlng.map(([, lo]) => lo), LATLNG_SMOOTH);
-  const flat = lat.map((la, i) => {
-    const [x, y] = projection([lng[i], la]) ?? [0, 0];
-    return [(x - y) / Math.SQRT2, (x + y) / (2 * Math.SQRT2)] as [number, number];
-  });
+  const canvas = lat.map((la, i) => projection([lng[i], la]) ?? [0, 0]);
+  const flat = canvas.map(([x, y]) => [(x - y) / Math.SQRT2, (x + y) / (2 * Math.SQRT2)] as [number, number]);
 
   // Metry -> px projekcji (d3 Mercator: x = scale · λ, więc 1 m = scale / (R · cos lat)).
   const meanLat = lat.reduce((sum, v) => sum + v, 0) / n;
   const k0 = projection.scale() / (EARTH_RADIUS_M * Math.cos((meanLat * Math.PI) / 180));
-  const alt = smoothByDistance(s.altitude, s.distance, ALT_HALF_M);
+  // DEM jest już gładki (~30 m); wygładzanie odkleiłoby trasę od grzbietów i dolin.
+  const alt = dem ? canvas.map(([x, y]) => demAt(dem, x, y)) : smoothByDistance(s.altitude, s.distance, ALT_HALF_M);
   const [minAlt, maxAlt] = extent(alt);
   const span = maxAlt - minAlt;
 
@@ -138,5 +140,6 @@ export function isoRoute(s: RunStreams, box: Box, projection: GeoProjection): Is
     exaggeration,
     matrix: [a, b, -a, b, dx - f * minX, dy - f * minY],
     pxPerM: k0 * f,
+    baseM: minAlt,
   };
 }

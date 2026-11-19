@@ -38,10 +38,10 @@ const SHAPES = {
 const CENTER: [number, number] = [50.0647, 19.945];
 const POINTS = 80;
 
-function route(shape: keyof typeof SHAPES): string {
+function route(shape: keyof typeof SHAPES, center = CENTER): string {
   const points = Array.from({ length: POINTS }, (_, i) => {
     const [x, y] = SHAPES[shape](i / (POINTS - 1));
-    return [CENTER[0] + y * 0.01, CENTER[1] + x * 0.015] as [number, number];
+    return [center[0] + y * 0.01, center[1] + x * 0.015] as [number, number];
   });
   return encodePolyline(points);
 }
@@ -55,12 +55,15 @@ const RUNS: {
   elev: number;
   cad?: number;
   date: string;
+  center?: [number, number];
 }[] = [
   { name: 'Morning loop', shape: 'loop', km: 5.0, minutes: 27, hr: 152, elev: 32, cad: 86, date: '2026-11-10T07:12:00Z' },
   { name: 'Intervals at the park', shape: 'zigzag', km: 8.2, minutes: 40, hr: 168, elev: 18, cad: 89, date: '2026-11-12T17:30:00Z' },
   { name: 'Long run by the river', shape: 'line', km: 20.1, minutes: 120, hr: 141, elev: 64, cad: 84, date: '2026-11-14T09:00:00Z' },
   { name: 'Lunch 🏃🏻‍♀️ figure eight', shape: 'eight', km: 3.1, minutes: 19, elev: 7, date: '2026-11-15T12:45:00Z' },
   { name: 'Hill repeats', shape: 'zigzag', km: 6.4, minutes: 38, hr: 161, elev: 240, cad: 85, date: '2026-11-16T18:05:00Z' },
+  // W Tatrach (prawdziwe góry pod kafelkami terenu): rozpiętość wysokości ≥ 300 m włącza teren automatycznie.
+  { name: 'Mountain loop', shape: 'loop', km: 9.4, minutes: 75, hr: 150, elev: 820, cad: 80, date: '2026-11-16T08:00:00Z', center: [49.232, 19.982] },
   { name: 'A very long title to check how the tile wraps onto two lines', shape: 'loop', km: 12.0, minutes: 66, hr: 135, elev: 41, cad: 87, date: '2026-11-17T06:50:00Z' },
 ];
 
@@ -81,7 +84,7 @@ export function mockActivities(): Activity[] {
       max_speed: speed * 1.3,
       average_cadence: r.cad,
       start_date_local: r.date,
-      map: { summary_polyline: route(r.shape) },
+      map: { summary_polyline: route(r.shape, r.center) },
     };
   });
 }
@@ -105,9 +108,10 @@ export function mockStreams(activity: Activity): RunStreams {
   // Zdegenerowana trasa (wszystkie punkty w jednym miejscu): dystans liniowo.
   const distance = cum.map((c, i) => (total > 0 ? (c / total) * D : (i / Math.max(1, n - 1)) * D));
   const halves = /hill repeats/i.test(activity.name) ? 6 : 1;
-  const altitude = distance.map((d) => 200 + 40 * Math.sin((halves * Math.PI * d) / D));
+  const amp = /mountain/i.test(activity.name) ? 400 : 40;
+  const altitude = distance.map((d) => 200 + amp * Math.sin((halves * Math.PI * d) / D));
   // Nachylenie z pochodnej sinusa i jego maksimum (do normalizacji tętna).
-  const maxGrade = (40 * halves * Math.PI) / D;
+  const maxGrade = (amp * halves * Math.PI) / D;
   const grade = distance.map((d) => maxGrade * Math.cos((halves * Math.PI * d) / D));
   const time = distance.map((d) => (d / D) * activity.moving_time);
   const speed = D / activity.moving_time;

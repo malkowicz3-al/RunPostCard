@@ -102,6 +102,7 @@ Vercel and local Node are the officially supported setups. Other hosting platfor
 - Access tokens are kept in `sessionStorage` in your browser and disappear when the tab is closed.
 - Strava activity data is requested directly from the browser. Nothing is stored on the server, and there is no database.
 - The app requests the `activity:read` scope only, so Strava hides privacy-zone sections of the route.
+- With **Terrain** on, elevation tiles for the area of the run are downloaded from AWS (`s3.amazonaws.com`); see **Terrain** below.
 - A **Photo** background never leaves your browser. The app rescales it to the postcard size and re-saves it as JPEG, which removes EXIF metadata (including GPS location).
 
 ## Maps
@@ -129,9 +130,18 @@ When you open a postcard, the app makes one extra Strava request for that run on
 - With the map background, the postcard shows the surroundings of the start and finish of your run, which may reveal where you live. Strava privacy zones still apply to the route.
 - OpenFreeMap is a free external service without an SLA; its terms and availability are outside this project's control. The app sends at most 4 tile requests at a time.
 
+## Terrain
+
+**Terrain** (in the **View** section, shown with a map background once the run's streams are loaded) adds the relief of the land from elevation tiles: a hillshade over the map in the flat view, and in 3D a single-color relief (shaded from the theme's background color) that replaces the map floor and buildings, with the route lying on the slopes. It turns on by itself when the run's elevation range is 300 m or more; you can switch it either way. With terrain in 3D the route uses the terrain heights instead of the watch's, so it may differ slightly from the elevation numbers and charts, and it is always drawn on top (also behind a ridge). The relief is an image inside the SVG, so an exported SVG grows by about 1–3 MB. If the terrain cannot be loaded, the postcard silently stays as it was. Downloads wait until the terrain is loaded.
+
+- Elevation data: [Terrain Tiles](https://registry.opendata.aws/terrain-tiles/) (Mapzen / Tilezen Joerd, AWS Open Data, Terrarium PNG, no API key, up to 32 tiles per postcard).
+- Your browser downloads the tiles directly from `s3.amazonaws.com`, so Amazon Web Services can see the area of your run (approximate location), like OpenFreeMap for the map. Runs with terrain off download no terrain tiles.
+- Postcards with terrain carry the short attribution "Terrain: Mapzen, USGS, Copernicus EU-DEM, NOAA and others" next to the map attribution. Full attribution (also shown under the panel while terrain is on): 3DEP (formerly NED), SRTM and GMTED2010 courtesy of the U.S. Geological Survey; EU-DEM produced using Copernicus data and information funded by the European Union; ETOPO1 by NOAA; Terrain Tiles by Mapzen; and regional sources listed in [the Joerd attribution document](https://github.com/tilezen/joerd/blob/master/docs/attribution.md). Terrain Tiles is a free service without an SLA.
+
 ## License and third-party notes
 
 - The code is released under the MIT license.
 - The "Connect with Strava" button and the "Powered by Strava" marks (`src/assets/brand/strava/`) are the official Strava brand assets, used without modification.
 - Postcard fonts (`public/fonts/`): Barlow Condensed Bold, Bebas Neue, Anton, Oswald, Teko, Archivo Black, Russo One, Black Ops One, Space Grotesk, Orbitron, Audiowide, Rubik Mono One, Bungee, Monoton, Righteous, Racing Sans One, Press Start 2P, Pacifico and Lobster under the SIL Open Font License 1.1; Permanent Marker under the Apache License 2.0. License texts: `public/fonts/licenses/`.
 - Map data: OpenFreeMap, © OpenMapTiles, © OpenStreetMap contributors (see **Maps** above).
+- Elevation data: Terrain Tiles by Mapzen on AWS Open Data; USGS (3DEP, SRTM, GMTED2010), Copernicus EU-DEM, NOAA ETOPO1 and others (see **Terrain** above).

@@ -4,6 +4,7 @@ import { DEFAULT_CAMERA, cameraTransform, type Camera } from '../lib/camera';
 import { isoRoute, type IsoRoute as IsoData } from '../lib/isoRoute';
 import type { Rect } from '../lib/mapTiles';
 import { fitRoute } from '../lib/routePath';
+import { TERRAIN_ATTRIBUTION } from '../lib/dem';
 import { DEFAULT_FONT, FONTS, fontStack, type FontId } from '../lib/fonts';
 import { MAP_ATTRIBUTION, type Building, type MapLayers } from '../lib/vectorMap';
 import { Buildings3D } from './Buildings3D';
@@ -16,6 +17,13 @@ import { StravaMark } from './StravaMark';
 import { SlotNumber } from './SlotNumber';
 import { DATA, chartFor, defaultLayout, fitted, type LayoutItem } from './slots';
 import { THEMES, type ThemeId } from './themes';
+
+// Obraz terenu (data URL) i jego prostokąt: płasko w jednostkach płótna mapy, w 3D w jednostkach pocztówki przed kamerą.
+export type TerrainImage = { href: string; rect: Rect };
+
+export const terrainImage = ({ href, rect: [x0, y0, x1, y1] }: TerrainImage) => (
+  <image href={href} x={x0} y={y0} width={x1 - x0} height={y1 - y0} preserveAspectRatio="none" />
+);
 
 export type PostcardBackground = 'gradient' | 'transparent' | 'map' | 'photo';
 // Podpis mapy pionowo przy prawej krawędzi: początek linii bazowej, tekst biegnie w górę.
@@ -35,6 +43,7 @@ export function Postcard({
   camera = DEFAULT_CAMERA,
   iso: givenIso,
   refined,
+  terrain,
   layout = defaultLayout,
 }: {
   activity: Activity;
@@ -50,6 +59,7 @@ export function Postcard({
   camera?: Camera;
   iso?: IsoData | null; // policzone wyżej (ekran i tak go potrzebuje), inaczej liczone tutaj
   refined?: { rect: Rect; layers: MapLayers }; // ostrzejsza mapa przybliżonego fragmentu (płasko lub podłoga 3D)
+  terrain?: TerrainImage; // tylko z tłem map: 3D relief zamiast podłogi i brył, płasko cieniowanie nad mapą
   layout?: LayoutItem[];
 }) {
   // Jedna projekcja dla mapy i trasy („scena”).
@@ -64,6 +74,7 @@ export function Postcard({
   const floor = (l: MapLayers): MapLayers => (iso && l.buildings ? { ...l, building: undefined } : l);
   const out = showMap ? THEMES[theme].render(floor(map), { accent }) : null;
   const style = useMemo(() => THEMES[theme].style({ accent }), [theme, accent]);
+  const relief = out ? terrain : undefined;
   // Bryły ze środkiem w ostrzejszym fragmencie biorą obrysy z niego, pozostałe z mapy bazowej.
   const buildings = useMemo((): Building[] | null => {
     if (!iso || !(map?.buildings || refined?.layers.buildings)) return null;
@@ -113,14 +124,15 @@ export function Postcard({
         <g>
           {out && <rect width={1080} height={1920} fill={style.background} />}
           <g transform={cameraTransform(camera)}>
-            {out && (
+            {relief && terrainImage(relief)}
+            {out && !relief && (
               // Podłoga 3D: ta sama mapa co w widoku płaskim, przekształcona macierzą izometrii; poza płótnem dochodzi fragment refined.
               <g transform={`matrix(${iso.matrix.join(' ')})`}>
                 {out.scene}
                 {refinedMap}
               </g>
             )}
-            {out && buildings && (
+            {out && !relief && buildings && (
               <Buildings3D
                 buildings={buildings}
                 matrix={iso.matrix}
@@ -134,7 +146,14 @@ export function Postcard({
           {/* Faktura papieru w przestrzeni płótna (jak w widoku płaskim), nie na pochylonej i powiększanej podłodze. */}
           {out?.overlay}
           <g transform={cameraTransform(camera)}>
-            <IsoRoute iso={iso} flat={out?.route.stroke} filter={out?.route.filter} dash={out?.route.dash} zoom={camera.zoom} />
+            <IsoRoute
+              iso={iso}
+              flat={out?.route.stroke}
+              filter={out?.route.filter}
+              dash={out?.route.dash}
+              zoom={camera.zoom}
+              onSurface={!!relief}
+            />
           </g>
         </g>
       ) : (
@@ -144,6 +163,7 @@ export function Postcard({
           <g transform={cameraTransform(camera)}>
             {out?.scene}
             {refinedMap}
+            {relief && terrainImage(relief)}
           </g>
           {out?.overlay}
           {fit && (
@@ -198,7 +218,7 @@ export function Postcard({
           fill={text.color}
           opacity={0.6}
         >
-          {MAP_ATTRIBUTION}
+          {relief ? `${MAP_ATTRIBUTION} · ${TERRAIN_ATTRIBUTION}` : MAP_ATTRIBUTION}
         </text>
       )}
     </svg>

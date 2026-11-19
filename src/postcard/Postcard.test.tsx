@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { mockActivities, mockStreams } from '../dev/mockActivities';
 import { MAP_ATTRIBUTION } from '../lib/vectorMap';
+import { TERRAIN_ATTRIBUTION } from '../lib/dem';
 import { Postcard } from './Postcard';
 import { ROUTE_BOX } from './Route';
 import { CHARTS, DATA, resolveLayout } from './slots';
@@ -77,6 +78,25 @@ describe('Postcard 3D', () => {
     const svg = renderToStaticMarkup(<Postcard activity={hills} background="map" map={LAYERS} theme="dark" />);
     expect(svg).toContain('transform="translate(1056 1890) rotate(-90)" font-size="18"');
     expect(renderToStaticMarkup(<Postcard activity={hills} />)).not.toContain(MAP_ATTRIBUTION);
+  });
+});
+
+describe('Postcard teren', () => {
+  const terrain = { href: 'data:image/jpeg;base64,AAAA', rect: [-10, -20, 1100, 2000] as [number, number, number, number] };
+  it('3D: relief zamiast podłogi, trasa bez kurtyny, podpis terenu; płasko cienie nad mapą', () => {
+    const svg = renderToStaticMarkup(
+      <Postcard activity={hills} background="map" map={LAYERS} theme="dark" streams={streams} view="3d" terrain={terrain} />,
+    );
+    expect(svg).toContain('href="data:image/jpeg;base64,AAAA"');
+    expect(svg).not.toContain('transform="matrix(');
+    expect(svg).not.toContain('iso-curtain-grad');
+    expect(svg).toContain(TERRAIN_ATTRIBUTION);
+    const flat = renderToStaticMarkup(<Postcard activity={hills} background="map" map={LAYERS} theme="dark" terrain={terrain} />);
+    expect(flat).toContain('href="data:image/jpeg;base64,AAAA"');
+    // Bez tła map teren nie jest rysowany.
+    const plain = renderToStaticMarkup(<Postcard activity={hills} terrain={terrain} />);
+    expect(plain).not.toContain('data:image/jpeg');
+    expect(plain).not.toContain(TERRAIN_ATTRIBUTION);
   });
 });
 

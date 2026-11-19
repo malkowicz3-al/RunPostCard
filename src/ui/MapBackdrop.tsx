@@ -8,6 +8,7 @@ import { loadAreaLayers, type MapProfile } from '../lib/vectorMap';
 import { Buildings3D } from '../postcard/Buildings3D';
 import { IsoRoute } from '../postcard/IsoRoute';
 import { MapBackground } from '../postcard/MapBackground';
+import { terrainImage, type TerrainImage } from '../postcard/Postcard';
 import { Route } from '../postcard/Route';
 import { THEMES, type ThemeId } from '../postcard/themes';
 import { useRegionLayers } from './useRegionLayers';
@@ -29,6 +30,7 @@ export function MapBackdrop({
   camera,
   settled,
   iso,
+  terrain,
 }: {
   frameRef: RefObject<HTMLElement | null>;
   projection: GeoProjection;
@@ -39,6 +41,7 @@ export function MapBackdrop({
   camera: Camera;
   settled: Camera; // kamera po zatrzymaniu: od niej zależy doczytany obszar
   iso?: Iso; // widok 3D: mapa jako podłoga z macierzą izometrii i trasa z przewyższeniem
+  terrain?: TerrainImage; // ten sam obraz terenu co na pocztówce (3D: zamiast podłogi i brył)
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [viewBox, setViewBox] = useState<Rect | null>(null);
@@ -73,7 +76,8 @@ export function MapBackdrop({
     area.current = nextBackdropArea(area.current, viewBox, settled, iso?.matrix);
     return area.current;
   }, [viewBox, settled, iso]);
-  const { refined } = useRegionLayers(projection, region, profile, true, loadArea);
+  // 3D z terenem: podłogi wektorowej nie ma, więc nie pobieramy jej.
+  const { refined } = useRegionLayers(projection, region, profile, !(iso && terrain), loadArea);
 
   const { style, routeStyle } = useMemo(() => {
     const { filters: _f, fill: _fill, fills: _fills, ...style } = THEMES[theme].style({ accent });
@@ -93,7 +97,12 @@ export function MapBackdrop({
     >
       <rect x={x0} y={y0} width={x1 - x0} height={y1 - y0} fill={style.background} />
       <g transform={cameraTransform(camera)}>
-        {iso ? (
+        {iso && terrain ? (
+          <>
+            {terrainImage(terrain)}
+            <IsoRoute iso={iso} flat={routeStyle.stroke} dash={routeStyle.dash} zoom={camera.zoom} onSurface />
+          </>
+        ) : iso ? (
           <>
             <g transform={`matrix(${iso.matrix.join(' ')})`}>
               {refined && (
@@ -112,6 +121,7 @@ export function MapBackdrop({
         ) : (
           <>
             {refined && <MapBackground layers={refined.layers} style={style} rect={refined.rect} />}
+            {terrain && terrainImage(terrain)}
             <Route d={route} stroke={routeStyle.stroke} width={routeStyle.width} dash={routeStyle.dash} zoom={camera.zoom} />
           </>
         )}

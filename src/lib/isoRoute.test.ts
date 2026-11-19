@@ -3,6 +3,7 @@ import type { RunStreams } from '../strava/api';
 import { ROUTE_BOX } from '../postcard/Route';
 import { isoRoute } from './isoRoute';
 import { geoMercator } from 'd3-geo';
+import type { Dem } from './dem';
 
 // Pętla ~5 km w Krakowie, wysokość z funkcji dystansu.
 function loop(alt: (t: number, i: number) => number, n = 100): RunStreams {
@@ -87,5 +88,24 @@ describe('isoRoute', () => {
     const [x, y] = p([s.latlng[20][1], s.latlng[20][0]])!;
     expect(a * x + c * y + e).toBeCloseTo(r.ground[20][0], 6);
     expect(b * x + d * y + f).toBeCloseTo(r.ground[20][1], 6);
+  });
+
+  it('z DEM: wysokość z terenu, podniesienie liniowe w x, baseM = min na trasie', () => {
+    // Płaszczyzna h = 1000 + 0,5·x na siatce 2000 × 2000 jednostek płótna.
+    const w = 400;
+    const z = new Float32Array(w * w);
+    for (let j = 0; j < w; j++) for (let i = 0; i < w; i++) z[j * w + i] = 1000 + 0.5 * (-200 + (i + 0.5) * 10);
+    const dem: Dem = { x0: -200, y0: -200, cell: 10, w, h: w, z, mPerUnit: 1 };
+    const p = proj(hill);
+    const r = isoRoute(hill, ROUTE_BOX, p, dem)!;
+    // x płótna z punktu podłoża (odwrotność macierzy izometrii).
+    const [ma, mb, , , me, mf] = r.matrix;
+    const xs = r.ground.map(([gx, gy]) => ((gx - me) / ma + (gy - mf) / mb) / 2);
+    expect(r.baseM).toBeCloseTo(1000 + 0.5 * Math.min(...xs), 3);
+    // Podniesienie (ground − points w y) rośnie liniowo z x punktu płótna: stosunek stały.
+    const rise = r.ground.map(([, gy], i) => gy - r.points[i][1]);
+    const k = (rise[30] - rise[70]) / (xs[30] - xs[70]);
+    expect((rise[10] - rise[70]) / (xs[10] - xs[70])).toBeCloseTo(k, 6);
+    expect(k).toBeGreaterThan(0);
   });
 });

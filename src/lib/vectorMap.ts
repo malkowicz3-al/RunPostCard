@@ -287,7 +287,7 @@ export function loadTileJson(): Promise<TileJson> {
 let active = 0;
 const waiting: (() => void)[] = [];
 
-async function queuedFetch(url: string, signal?: AbortSignal): Promise<ArrayBuffer> {
+export async function queuedFetch(url: string, signal?: AbortSignal): Promise<ArrayBuffer> {
   if (active < MAX_PARALLEL) active++;
   else await new Promise<void>((resolve) => waiting.push(resolve));
   try {
@@ -313,11 +313,11 @@ async function gunzip(buf: ArrayBuffer): Promise<Uint8Array> {
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
-type Shared<T> = { promise: Promise<T>; controller: AbortController; users: number; settled: boolean };
+export type Shared<T> = { promise: Promise<T>; controller: AbortController; users: number; settled: boolean };
 
 // Wspólne pobieranie nie zależy od sygnału jednego wywołującego: każdy przerywa tylko swoje oczekiwanie,
 // a pobieranie zatrzymuje dopiero ostatni. Błąd i przerwanie nie zostają w cache.
-function cached<T>(
+export function cached<T>(
   cache: Map<string, Shared<T>>,
   key: string,
   make: (signal: AbortSignal) => Promise<T>,

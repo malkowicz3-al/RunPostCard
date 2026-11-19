@@ -1,4 +1,5 @@
 import {
+  useDeferredValue,
   useEffect,
   useMemo,
   useRef,
@@ -16,6 +17,8 @@ import { exportPng, exportSvg } from '../lib/exportPng';
 import { DEFAULT_FONT, FONTS, loadFontCss, type FontId } from '../lib/fonts';
 import { loadPhoto } from '../lib/photo';
 import { isoRoute } from '../lib/isoRoute';
+import { TERRAIN_AUTO_M } from '../lib/dem';
+import { hillshade, reliefImage, shadeOverlay } from '../lib/relief';
 import { fitRoute } from '../lib/routePath';
 import { zoomRegion } from '../lib/zoomRegion';
 import { POSTCARD_DETAILED } from '../lib/vectorMap';
@@ -31,6 +34,7 @@ import { MapBackdrop } from './MapBackdrop';
 import { useMapLayers } from './useMapLayers';
 import { useRegionLayers } from './useRegionLayers';
 import { useRunStreams } from './useRunStreams';
+import { toDataUrl, useTerrain } from './useTerrain';
 
 const SIZE: [number, number] = [1080, 1920];
 const IDENTITY: [number, number, number, number, number, number] = [1, 0, 0, 1, 0, 0];
@@ -93,6 +97,7 @@ export function PostcardScreen({
   const [accent, setAccent] = useState(DEFAULT_ACCENT);
   const [mapFailed, setMapFailed] = useState(false);
   const [view, setView] = useState<'flat' | '3d'>('flat');
+  const [terrainPick, setTerrainPick] = useState<boolean | null>(null); // null = automatycznie z przewyższenia
   const [layoutId, setLayoutId] = useState<LayoutId>('classic');
   const [overrides, setOverrides] = useState<Partial<Record<LayoutId, Overrides>>>({});
   const [editing, setEditing] = useState<string | null>(null);
@@ -136,15 +141,57 @@ export function PostcardScreen({
     const t = setTimeout(() => setSettled(camera), 300);
     return () => clearTimeout(t);
   }, [camera]);
-  const iso = useMemo(
+  const baseIso = useMemo(
     () => (is3d && streams && fit ? isoRoute(streams, ROUTE_BOX, fit.projection) : null),
     [is3d, streams, fit],
   );
+  // Teren (ADR 0008): przy tle map i strumieniach; domyślnie włączony w górach (rozpiętość wysokości zegarka).
+  const hasTerrain = isMap && !mapMissing && !!streams && fit !== null;
+  const autoTerrain = useMemo(() => {
+    const alt = streams?.altitude;
+    if (!alt?.length) return false;
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (const v of alt) {
+      lo = Math.min(lo, v);
+      hi = Math.max(hi, v);
+    }
+    return hi - lo >= TERRAIN_AUTO_M;
+  }, [streams]);
+  const terrainOn = hasTerrain && (terrainPick ?? autoTerrain);
+  // Obszar DEM z iso bez DEM i kamery domyślnej (iso z DEM zależy od DEM); margines pokrywa różnicę dopasowania.
+  const demArea = useMemo(
+    () => (terrainOn ? backdropArea(CANVAS, DEFAULT_CAMERA, 0.3, baseIso?.matrix ?? IDENTITY) : null),
+    [terrainOn, baseIso],
+  );
+  const terrain = useTerrain(fit?.projection ?? null, demArea, terrainOn);
+  const dem = terrainOn ? terrain.dem : null;
+  const iso = useMemo(
+    () => (baseIso && dem && streams && fit ? (isoRoute(streams, ROUTE_BOX, fit.projection, dem) ?? baseIso) : baseIso),
+    [baseIso, dem, streams, fit],
+  );
+  const shade = useMemo(() => (dem ? hillshade(dem) : null), [dem]);
+  // Obrazy tylko przy zmianie DEM, iso lub tła motywu (nie przy ruchu kamery). Płasko: cienie PNG niezależne od motywu.
+  const shadeImage = useMemo(() => {
+    if (!dem || !shade) return undefined;
+    const rect: [number, number, number, number] = [dem.x0, dem.y0, dem.x0 + dem.w * dem.cell, dem.y0 + dem.h * dem.cell];
+    return { href: toDataUrl(shadeOverlay(dem, shade), 'image/png'), rect };
+  }, [dem, shade]);
+  // 3D: relief JPEG (do 8 MP); kolor tła odroczony, żeby przeciąganie koloru neonu nie liczyło reliefu przy każdym zdarzeniu.
+  const reliefBg = useDeferredValue(isMap ? THEMES[look as ThemeId].style({ accent }).background : null);
+  const reliefImg = useMemo(() => {
+    if (!dem || !shade || !iso || !reliefBg) return undefined;
+    const p = reliefImage(dem, shade, iso, { background: reliefBg });
+    return { href: toDataUrl(p, 'image/jpeg'), rect: p.rect };
+  }, [dem, shade, iso, reliefBg]);
+  const terrainImage = !isMap ? undefined : iso ? reliefImg : shadeImage;
   // Płasko: macierz jednostkowa, fragment może wyjść poza płótno (przesunięta kamera); przy zoomie < 1,5 tylko obszar
   // widocznej ramki na poziomie pocztówki (loadRegionLayers zwraca null, gdy cały mieści się na płótnie).
   const regionArea = useRef<LoadedArea | null>(null);
   const region = useMemo(() => {
     if (!isMap) return null;
+    // 3D z terenem: relief zastępuje podłogę wektorową, więc ostrzejszej mapy nie pobieramy.
+    if (iso && terrainOn && (terrain.loading || dem)) return null;
     const matrix = iso?.matrix ?? IDENTITY;
     // 3D: podłoga bez wygaszania, więc widoczną część poza płótnem doczytujemy zawsze (także przy kamerze domyślnej).
     if (!iso) {
@@ -155,9 +202,10 @@ export function PostcardScreen({
     // Małe przesunięcie w doczytanym obszarze zostawia go (bez nowego zapytania), jak w tle ekranu.
     if (settled.zoom < 1.5) return (regionArea.current = nextBackdropArea(regionArea.current, CANVAS, settled, matrix));
     return zoomRegion(settled, matrix, CAMERA_CENTER, SIZE, 0.15, UNBOUNDED);
-  }, [iso, isMap, settled]);
+  }, [iso, terrainOn, terrain.loading, dem, isMap, settled]);
   const zoomed = useRegionLayers(fit?.projection ?? null, region, profile, isMap);
-  const loading = mapLoading || zoomed.loading;
+  const terrainLoading = terrainOn && terrain.loading;
+  const loading = mapLoading || zoomed.loading || terrainLoading;
 
   useEffect(() => {
     let cancelled = false;
@@ -190,7 +238,10 @@ export function PostcardScreen({
     return () => el.removeEventListener('wheel', onWheel);
   }, [is3d, fit, scrollsPage]);
 
-  useEffect(() => setEditing(null), [activity]);
+  useEffect(() => {
+    setEditing(null);
+    setTerrainPick(null);
+  }, [activity]);
 
   const opens = (e: { clientX: number; clientY: number }, keyboard = false) =>
     shouldOpenSlot({ down: tap.current, up: { x: e.clientX, y: e.clientY }, multiTouch: multiTouch.current, keyboard });
@@ -298,6 +349,7 @@ export function PostcardScreen({
           camera={camera}
           settled={settled}
           iso={iso ?? undefined}
+          terrain={terrainImage}
         />
       )}
       <div className="top-bar">
@@ -358,6 +410,7 @@ export function PostcardScreen({
             camera={camera}
             iso={iso}
             refined={zoomed.refined}
+            terrain={terrainImage}
             layout={items}
           />
           {/* Nakładka w HTML obok <svg>, żeby nie trafiła do eksportu. */}
@@ -416,7 +469,7 @@ export function PostcardScreen({
           <p className="panel-hint">
             Click a stat to change it.{fit && ' Drag, Ctrl + scroll or pinch to move and zoom the map.'}
           </p>
-          {fit && (has3d || moved) && (
+          {fit && (has3d || hasTerrain || moved) && (
             <section className="panel-section">
               <h3 className="panel-heading">View</h3>
               <div className="toggle-row">
@@ -429,6 +482,11 @@ export function PostcardScreen({
                       3D
                     </button>
                   </div>
+                )}
+                {hasTerrain && (
+                  <button className="toggle" aria-pressed={terrainOn} onClick={() => setTerrainPick(!terrainOn)}>
+                    Terrain
+                  </button>
                 )}
                 {moved && (
                   <button className="text-button" onClick={() => setCamera((c) => keepCamera(c, DEFAULT_CAMERA))}>
@@ -456,7 +514,14 @@ export function PostcardScreen({
           <DownloadMenu disabled={loading || !fontReady} onPng={downloadPng} onSvg={downloadSvg} />
           {loading && (
             <p className="hint" role="status">
-              Loading map…
+              {terrainLoading ? 'Loading terrain…' : 'Loading map…'}
+            </p>
+          )}
+          {terrainImage && (
+            <p className="map-attribution">
+              Terrain: <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md">Terrain Tiles by Mapzen</a> on AWS
+              Open Data; 3DEP, SRTM and GMTED2010 courtesy of the U.S. Geological Survey; EU-DEM produced using Copernicus
+              data and information funded by the European Union; ETOPO1 by NOAA; and regional sources listed in the link.
             </p>
           )}
           {mapFailed && <p className="error">Could not load the map.</p>}

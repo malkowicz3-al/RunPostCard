@@ -56,6 +56,7 @@ src/
     RouteThumb.tsx        # miniatura trasy na zarysie mapy (profil THUMB); kolory z tokenów CSS --map-* (lista) albo z MapStyle motywu; style=null = sama trasa
     useMapLayers.ts       # hook: projekcja -> ścieżki mapy {layers, failed, loading}; przy zmianie profilu stare warstwy zostają do czasu nowych; anulowanie przy odmontowaniu
     useRegionLayers.ts    # hook: region przybliżenia 3D -> ostrzejsze warstwy {refined: {rect, layers}, loading}; błąd cichy (zostaje mapa podstawowa)
+    useTerrain.ts         # hook: obszar płótna -> DEM z AWS Terrain Tiles {dem, loading} (loadDem: ≤32 kafelki, cached + queuedFetch, PNG przez createImageBitmap + canvas; błąd cichy); toDataUrl (Pixels -> data URL) (ADR 0008)
     Select.tsx            # ogólna lista rozwijana z podglądem opcji (listbox, klawiatura, grupy); FontPicker/LookPicker/LayoutPicker na niej
     DataModal.tsx         # okno zmiany danych slotu: grupy Numbers/Charts, podgląd w foncie i kolorach
     MapBackdrop.tsx       # mapa motywu na cały ekran pod panelem, przygaszona poza ramką (bez filtrów motywu); nie trafia do eksportu
@@ -80,8 +81,12 @@ src/
     backdrop.ts           # tło ekranu: backdropViewBox (ekran -> jednostki pocztówki), backdropArea (obszar mapy do pobrania)
     backdrop.test.ts
     camera.test.ts
-    isoRoute.ts           # izometria: Mercator, obrót 45°, Y × 0,5, podniesienie o wysokość (min. 15% pola), dopasowanie do ROUTE_BOX
+    isoRoute.ts           # izometria: Mercator, obrót 45°, Y × 0,5, podniesienie o wysokość (min. 15% pola), dopasowanie do ROUTE_BOX; opcjonalny DEM (wysokości z terenu, baseM)
     isoRoute.test.ts
+    dem.ts                # teren (ADR 0008): TERRAIN_URL, TERRAIN_ATTRIBUTION, terrarium, demFromTiles (mozaika w układzie płótna), demAt (dwuliniowo)
+    dem.test.ts
+    relief.ts             # bez DOM: hillshade (Horn, NW 45°), shadeOverlay (cienie RGBA widoku płaskiego), reliefImage (relief 3D od przodu po kolumnach, ≤ 8 MP)
+    relief.test.ts
     routePath.ts          # fitRoute: polyline -> d3-geo geoMercator().fitExtent -> {projection, d}; routePath = samo d
     zoomRegion.ts         # czysta funkcja: kamera 3D + iso.matrix -> widoczny fragment płaskiej mapy (z marginesem 15%) i poziom k = 2 albo 4
     mapTiles.ts           # czysta funkcja: projekcja trasy + tileUnits -> kafelki XYZ pokrywające płótno; tileUrlFrom; tileZoom i opcjonalny region {k, rect} (gęstsze kafelki dla fragmentu) (ADR 0004)
@@ -103,6 +108,7 @@ docs/
 3. Odświeżanie: gdy `expires_at` mija, przeglądarka -> `POST /api/strava/token {refresh_token}` -> ten sam moduł.
 4. Dane: przeglądarka -> `GET https://www.strava.com/api/v3/athlete/activities?per_page=30` z `Authorization: Bearer` (bez backendu). Lista zawiera `map.summary_polyline`, `distance`, `moving_time`, `average_heartrate`, `start_date_local` – wystarcza na etap 1, bez pobierania streamów.
 5. Strumienie (tylko otwarta pocztówka, ADR 0006): przeglądarka -> `GET /activities/{id}/streams?keys=latlng,altitude,heartrate,velocity_smooth,distance,time&key_by_type=true` -> `normalizeStreams` -> `RunStreams` w stanie `PostcardScreen` (bez cache). Z tego źródła liczy się `isoRoute` (widok 3D). Błąd = pocztówka bez 3D. Markery (Highlights) usunięte (ADR 0007).
+6. Teren (ADR 0008): przełącznik Terrain (auto przy rozpiętości wysokości ≥ 300 m) -> obszar `backdropArea(CANVAS, DEFAULT_CAMERA, 0.3, iso bez DEM)` -> `useTerrain` (S3 AWS) -> `hillshade` -> płasko `shadeOverlay` (PNG), 3D `isoRoute` z DEM + `reliefImage` (JPEG) -> `<image>` z data URL w `Postcard` i `MapBackdrop`; w 3D z terenem bez podłogi wektorowej, brył i `refined`.
 6. Render: Activity -> sloty (`slots.ts`) + trasa (`polyline.ts` -> `Route.tsx`) -> `<svg>` -> `exportPng.ts` -> plik PNG.
 7. Wylogowanie: przeglądarka -> `POST https://www.strava.com/oauth/deauthorize` z tokenem -> czyszczenie `sessionStorage`.
 
