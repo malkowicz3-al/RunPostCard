@@ -7,6 +7,11 @@ import type { StravaMarkVariant } from '../StravaMark';
 import { dark } from './dark';
 import { light } from './light';
 import { neon } from './neon';
+import { ocean } from './ocean';
+import { forest } from './forest';
+import { sunset } from './sunset';
+import { mint } from './mint';
+import { mono } from './mono';
 import { blueprint } from './blueprint';
 import { pencil } from './pencil';
 import { watercolor } from './watercolor';
@@ -43,6 +48,11 @@ export type ThemeId =
   | 'dark'
   | 'light'
   | 'neon'
+  | 'ocean'
+  | 'forest'
+  | 'sunset'
+  | 'mint'
+  | 'mono'
   | 'blueprint'
   | 'pencil'
   | 'watercolor'
@@ -92,7 +102,7 @@ export type MapTheme = {
 };
 
 export const THEMES: Record<ThemeId, MapTheme> = {
-  dark, light, neon, blueprint, pencil, watercolor, vintage, riso, chalk, halftone, synthwave, terminal, ink,
+  dark, light, neon, ocean, forest, sunset, mint, mono, blueprint, pencil, watercolor, vintage, riso, chalk, halftone, synthwave, terminal, ink,
   digitalrain, lightgrid, galaxy, dune, redfog, spellbook, popcomic, bricks, arcademaze, dollhouse,
   handheld, vectorarcade, dungeon, spaceshooter, voxel, nightvision, kartrace, cyberhud, overworld, pinball,
 };

@@ -9,7 +9,7 @@ import { TERRAIN_ATTRIBUTION } from '../lib/dem';
 import { DEFAULT_FONT, FONTS, fontStack, type FontId } from '../lib/fonts';
 import { MAP_ATTRIBUTION, type Building, type MapLayers } from '../lib/vectorMap';
 import { Buildings3D } from './Buildings3D';
-import { Background } from './Background';
+import { Background, type GradientId } from './Background';
 import { MapBackground } from './MapBackground';
 import { IsoRoute } from './IsoRoute';
 import { PhotoBackground } from './PhotoBackground';
@@ -37,6 +37,7 @@ export function Postcard({
   fontCss,
   font = DEFAULT_FONT,
   background = 'gradient',
+  gradient,
   map,
   photo,
   theme = 'dark',
@@ -58,6 +59,7 @@ export function Postcard({
   fontCss?: string;
   font?: FontId;
   background?: PostcardBackground;
+  gradient?: GradientId;
   map?: MapLayers;
   photo?: { href: string; dim: number };
   theme?: ThemeId;
@@ -232,7 +234,7 @@ export function Postcard({
           </filter>
         </defs>
       )}
-      {background === 'gradient' && <Background />}
+      {background === 'gradient' && <Background gradient={gradient} />}
       {bare ? null : iso ? (
         <g>
           {out && <rect width={1080} height={1920} fill={style.background} />}

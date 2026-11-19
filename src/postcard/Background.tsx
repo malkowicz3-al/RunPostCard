@@ -1,11 +1,30 @@
-// Gradient + ziarno z filtra feTurbulence; jeden preset na stałe (presety w etapie 2).
-export function Background() {
+// Gradient + ziarno z filtra feTurbulence. Wszystkie dość ciemne, bo tekst na gradiencie jest biały.
+export type GradientId = 'dusk' | 'ocean' | 'berry' | 'forest' | 'ember' | 'aurora';
+
+export const GRADIENTS: Record<GradientId, { label: string; stops: string[]; diagonal?: boolean }> = {
+  dusk: { label: 'Dusk', stops: ['#1e1b4b', '#f97316'] },
+  ocean: { label: 'Ocean', stops: ['#0f172a', '#0e7490', '#38bdf8'] },
+  berry: { label: 'Berry', stops: ['#3b0764', '#be185d'], diagonal: true },
+  forest: { label: 'Forest', stops: ['#052e16', '#3f6212', '#a3a635'] },
+  ember: { label: 'Ember', stops: ['#1c0a00', '#9a1c0b', '#f59e0b'], diagonal: true },
+  aurora: { label: 'Aurora', stops: ['#020617', '#0f766e', '#7c3aed'], diagonal: true },
+};
+
+export const GRADIENT_IDS = Object.keys(GRADIENTS) as GradientId[];
+
+// Ten sam gradient w CSS (podgląd w panelu i w oknie danych).
+export const gradientCss = (id: GradientId) =>
+  `linear-gradient(${GRADIENTS[id].diagonal ? '160deg' : '180deg'}, ${GRADIENTS[id].stops.join(', ')})`;
+
+export function Background({ gradient = 'dusk' }: { gradient?: GradientId }) {
+  const { stops, diagonal } = GRADIENTS[gradient];
   return (
     <>
       <defs>
-        <linearGradient id="bg-gradient" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#1e1b4b" />
-          <stop offset="1" stopColor="#f97316" />
+        <linearGradient id="bg-gradient" x1="0" y1="0" x2={diagonal ? 0.35 : 0} y2="1">
+          {stops.map((c, i) => (
+            <stop key={i} offset={i / (stops.length - 1)} stopColor={c} />
+          ))}
         </linearGradient>
         <filter id="bg-grain" x="0" y="0" width="100%" height="100%">
           <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch" />

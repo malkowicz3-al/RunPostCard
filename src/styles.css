@@ -1245,10 +1245,6 @@ button.slot-hit[data-active='true'] {
 }
 
 /* Kolory jak w Background.tsx (bez ziarna). */
-.look-preview.look-gradient {
-  background: linear-gradient(#1e1b4b, #f97316);
-}
-
 .look-preview.checkerboard {
   background: conic-gradient(#3a3a3f 25%, #2c2c30 0 50%, #3a3a3f 0 75%, #2c2c30 0) 0 0 / 16px 16px;
 }

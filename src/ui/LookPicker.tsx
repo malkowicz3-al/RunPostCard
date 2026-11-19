@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { THEMES, type ThemeId } from '../postcard/themes';
 import { NEON_ACCENTS } from '../postcard/themes/neon';
+import { GRADIENTS, GRADIENT_IDS, gradientCss, type GradientId } from '../postcard/Background';
 import { RouteThumb } from './RouteThumb';
 import { Select } from './Select';
 
@@ -9,6 +10,7 @@ type Background = 'gradient' | 'transparent' | 'photo' | 'map';
 
 const THEME_IDS = Object.keys(THEMES) as ThemeId[];
 const THEME_OPTIONS = THEME_IDS.map((id) => ({ id, label: THEMES[id].label }));
+const GRADIENT_OPTIONS = GRADIENT_IDS.map((id) => ({ id, label: GRADIENTS[id].label }));
 const isTheme = (look: Look): look is ThemeId => look in THEMES;
 
 export function LookPicker({
@@ -18,6 +20,8 @@ export function LookPicker({
   onLook,
   accent,
   onAccent,
+  gradient,
+  onGradient,
   photoHref,
   onPhotoFile,
   photoBusy,
@@ -28,6 +32,8 @@ export function LookPicker({
   onLook: (look: Look) => void;
   accent: string;
   onAccent: (accent: string) => void;
+  gradient: GradientId;
+  onGradient: (id: GradientId) => void;
   photoHref?: string;
   onPhotoFile: (file: File) => void;
   photoBusy?: boolean;
@@ -64,7 +70,10 @@ export function LookPicker({
         <span className="look-preview font-sample">+</span>
       );
     return (
-      <span className={`look-preview ${id === 'gradient' ? 'look-gradient' : 'checkerboard'}`}>
+      <span
+        className={`look-preview${id === 'gradient' ? '' : ' checkerboard'}`}
+        style={id === 'gradient' ? { background: gradientCss(gradient) } : undefined}
+      >
         <RouteThumb polyline={polyline} style={null} route="#ffffff" />
       </span>
     );
@@ -108,6 +117,19 @@ export function LookPicker({
           }}
         />
       </section>
+      {look === 'gradient' && (
+        <section className="panel-section">
+          <h3 className="panel-heading">Gradient</h3>
+          <Select
+            label="Gradient"
+            className="look-select"
+            value={gradient}
+            options={GRADIENT_OPTIONS}
+            onChange={onGradient}
+            preview={(id) => <span className="look-preview" style={{ background: gradientCss(id) }} />}
+          />
+        </section>
+      )}
       {isTheme(look) && (
         <section className="panel-section">
           <h3 className="panel-heading">Map style</h3>

@@ -12,6 +12,7 @@ import {
 import type { Activity } from '../strava/api';
 import { Postcard } from '../postcard/Postcard';
 import { ROUTE_BOX } from '../postcard/Route';
+import { gradientCss, type GradientId } from '../postcard/Background';
 import { colorScale, type RouteColor } from '../postcard/routeColor';
 import { CAMERA_CENTER, DEFAULT_CAMERA, clampCamera, keepCamera, type Camera } from '../lib/camera';
 import { backdropArea, nextBackdropArea, type LoadedArea } from '../lib/backdrop';
@@ -65,7 +66,7 @@ export function shouldOpenSlot({
 }
 
 // Kolory podglądu w oknie danych: to samo tło i kolor tekstu co pocztówka (bez ziarna i filtrów).
-function previewColors(look: Look, accent: string, photo?: string): { color: string; bg: CSSProperties } {
+function previewColors(look: Look, accent: string, photo: string | undefined, gradient: GradientId): { color: string; bg: CSSProperties } {
   if (look in THEMES) {
     const theme = THEMES[look as ThemeId];
     return { color: theme.render({}, { accent }).text.color, bg: { background: theme.style({ accent }).background } };
@@ -76,7 +77,7 @@ function previewColors(look: Look, accent: string, photo?: string): { color: str
   if (look === 'transparent') {
     return { color: '#ffffff', bg: { background: 'conic-gradient(#3a3a3f 25%, #2c2c30 0 50%, #3a3a3f 0 75%, #2c2c30 0) 0 0 / 16px 16px' } };
   }
-  return { color: '#ffffff', bg: { background: 'linear-gradient(#1e1b4b, #f97316)' } };
+  return { color: '#ffffff', bg: { background: gradientCss(gradient) } };
 }
 
 // Domyślne tło: mapa Dark albo Light wg motywu systemu; bez trasy nie ma mapy, więc gradient.
@@ -115,6 +116,7 @@ export function PostcardScreen({
   const [photoError, setPhotoError] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
   const [accent, setAccent] = useState(DEFAULT_ACCENT);
+  const [gradient, setGradient] = useState<GradientId>('dusk');
   const [mapFailed, setMapFailed] = useState(false);
   const [view, setView] = useState<'flat' | '3d' | 'pov'>('flat');
   const [povReady, setPovReady] = useState(false);
@@ -352,7 +354,7 @@ export function PostcardScreen({
   };
   const scale = FONTS[font].scale;
   // Bez wczytanej mapy pocztówka ma gradient, więc podgląd też.
-  const preview = previewColors(mapMissing ? 'gradient' : look, accent, photo);
+  const preview = previewColors(mapMissing ? 'gradient' : look, accent, photo, gradient);
 
   // Przy błędzie mapy wracamy do gradientu.
   useEffect(() => {
@@ -378,6 +380,7 @@ export function PostcardScreen({
           : look === 'transparent'
             ? 'transparent'
             : 'gradient',
+    gradient,
     map: map.layers,
     photo: photo ? { href: photo, dim: dim / 100 } : undefined,
     theme: isMap || isPov ? povTheme : undefined,
@@ -393,7 +396,7 @@ export function PostcardScreen({
     routeColor,
     person,
     bare: isPov,
-  }), [activity, fontCss?.css, font, isMap, mapMissing, look, photo, map.layers, dim, accent, streams, is3d, camera, iso, zoomed.refined, terrainImage, items, showRoute, routeColor, person, isPov, povTheme]);
+  }), [activity, fontCss?.css, font, isMap, mapMissing, look, gradient, photo, map.layers, dim, accent, streams, is3d, camera, iso, zoomed.refined, terrainImage, items, showRoute, routeColor, person, isPov, povTheme]);
   const previewCard = useMemo(() => <Postcard {...postcardProps} />, [postcardProps]);
 
   const currentSvg = () => previewRef.current?.querySelector('svg') ?? null;
@@ -547,6 +550,8 @@ export function PostcardScreen({
               onLook={choose}
               accent={accent}
               onAccent={setAccent}
+              gradient={gradient}
+              onGradient={setGradient}
               photoHref={photo}
               onPhotoFile={choosePhoto}
               photoBusy={photoBusy}
