@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import type { IsoRoute as Iso } from '../lib/isoRoute';
 import { scaleDash } from './Route';
+import { segments } from './routeColor';
 
 const DOWNHILL = '#5ab4ff';
 const UPHILL = '#ff9a3d';
@@ -18,6 +19,7 @@ export function IsoRoute({
   zoom = 1,
   gradientId = 'iso-curtain-grad',
   onSurface = false,
+  color,
 }: {
   iso: Iso;
   flat?: string;
@@ -26,6 +28,7 @@ export function IsoRoute({
   zoom?: number;
   gradientId?: string; // tło ekranu to osobny <svg> w tym samym dokumencie: inne id, bez duplikatów
   onSurface?: boolean; // trasa leży na reliefie terenu: bez kurtyny i cienia, lekko nad powierzchnią
+  color?: (t: number) => string; // styl linii inny niż motyw: kolor wg ułamka długości po rzucie zamiast nachylenia
 }) {
   const { curtain, shadow, runs, top, bottom } = useMemo(() => {
     const { points, ground, slope } = iso;
@@ -38,8 +41,9 @@ export function IsoRoute({
       .join('');
     const shadow = `M${idx.map((i) => pt(ground[i])).join('L')}`;
     // Kolejne odcinki w tym samym kolorze łączymy w jedną ścieżkę.
-    const runs: { color: string; d: string }[] = [];
-    idx.slice(1).forEach((i, j) => {
+    const runs: { color: string; d: string; start?: number }[] = [];
+    if (color) runs.push(...segments(points, 150, iso.distance).map((g) => ({ color: color(g.t), d: g.d, start: g.start })));
+    else idx.slice(1).forEach((i, j) => {
       const s = slope[idx[j]];
       const color = s < 0 ? DOWNHILL : s > 0 ? UPHILL : flat;
       const lastRun = runs[runs.length - 1];
@@ -49,13 +53,13 @@ export function IsoRoute({
     const top = points.reduce((min, [, y]) => Math.min(min, y), Infinity);
     const bottom = ground.reduce((max, [, y]) => Math.max(max, y), -Infinity);
     return { curtain, shadow, runs, top, bottom };
-  }, [iso, flat]);
+  }, [iso, flat, color]);
 
   const dashed = scaleDash(dash, zoom);
   const line = (
     <g filter={filter}>
       {runs.map((r, i) => (
-        <path key={i} d={r.d} fill="none" stroke={r.color} strokeWidth={7 / zoom} strokeDasharray={dashed} strokeLinecap="round" strokeLinejoin="round" />
+        <path key={i} d={r.d} fill="none" stroke={r.color} strokeWidth={7 / zoom} strokeDasharray={dashed} strokeDashoffset={dashed ? r.start : undefined} strokeLinecap="round" strokeLinejoin="round" />
       ))}
     </g>
   );

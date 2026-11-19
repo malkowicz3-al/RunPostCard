@@ -14,6 +14,7 @@ import { MapBackground } from './MapBackground';
 import { IsoRoute } from './IsoRoute';
 import { PhotoBackground } from './PhotoBackground';
 import { Route, ROUTE_BOX } from './Route';
+import { colorScale, type RouteColor } from './routeColor';
 import { StravaMark } from './StravaMark';
 import { SlotNumber } from './SlotNumber';
 import { DATA, chartFor, defaultLayout, fitted, type LayoutItem } from './slots';
@@ -48,6 +49,7 @@ export function Postcard({
   layout = defaultLayout,
   route = true,
   person,
+  routeColor = 'theme',
 }: {
   activity: Activity;
   fontCss?: string;
@@ -66,6 +68,7 @@ export function Postcard({
   layout?: LayoutItem[];
   route?: boolean; // false: tylko tło i statystyki (np. na własnym zdjęciu)
   person?: Cutout; // wycinanka osoby lub obiektu ze zdjęcia (ADR 0009): przed tym, co zasłania częściowo
+  routeColor?: RouteColor; // styl linii trasy; 'theme' lub brak danych: kolor motywu (3D: nachylenie)
 }) {
   // Jedna projekcja dla mapy i trasy („scena”).
   const polyline = activity.map.summary_polyline;
@@ -93,6 +96,10 @@ export function Postcard({
     };
     return [...base.filter((b) => !inside(b)), ...(refined.layers.buildings ?? []).filter(inside)];
   }, [iso, map, refined]);
+  const lineColor = useMemo(
+    () => colorScale(routeColor, streams, activity.max_heartrate) ?? undefined,
+    [routeColor, streams, activity.max_heartrate],
+  );
   const text = out?.text ?? { color: '#ffffff' };
   const { weight, scale } = FONTS[font];
   // Własne tło warstwy zakrywa mapę podstawową w prostokącie; defs motywu (filtry, wzory) są już w scene.
@@ -138,6 +145,7 @@ export function Postcard({
                 dash={out?.route.dash}
                 zoom={camera.zoom}
                 onSurface={!!relief}
+                color={lineColor}
                 gradientId={part === 'front' ? 'iso-curtain-grad-front' : undefined}
               />,
             )}
@@ -145,7 +153,7 @@ export function Postcard({
         )
       : fit &&
         route && (
-          <g transform={cameraTransform(camera)}>{clipped(part, <Route {...out?.route} d={fit.d} zoom={camera.zoom} />)}</g>
+          <g transform={cameraTransform(camera)}>{clipped(part, <Route {...out?.route} d={fit.d} zoom={camera.zoom} points={fit.points} color={lineColor} />)}</g>
         );
   const slotNode = (item: LayoutItem) => {
     const value = DATA[item.slot.data].value(activity);

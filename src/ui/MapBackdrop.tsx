@@ -31,6 +31,8 @@ export function MapBackdrop({
   settled,
   iso,
   terrain,
+  points,
+  color,
 }: {
   frameRef: RefObject<HTMLElement | null>;
   projection: GeoProjection;
@@ -42,6 +44,8 @@ export function MapBackdrop({
   settled: Camera; // kamera po zatrzymaniu: od niej zależy doczytany obszar
   iso?: Iso; // widok 3D: mapa jako podłoga z macierzą izometrii i trasa z przewyższeniem
   terrain?: TerrainImage; // ten sam obraz terenu co na pocztówce (3D: zamiast podłogi i brył)
+  points?: [number, number][]; // punkty trasy (fit.points) do linii w odcinkach
+  color?: (t: number) => string; // styl linii jak na pocztówce
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [viewBox, setViewBox] = useState<Rect | null>(null);
@@ -100,7 +104,7 @@ export function MapBackdrop({
         {iso && terrain ? (
           <>
             {terrainImage(terrain)}
-            <IsoRoute iso={iso} flat={routeStyle.stroke} dash={routeStyle.dash} zoom={camera.zoom} onSurface />
+            <IsoRoute iso={iso} flat={routeStyle.stroke} dash={routeStyle.dash} zoom={camera.zoom} onSurface color={color} />
           </>
         ) : iso ? (
           <>
@@ -116,13 +120,13 @@ export function MapBackdrop({
             {buildings && (
               <Buildings3D buildings={buildings} matrix={iso.matrix} pxPerM={iso.pxPerM} color={style.colors.building} />
             )}
-            <IsoRoute iso={iso} flat={routeStyle.stroke} dash={routeStyle.dash} zoom={camera.zoom} gradientId="backdrop-curtain-grad" />
+            <IsoRoute iso={iso} flat={routeStyle.stroke} dash={routeStyle.dash} zoom={camera.zoom} gradientId="backdrop-curtain-grad" color={color} />
           </>
         ) : (
           <>
             {refined && <MapBackground layers={refined.layers} style={style} rect={refined.rect} />}
             {terrain && terrainImage(terrain)}
-            <Route d={route} stroke={routeStyle.stroke} width={routeStyle.width} dash={routeStyle.dash} zoom={camera.zoom} />
+            <Route d={route} stroke={routeStyle.stroke} width={routeStyle.width} dash={routeStyle.dash} zoom={camera.zoom} points={points} color={color} />
           </>
         )}
       </g>

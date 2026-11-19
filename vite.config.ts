@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { exchangeToken } from './server/stravaToken';
@@ -33,4 +34,6 @@ function stravaTokenApi(env: Record<string, string>): Plugin {
 
 export default defineConfig(({ mode }) => ({
   plugins: [react(), stravaTokenApi(loadEnv(mode, process.cwd(), ''))],
+  // Tylko testy tego repo, bez kopii w worktree innych sesji (.claude/worktrees).
+  test: { exclude: ['**/node_modules/**', '**/dist/**', '.claude/**'] },
 }));

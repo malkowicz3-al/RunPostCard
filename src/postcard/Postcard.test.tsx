@@ -230,3 +230,33 @@ describe('SlotNumber part', () => {
     expect(label).not.toContain('VAL');
   });
 });
+
+describe('Postcard styl linii', () => {
+  const photo = { href: 'data:image/jpeg;base64,AAAA', dim: 0.35 };
+  const person = { href: 'data:image/png;base64,BBBB', rect: [100, 200, 700, 800] as Rect, grid: new Uint8Array(GRID_W * GRID_H) };
+  const paths = (svg: string) => svg.match(/<path /g)?.length ?? 0;
+
+  it('każdy styl w 2D, 3D i Behind: bez NaN, unikalne id, tylko lokalne url(#)', () => {
+    for (const routeColor of ['theme', 'rainbow', 'pace', 'heartrate', 'elevation'] as const) {
+      for (const view of ['flat', '3d'] as const) {
+        for (const props of [{ background: 'map' as const, map: LAYERS, theme: 'neon' as const }, { background: 'photo' as const, photo, person }]) {
+          const svg = renderToStaticMarkup(<Postcard activity={hills} streams={streams} view={view} routeColor={routeColor} {...props} />);
+          expect(svg).not.toMatch(/NaN|Infinity/);
+          for (const [, ref] of svg.matchAll(/url\(#([\w-]+)\)/g)) expect(svg).toContain(`id="${ref}"`);
+          const ids = [...svg.matchAll(/id="([^"]+)"/g)].map(([, id]) => id);
+          expect(new Set(ids).size).toBe(ids.length);
+        }
+      }
+    }
+  });
+
+  it('theme bez zmian (jedna ścieżka), inne style w odcinkach; bez strumieni tempo jak theme', () => {
+    const base = { activity: hills, background: 'map' as const, map: LAYERS, theme: 'neon' as const };
+    const theme = renderToStaticMarkup(<Postcard {...base} streams={streams} />);
+    expect(renderToStaticMarkup(<Postcard {...base} streams={streams} routeColor="theme" />)).toBe(theme);
+    expect(renderToStaticMarkup(<Postcard {...base} routeColor="pace" />)).toBe(renderToStaticMarkup(<Postcard {...base} />));
+    const pace = renderToStaticMarkup(<Postcard {...base} streams={streams} routeColor="pace" />);
+    expect(paths(pace) - paths(theme)).toBe(149);
+    expect(pace).toContain('filter="url(#neon-route)"');
+  });
+});

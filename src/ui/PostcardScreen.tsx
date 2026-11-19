@@ -11,6 +11,7 @@ import {
 import type { Activity } from '../strava/api';
 import { Postcard } from '../postcard/Postcard';
 import { ROUTE_BOX } from '../postcard/Route';
+import { colorScale, type RouteColor } from '../postcard/routeColor';
 import { CAMERA_CENTER, DEFAULT_CAMERA, clampCamera, keepCamera, type Camera } from '../lib/camera';
 import { backdropArea, nextBackdropArea, type LoadedArea } from '../lib/backdrop';
 import { exportPng, exportSvg } from '../lib/exportPng';
@@ -30,6 +31,7 @@ import { PhotoEditor } from './PhotoEditor';
 import { DownloadMenu } from './DownloadMenu';
 import { FontPicker } from './FontPicker';
 import { LayoutPicker } from './LayoutPicker';
+import { LinePicker } from './LinePicker';
 import { LookPicker, type Look } from './LookPicker';
 import { MapBackdrop } from './MapBackdrop';
 import { useMapLayers } from './useMapLayers';
@@ -110,6 +112,7 @@ export function PostcardScreen({
   const [mapFailed, setMapFailed] = useState(false);
   const [view, setView] = useState<'flat' | '3d'>('flat');
   const [showRoute, setShowRoute] = useState(true);
+  const [routeColor, setRouteColor] = useState<RouteColor>('theme');
   const [terrainPick, setTerrainPick] = useState<boolean | null>(null); // null = automatycznie z przewyższenia
   const [layoutId, setLayoutId] = useState<LayoutId>('classic');
   const [overrides, setOverrides] = useState<Partial<Record<LayoutId, Overrides>>>({});
@@ -392,6 +395,11 @@ export function PostcardScreen({
       .finally(() => n === photoReq.current && setPhotoBusy(false));
   };
 
+  // Ten sam styl linii na tle ekranu co na pocztówce.
+  const lineColor = useMemo(
+    () => colorScale(routeColor, streams, activity.max_heartrate) ?? undefined,
+    [routeColor, streams, activity.max_heartrate],
+  );
   // Tło ekranu tylko przy motywie mapy i po wczytaniu mapy pocztówki, płasko i w 3D (ADR 0007).
   const backdrop = isMap && !mapMissing && fit !== null;
 
@@ -409,6 +417,8 @@ export function PostcardScreen({
           settled={settled}
           iso={iso ?? undefined}
           terrain={terrainImage}
+          points={fit.points}
+          color={lineColor}
         />
       )}
       <div className="top-bar">
@@ -472,6 +482,7 @@ export function PostcardScreen({
             terrain={terrainImage}
             layout={items}
             route={showRoute}
+            routeColor={routeColor}
             person={look === 'photo' ? (cutout.person ?? undefined) : undefined}
           />
           {/* Nakładka w HTML obok <svg>, żeby nie trafiła do eksportu. */}
@@ -601,6 +612,12 @@ export function PostcardScreen({
                   </button>
                 )}
               </div>
+              {showRoute && (
+                <div className="toggle-row zoom-control">
+                  Line
+                  <LinePicker value={routeColor} onChange={setRouteColor} streams={streams} />
+                </div>
+              )}
             </section>
           )}
           <div className="panel-pair">

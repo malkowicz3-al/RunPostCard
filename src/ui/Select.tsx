@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 
-export type SelectOption<T extends string> = { id: T; label: string; group?: string; style?: CSSProperties };
+export type SelectOption<T extends string> = { id: T; label: string; group?: string; style?: CSSProperties; disabled?: boolean };
 
 const SPACE_BELOW = 340;
 
@@ -80,6 +80,7 @@ export function Select<T extends string>({
   }, [open, active]);
 
   const choose = (id: T) => {
+    if (options.find((o) => o.id === id)?.disabled) return;
     close(true);
     onChange(id);
   };
@@ -141,6 +142,7 @@ export function Select<T extends string>({
                 role="option"
                 tabIndex={-1}
                 aria-selected={o.id === value}
+                aria-disabled={o.disabled || undefined}
                 className="select-option"
                 onClick={() => choose(o.id)}
                 onFocus={() => setActive(o.id)}

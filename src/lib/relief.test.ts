@@ -14,6 +14,7 @@ const b = a / 2;
 const iso = (baseM = 0): IsoRoute => ({
   points: [],
   ground: [],
+  distance: [],
   slope: [],
   exaggeration: 1,
   matrix: [a, b, -a, b, 500, 100],

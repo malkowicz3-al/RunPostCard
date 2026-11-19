@@ -8,6 +8,7 @@ export type Slope = -1 | 0 | 1; // z góry, płasko, pod górę
 export type IsoRoute = {
   points: [number, number][]; // trasa podniesiona o wysokość, w układzie płótna
   ground: [number, number][]; // ta sama trasa na podłożu (cień, dół kurtyny)
+  distance: number[]; // m od startu w każdym punkcie (jak streams.distance): ułamek długości trasy bez przekłamań rzutu
   slope: Slope[]; // klasa nachylenia odcinka i -> i+1 (kolor), bez krótkich wysp
   exaggeration: number; // >1 = przewyższenie wzmocnione (najwyżej ×3)
   matrix: [number, number, number, number, number, number]; // SVG matrix: płaskie płótno -> podłoże 3D (mapa)
@@ -36,7 +37,7 @@ function smooth(values: number[], window: number): number[] {
 }
 
 // Średnia w oknie ±half metrów dystansu: próbki zegarka nie są równomierne.
-function smoothByDistance(values: number[], distance: number[], half: number): number[] {
+export function smoothByDistance(values: number[], distance: number[], half: number): number[] {
   let lo = 0;
   let hi = 0;
   let sum = 0;
@@ -136,6 +137,7 @@ export function isoRoute(s: RunStreams, box: Box, projection: GeoProjection, dem
   return {
     points: raised.map(fit),
     ground: flat.map(fit),
+    distance: s.distance,
     slope: slopes(grade, s.distance, MIN_RUN_M),
     exaggeration,
     matrix: [a, b, -a, b, dx - f * minX, dy - f * minY],
