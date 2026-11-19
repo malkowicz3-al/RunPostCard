@@ -15,7 +15,7 @@ import { CAMERA_CENTER, DEFAULT_CAMERA, clampCamera, keepCamera, type Camera } f
 import { backdropArea, nextBackdropArea, type LoadedArea } from '../lib/backdrop';
 import { exportPng, exportSvg } from '../lib/exportPng';
 import { DEFAULT_FONT, FONTS, loadFontCss, type FontId } from '../lib/fonts';
-import { loadPhoto } from '../lib/photo';
+import { NO_EDIT, loadPhoto, type PhotoEdit } from '../lib/photo';
 import { isoRoute } from '../lib/isoRoute';
 import { TERRAIN_AUTO_M } from '../lib/dem';
 import { hillshade, reliefImage, shadeOverlay } from '../lib/relief';
@@ -26,6 +26,7 @@ import { DATA, resolveLayout, slotBox, slotMenu, swapSlot, type LayoutId, type O
 import { THEMES, type ThemeId } from '../postcard/themes';
 import { DEFAULT_ACCENT } from '../postcard/themes/neon';
 import { DataModal } from './DataModal';
+import { PhotoEditor } from './PhotoEditor';
 import { DownloadMenu } from './DownloadMenu';
 import { FontPicker } from './FontPicker';
 import { LayoutPicker } from './LayoutPicker';
@@ -90,6 +91,12 @@ export function PostcardScreen({
   const [fontCss, setFontCss] = useState<{ id: FontId; css?: string }>();
   const fontReady = fontCss?.id === font;
   const [photo, setPhoto] = useState<string>();
+  // Oryginał zostaje, żeby kolejne edycje nie traciły jakości; edycja jest wypalana w `photo`.
+  const [photoFile, setPhotoFile] = useState<Blob>();
+  const [photoEdit, setPhotoEdit] = useState<PhotoEdit>(NO_EDIT);
+  const [editingPhoto, setEditingPhoto] = useState(false);
+  // Wspólny licznik wczytań zdjęcia: wygrywa ostatnie (wolne Apply nie nadpisze nowo wgranego zdjęcia).
+  const photoReq = useRef(0);
   const [dim, setDim] = useState(35);
   const [behind, setBehind] = useState(false);
   // „Pick object”: następny klik w zdjęcie wskazuje obiekt (pickAt, 0..1); null = osoba automatycznie.
@@ -354,15 +361,35 @@ export function PostcardScreen({
 
   // Przy błędzie zostaje poprzednie zdjęcie i wygląd.
   const choosePhoto = (file: File) => {
+    const n = ++photoReq.current;
     setPhotoBusy(true);
     loadPhoto(file)
       .then((url) => {
+        if (n !== photoReq.current) return;
         setPhoto(url);
+        setPhotoFile(file);
+        setPhotoEdit(NO_EDIT);
         choose('photo');
         setPhotoError(false);
       })
-      .catch(() => setPhotoError(true))
-      .finally(() => setPhotoBusy(false));
+      .catch(() => n === photoReq.current && setPhotoError(true))
+      .finally(() => n === photoReq.current && setPhotoBusy(false));
+  };
+
+  const applyPhotoEdit = (edit: PhotoEdit) => {
+    setEditingPhoto(false);
+    if (!photoFile) return;
+    const n = ++photoReq.current;
+    setPhotoBusy(true);
+    loadPhoto(photoFile, 1, edit)
+      .then((url) => {
+        if (n !== photoReq.current) return;
+        setPhoto(url);
+        setPhotoEdit(edit);
+        setPhotoError(false);
+      })
+      .catch(() => n === photoReq.current && setPhotoError(true))
+      .finally(() => n === photoReq.current && setPhotoBusy(false));
   };
 
   // Tło ekranu tylko przy motywie mapy i po wczytaniu mapy pocztówki, płasko i w 3D (ADR 0007).
@@ -498,6 +525,24 @@ export function PostcardScreen({
                   onChange={(e) => setDim(Number(e.target.value))}
                 />
               </label>
+              {photoFile && (
+                <button
+                  className="toggle icon-toggle"
+                  aria-label="Edit photo"
+                  aria-haspopup="dialog"
+                  title="Edit photo"
+                  // aria-disabled zamiast disabled: po Apply fokus wraca na ten przycisk.
+                  aria-disabled={photoBusy}
+                  onClick={() => !photoBusy && setEditingPhoto(true)}
+                >
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                    <path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12" />
+                    <circle cx="16" cy="6" r="2" />
+                    <circle cx="10" cy="12" r="2" />
+                    <circle cx="18" cy="18" r="2" />
+                  </svg>
+                </button>
+              )}
               {photo && (
                 <button className="toggle" aria-pressed={behind} onClick={() => setBehind(!behind)}>
                   Behind
@@ -572,6 +617,12 @@ export function PostcardScreen({
             streams={streams}
             onPick={pick}
             onClose={() => setEditing(null)}
+          />
+          <PhotoEditor
+            file={editingPhoto ? (photoFile ?? null) : null}
+            initial={photoEdit}
+            onApply={applyPhotoEdit}
+            onClose={() => setEditingPhoto(false)}
           />
           <DownloadMenu disabled={loading || !fontReady} onPng={downloadPng} onSvg={downloadSvg} />
           {loading && (

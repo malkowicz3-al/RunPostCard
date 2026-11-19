@@ -789,6 +789,99 @@ dialog.data-modal::backdrop {
   color: var(--text-secondary);
 }
 
+dialog.photo-editor {
+  width: min(92vw, 460px);
+  max-height: 92dvh;
+  overflow: auto;
+}
+
+/* Podgląd 9:16 z ramką pocztówki; wysokość ograniczona, żeby okno mieściło się na telefonie. */
+.photo-editor-preview {
+  align-self: center;
+  height: min(52dvh, 420px);
+  aspect-ratio: 9 / 16;
+  flex-shrink: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+  box-shadow: 0 0 0 2px var(--separator);
+  touch-action: none;
+  cursor: grab;
+}
+
+.photo-editor-preview:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+button.toggle.icon-toggle[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.photo-editor-preview:active {
+  cursor: grabbing;
+}
+
+.photo-editor-preview img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  user-select: none;
+}
+
+.photo-editor .zoom-control {
+  justify-content: center;
+}
+
+.photo-filters {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  flex-shrink: 0;
+}
+
+button.photo-filter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  font-size: 12px;
+  border: 2px solid transparent;
+  background: none;
+  color: var(--text-secondary);
+}
+
+button.photo-filter[aria-pressed='true'] {
+  border-color: var(--text);
+  color: var(--text);
+}
+
+.photo-filter-thumb {
+  display: block;
+  width: 45px;
+  height: 80px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.photo-filter-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+button.toggle.icon-toggle {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  padding: 0;
+}
+
 .font-sample {
   display: grid;
   place-items: center;
