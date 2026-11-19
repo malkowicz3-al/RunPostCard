@@ -453,6 +453,7 @@ button.text-button {
 
 .runs-summary .unit,
 .run-distance .unit {
+  /* kolor jednostek na okładce: .run-tile .unit */
   font-size: 0.6em;
   font-weight: 600;
   color: var(--text-secondary);
@@ -499,7 +500,7 @@ button.text-button {
 }
 
 .run-tile > * {
-  flex-shrink: 0; /* stała proporcja okładki nie ściska nagłówka do zera */
+  flex-shrink: 0; /* przy braku miejsca kolumna flex ściskała nagłówek do zera */
 }
 
 .run-masthead {
@@ -538,7 +539,6 @@ button.text-button {
   border: 1px solid var(--ink);
 }
 
-
 .run-tile .route-line {
   stroke-dasharray: 1;
   stroke-dashoffset: 0;
@@ -568,12 +568,20 @@ button.text-button {
   box-sizing: border-box;
   font-size: 15px;
   font-weight: 700;
-  background: rgb(0 0 0 / 0.35);
+  background: var(--paper); /* widoczne kółko na jasnej mapie */
 }
 
 .run-tile[aria-checked='true'] {
   outline: 3px solid var(--select);
   outline-offset: -3px;
+}
+
+.runs button.run-tile[aria-checked='true']:focus-visible {
+  /* zaznaczenie zajmuje outline, więc fokus dostaje własny pierścień */
+  box-shadow:
+    0 0 0 2px var(--bg),
+    0 0 0 4px var(--text),
+    0 10px 24px rgb(0 0 0 / 0.35);
 }
 
 .run-tile[aria-checked='true'] .run-check {
@@ -681,8 +689,7 @@ button.text-button {
 }
 
 .skeleton .run-tile {
-  background: var(--surface);
-  box-shadow: none;
+  box-shadow: none; /* papier jak gotowe okładki: bez przejścia z ciemnego na jasne */
 }
 
 .skeleton .route-thumb {
@@ -694,6 +701,12 @@ button.text-button {
   border-radius: 8px;
   background: var(--surface-hover);
   animation: skeleton 1.4s ease-in-out infinite;
+}
+
+.skeleton .run-tile .route-thumb,
+.skeleton .run-tile .skeleton-bar {
+  border-radius: 2px;
+  background: rgb(27 26 23 / 0.12);
 }
 
 .skeleton-bar {
