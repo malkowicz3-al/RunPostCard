@@ -129,6 +129,7 @@ Ograniczenia:
 - Widok płaski ma to samo ograniczenie kamery co 3D (środek trasy zostaje na płótnie), więc przesuwanie działa też przy zoomie 1. Lukę poza płótnem wypełnia `loadRegionLayers`: gdy gęstsze kafelki nic nie dają, fragment wychodzący poza płótno dostaje mapę na poziomie pocztówki (`loadAreaLayers`). Zanim kafelki dojdą, widać tło motywu.
 - Tło ekranu działa także w 3D: `MapBackdrop` rysuje mapę z macierzą izometrii i trasę `IsoRoute` (bez filtrów), a obszar do doczytania liczy odwrotność kamery i macierzy.
 - Podłoga 3D na pocztówce nie jest już wygaszana na brzegach (maska `iso-floor-fade` usunięta, zastępuje ADR 0006): widoczną część poza płótnem zawsze doczytuje fragment `refined`, także przy kamerze domyślnej. Płasko fragment powstaje tylko, gdy widok wychodzi poza płótno albo przy zoomie ≥ 1,5.
+- Budynki w 3D jako bryły: profil `POSTCARD_DETAILED` (`extrude`) daje obok warstwy `building` listę `buildings` (obrys w px płótna, `render_height` / `render_min_height`, domyślnie 10 m, najwyżej 5000 największych). `Buildings3D` rysuje je w przestrzeni ekranu pod kamerą (algorytm malarza, ściany od strony widza w dwóch odcieniach, dach w kolorze `building`, podbicie ×1,5), podłoga 3D jest wtedy bez płaskich budynków, trasa na wierzchu. W ostrzejszym fragmencie bryły ze środkiem w `refined.rect` pochodzą z niego. Tło ekranu: te same bryły, limit 3000. Otwory w budynkach pomijane (tylko zewnętrzny obrys).
 
 ## Konsekwencje
 - Eksport bez zmian; tło ekranu nie może trafić do pliku.

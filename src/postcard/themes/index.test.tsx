@@ -14,6 +14,11 @@ const LAYERS = {
   building: 'M10 10L20 10L20 20Z',
   rail: 'M0 200L500 200',
   landuse: 'M0 0L90 0L90 90Z',
+  // Bryły 3D (w widoku płaskim pomijane); druga w ostrzejszym fragmencie testu refined.
+  buildings: [
+    { ring: [[10, 10], [20, 10], [20, 20]] as [number, number][], h: 30, min: 0 },
+    { ring: [[300, 400], [340, 400], [340, 450], [300, 450]] as [number, number][], h: 10, min: 2 },
+  ],
 };
 
 const DETAIL_KEYS = MAP_KEYS.filter((k) => !BASE_KEYS.includes(k));
@@ -120,6 +125,11 @@ describe('THEMES', () => {
         for (const ref of refs) expect(svg, `${id} ${name}: #${ref}`).toContain(`id="${ref}"`);
         const ids = [...svg.matchAll(/id="([^"]+)"/g)].map((m) => m[1]);
         expect(new Set(ids).size, `${id} ${name}: id unikalne`).toBe(ids.length);
+        expect(svg, `${id} ${name}: NaN`).not.toContain('NaN');
+        // Ściany brył w obu odcieniach (kwadrat w izometrii pokazuje lewą i prawą ścianę).
+        if (name === '3d' || name === 'refined')
+          for (const t of [0.45, 0.25])
+            expect(svg, `${id} ${name}: ściany`).toContain(`fill="${mix(THEMES[id].style().colors.building, '#000000', t)}"`);
         if (id === 'neon') expect(refs.length).toBeGreaterThan(0);
         if (id === 'blueprint') expect(svg).toContain('id="blueprint-grid"');
         // fills: kreskowanie wskazuje wzór z tej samej pocztówki.

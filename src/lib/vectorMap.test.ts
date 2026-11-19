@@ -12,6 +12,7 @@ import {
   parseTileJson,
   BASE_KEYS,
   MAP_KEYS,
+  MAX_BUILDINGS,
   POSTCARD,
   POSTCARD_DETAILED,
   THUMB,
@@ -187,8 +188,48 @@ describe('buildMapLayers', () => {
       'rail',
       'bridge',
       'major',
+      'buildings',
     ]);
     expect(Object.keys(buildMapLayers(all, SIZE, POSTCARD))).toEqual(['water', 'building', 'major']);
+  });
+
+  it('extrude: obrysy z render_height, domyślnie 10 m, w clip i powyżej minBuildingArea', () => {
+    const layers = buildMapLayers(
+      [
+        feature({ layer: 'building', type: 3, geometry: square(0, 0, 50), h: 30, min: 5 }),
+        feature({ layer: 'building', type: 3, geometry: square(100, 100, 20) }),
+        feature({ layer: 'building', type: 3, geometry: square(200, 200, 3) }),
+        feature({ layer: 'building', type: 3, geometry: square(900, 900, 20) }),
+      ],
+      SIZE,
+      POSTCARD_DETAILED,
+      [0, 0, 500, 500],
+    );
+    expect(layers.buildings).toEqual([
+      { ring: [[0, 0], [50, 0], [50, 50], [0, 50]], h: 30, min: 5 },
+      { ring: [[100, 100], [120, 100], [120, 120], [100, 120]], h: 10, min: 0 },
+    ]);
+    expect(layers.building).toBeDefined();
+    expect(buildMapLayers([feature({ layer: 'building', type: 3, geometry: square(0, 0, 50) })], SIZE, POSTCARD).buildings).toBeUndefined();
+  });
+
+  it('extrude: hide_3d tylko w płaskiej warstwie', () => {
+    const layers = buildMapLayers(
+      [feature({ layer: 'building', type: 3, geometry: square(0, 0, 50), hide3d: true })],
+      SIZE,
+      POSTCARD_DETAILED,
+    );
+    expect(layers.building).toBe('M0 0L50 0L50 50L0 50Z');
+    expect(layers.buildings).toBeUndefined();
+  });
+
+  it('extrude: najwyżej MAX_BUILDINGS, największe', () => {
+    const many = Array.from({ length: MAX_BUILDINGS + 10 }, (_, i) =>
+      feature({ layer: 'building', type: 3, geometry: square((i % 100) * 10, Math.floor(i / 100) * 10, i === 7 ? 9 : 5) }),
+    );
+    const { buildings } = buildMapLayers(many, [1000, 1000], POSTCARD_DETAILED, [0, 0, 1000, 1000]);
+    expect(buildings).toHaveLength(MAX_BUILDINGS);
+    expect(buildings![0].ring[0]).toEqual([70, 0]);
   });
 
   it('jeden string d na klucz', () => {

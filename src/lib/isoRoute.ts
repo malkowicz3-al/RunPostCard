@@ -10,6 +10,7 @@ export type IsoRoute = {
   slope: Slope[]; // klasa nachylenia odcinka i -> i+1 (kolor), bez krótkich wysp
   exaggeration: number; // >1 = przewyższenie wzmocnione (najwyżej ×3)
   matrix: [number, number, number, number, number, number]; // SVG matrix: płaskie płótno -> podłoże 3D (mapa)
+  pxPerM: number; // px ekranu na metr wysokości (bez przewyższenia trasy)
 };
 
 const EARTH_RADIUS_M = 6371000;
@@ -136,5 +137,6 @@ export function isoRoute(s: RunStreams, box: Box, projection: GeoProjection): Is
     slope: slopes(grade, s.distance, MIN_RUN_M),
     exaggeration,
     matrix: [a, b, -a, b, dx - f * minX, dy - f * minY],
+    pxPerM: k0 * f,
   };
 }

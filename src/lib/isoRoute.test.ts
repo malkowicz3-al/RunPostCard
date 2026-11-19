@@ -48,6 +48,12 @@ describe('isoRoute', () => {
     expect(r.points[0][1]).toBeCloseTo(r.ground[0][1], 3);
   });
 
+  it('pxPerM: dodatnie i skończone', () => {
+    const { pxPerM } = iso(hill);
+    expect(pxPerM).toBeGreaterThan(0);
+    expect(Number.isFinite(pxPerM)).toBe(true);
+  });
+
   it('płaski bieg: wzmocnienie najwyżej ×3', () => {
     const r = iso(loop((t) => 200 + 3 * Math.sin(Math.PI * t)));
     expect(r.exaggeration).toBeGreaterThan(1);

@@ -5,7 +5,8 @@ import { isoRoute, type IsoRoute as IsoData } from '../lib/isoRoute';
 import type { Rect } from '../lib/mapTiles';
 import { fitRoute } from '../lib/routePath';
 import { DEFAULT_FONT, FONTS, fontStack, type FontId } from '../lib/fonts';
-import { MAP_ATTRIBUTION, type MapLayers } from '../lib/vectorMap';
+import { MAP_ATTRIBUTION, type Building, type MapLayers } from '../lib/vectorMap';
+import { Buildings3D } from './Buildings3D';
 import { Background } from './Background';
 import { MapBackground } from './MapBackground';
 import { IsoRoute } from './IsoRoute';
@@ -59,7 +60,23 @@ export function Postcard({
     [view, streams, fit, givenIso],
   );
   const showMap = background === 'map' && fit && map;
-  const out = showMap ? THEMES[theme].render(map, { accent }) : null;
+  // W 3D z bryłami podłoga bez płaskich budynków.
+  const floor = (l: MapLayers): MapLayers => (iso && l.buildings ? { ...l, building: undefined } : l);
+  const out = showMap ? THEMES[theme].render(floor(map), { accent }) : null;
+  const style = useMemo(() => THEMES[theme].style({ accent }), [theme, accent]);
+  // Bryły ze środkiem w ostrzejszym fragmencie biorą obrysy z niego, pozostałe z mapy bazowej.
+  const buildings = useMemo((): Building[] | null => {
+    if (!iso || !(map?.buildings || refined?.layers.buildings)) return null;
+    const base = map?.buildings ?? [];
+    if (!refined) return base;
+    const [x0, y0, x1, y1] = refined.rect;
+    const inside = ({ ring }: Building) => {
+      const x = ring.reduce((sum, [px]) => sum + px, 0) / ring.length;
+      const y = ring.reduce((sum, [, py]) => sum + py, 0) / ring.length;
+      return x >= x0 && x <= x1 && y >= y0 && y <= y1;
+    };
+    return [...base.filter((b) => !inside(b)), ...(refined.layers.buildings ?? []).filter(inside)];
+  }, [iso, map, refined]);
   const text = out?.text ?? { color: '#ffffff' };
   const { weight, scale } = FONTS[font];
   // Własne tło warstwy zakrywa mapę podstawową w prostokącie; defs motywu (filtry, wzory) są już w scene.
@@ -76,7 +93,7 @@ export function Postcard({
         </clipPath>
       </defs>
       <g clipPath="url(#refined-clip)">
-        <MapBackground layers={refined.layers} style={THEMES[theme].style({ accent })} rect={refined.rect} />
+        <MapBackground layers={floor(refined.layers)} style={style} rect={refined.rect} />
       </g>
     </>
   );
@@ -94,7 +111,7 @@ export function Postcard({
       {background === 'gradient' && <Background />}
       {iso ? (
         <g>
-          {out && <rect width={1080} height={1920} fill={THEMES[theme].style({ accent }).background} />}
+          {out && <rect width={1080} height={1920} fill={style.background} />}
           <g transform={cameraTransform(camera)}>
             {out && (
               // Podłoga 3D: ta sama mapa co w widoku płaskim, przekształcona macierzą izometrii; poza płótnem dochodzi fragment refined.
@@ -102,6 +119,16 @@ export function Postcard({
                 {out.scene}
                 {refinedMap}
               </g>
+            )}
+            {out && buildings && (
+              <Buildings3D
+                buildings={buildings}
+                matrix={iso.matrix}
+                pxPerM={iso.pxPerM}
+                color={style.colors.building}
+                fill={style.fills?.building}
+                filter={style.filters?.building}
+              />
             )}
           </g>
           {/* Faktura papieru w przestrzeni płótna (jak w widoku płaskim), nie na pochylonej i powiększanej podłodze. */}
@@ -113,7 +140,7 @@ export function Postcard({
       ) : (
         <g>
           {/* Przesunięta kamera odsłania obszar poza płótnem, zanim dojdą kafelki: tło motywu zamiast pustki. */}
-          {out && <rect width={1080} height={1920} fill={THEMES[theme].style({ accent }).background} />}
+          {out && <rect width={1080} height={1920} fill={style.background} />}
           <g transform={cameraTransform(camera)}>
             {out?.scene}
             {refinedMap}

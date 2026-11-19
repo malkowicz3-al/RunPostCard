@@ -5,6 +5,7 @@ import { cameraTransform, type Camera } from '../lib/camera';
 import type { IsoRoute as Iso } from '../lib/isoRoute';
 import type { Rect, Region } from '../lib/mapTiles';
 import { loadAreaLayers, type MapProfile } from '../lib/vectorMap';
+import { Buildings3D } from '../postcard/Buildings3D';
 import { IsoRoute } from '../postcard/IsoRoute';
 import { MapBackground } from '../postcard/MapBackground';
 import { Route } from '../postcard/Route';
@@ -14,6 +15,8 @@ import { useRegionLayers } from './useRegionLayers';
 // Stała referencja dla useRegionLayers; fragment tła to zawsze poziom pocztówki (k = 1), resztę wybiera loadAreaLayers.
 const loadArea = (projection: GeoProjection, size: [number, number], profile: MapProfile, region: Region, signal?: AbortSignal) =>
   loadAreaLayers(projection, size, profile, region.rect, signal);
+
+const MAX_BACKDROP_BUILDINGS = 3000;
 
 // Mapa na cały ekran pod pocztówką (ADR 0007): te same jednostki, projekcja i kamera; bez filtrów motywu, przyciemniona.
 export function MapBackdrop({
@@ -77,6 +80,8 @@ export function MapBackdrop({
     return { style, routeStyle: THEMES[theme].render({}, { accent }).route };
   }, [theme, accent]);
 
+  // Tło ekranu obejmuje większy obszar niż pocztówka: mniejszy limit brył (obrysy są już od największych).
+  const buildings = useMemo(() => (iso ? refined?.layers.buildings?.slice(0, MAX_BACKDROP_BUILDINGS) : undefined), [iso, refined]);
   const [x0, y0, x1, y1] = viewBox ?? [0, 0, 1080, 1920];
   return (
     <svg
@@ -91,8 +96,17 @@ export function MapBackdrop({
         {iso ? (
           <>
             <g transform={`matrix(${iso.matrix.join(' ')})`}>
-              {refined && <MapBackground layers={refined.layers} style={style} rect={refined.rect} />}
+              {refined && (
+                <MapBackground
+                  layers={buildings ? { ...refined.layers, building: undefined } : refined.layers}
+                  style={style}
+                  rect={refined.rect}
+                />
+              )}
             </g>
+            {buildings && (
+              <Buildings3D buildings={buildings} matrix={iso.matrix} pxPerM={iso.pxPerM} color={style.colors.building} />
+            )}
             <IsoRoute iso={iso} flat={routeStyle.stroke} dash={routeStyle.dash} zoom={camera.zoom} gradientId="backdrop-curtain-grad" />
           </>
         ) : (

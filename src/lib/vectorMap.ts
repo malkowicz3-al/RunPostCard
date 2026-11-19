@@ -31,7 +31,10 @@ export const MAP_KEYS = [
   'major',
 ] as const;
 export type MapKey = (typeof MAP_KEYS)[number];
-export type MapLayers = Partial<Record<MapKey, string>>;
+// Obrys budynku w px płótna (tylko zewnętrzny pierścień) z wysokością dachu i dołu bryły w metrach.
+export type Building = { ring: [number, number][]; h: number; min: number };
+// buildings: bryły widoku 3D, tylko dla profilu z extrude (obok sklejonej warstwy building dla widoku płaskiego).
+export type MapLayers = Partial<Record<MapKey, string>> & { buildings?: Building[] };
 // Linie się obrysowuje, resztę (poligony) tylko wypełnia.
 export const LINE_KEYS: ReadonlySet<MapKey> = new Set([
   'waterway',
@@ -50,11 +53,12 @@ export type MapProfile = {
   tileUnits: number;
   precision: number;
   minBuildingArea: number;
+  extrude?: boolean;
 };
 
 export const BASE_KEYS: MapKey[] = ['water', 'waterway', 'green', 'building', 'path', 'minor', 'mid', 'major'];
 export const POSTCARD: MapProfile = { keys: BASE_KEYS, tileUnits: 1024, precision: 1, minBuildingArea: 16 };
-export const POSTCARD_DETAILED: MapProfile = { ...POSTCARD, keys: [...MAP_KEYS] };
+export const POSTCARD_DETAILED: MapProfile = { ...POSTCARD, keys: [...MAP_KEYS], extrude: true };
 export const THUMB: MapProfile = {
   keys: ['water', 'waterway', 'minor', 'mid', 'major'],
   tileUnits: 256,
@@ -64,12 +68,18 @@ export const THUMB: MapProfile = {
 
 type Ring = [number, number][];
 
+const DEFAULT_HEIGHT_M = 10; // budynek bez render_height w kafelku
+export const MAX_BUILDINGS = 5000; // największe obrysy
+
 // type jak w MVT: 2 = linia, 3 = poligon.
 export type MapFeature = {
   layer: string;
   type: number;
   cls: string;
   brunnel?: string;
+  h?: number; // render_height / render_min_height warstwy building (m)
+  min?: number;
+  hide3d?: boolean; // hide_3d: część pokryta inną bryłą (np. building:part), tylko płasko
   geometry: { x: number; y: number }[][];
   tile: Tile;
   extent: number;
@@ -159,6 +169,7 @@ export function buildMapLayers(
   const k = 1 / profile.precision;
   const round = (v: number) => Math.round(v * k) / k;
   const parts: Partial<Record<MapKey, string[]>> = {};
+  const buildings: (Building & { area: number })[] = [];
 
   for (const f of features)
     for (const key of classify(f, profile)) addFeature(f, key);
@@ -185,6 +196,10 @@ export function buildMapLayers(
       if (maxX < cx0 || minX > cx1 || maxY < cy0 || minY > cy1) continue;
       if (key === 'building' && (maxX - minX) * (maxY - minY) < profile.minBuildingArea) continue;
       if (line && Math.hypot(maxX - minX, maxY - minY) < 1) continue;
+      if (key === 'building' && profile.extrude && !f.hide3d) {
+        const min = f.min ?? 0;
+        buildings.push({ ring: part[0], h: Math.max(min, f.h ?? DEFAULT_HEIGHT_M), min, area: (maxX - minX) * (maxY - minY) });
+      }
       const d = part.map((r) => 'M' + r.map(([x, y]) => `${x} ${y}`).join('L') + (line ? '' : 'Z')).join('');
       (parts[key] ??= []).push(d);
     }
@@ -192,6 +207,11 @@ export function buildMapLayers(
 
   const layers: MapLayers = {};
   for (const key of MAP_KEYS) if (parts[key]) layers[key] = parts[key].join('');
+  if (buildings.length) {
+    // shortcut: limit 5000 brył, podnieść przy problemach z gęstym centrum
+    buildings.sort((a, b) => b.area - a.area);
+    layers.buildings = buildings.slice(0, MAX_BUILDINGS).map(({ ring, h, min }) => ({ ring, h, min }));
+  }
   return layers;
 }
 
@@ -350,6 +370,8 @@ const SOURCE_LAYERS = ['water', 'waterway', 'park', 'landcover', 'landuse', 'aer
 
 type TileFeature = Omit<MapFeature, 'tile'>;
 
+const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
+
 // Adapter VectorTile -> obiekty bez położenia kafelka; geometria tylko dla obiektów potrzebnych w profilu.
 function tileFeatures(vt: VectorTile, profile: MapProfile): TileFeature[] {
   const out: TileFeature[] = [];
@@ -365,7 +387,12 @@ function tileFeatures(vt: VectorTile, profile: MapProfile): TileFeature[] {
         brunnel: f.properties.brunnel as string | undefined,
       };
       if (!classify(head, profile).length) continue;
-      out.push({ ...head, geometry: f.loadGeometry(), extent: layer.extent });
+      const extra = name === 'building' ? {
+              h: num(f.properties.render_height),
+              min: num(f.properties.render_min_height),
+              hide3d: f.properties.hide_3d === true,
+            } : {};
+      out.push({ ...head, ...extra, geometry: f.loadGeometry(), extent: layer.extent });
     }
   }
   return out;
