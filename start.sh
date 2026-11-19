@@ -66,6 +66,7 @@ if [ -z "$id" ] || [ -z "$secret" ]; then
     kept=$( [ -f .env ] && grep -vE '^(VITE_STRAVA_CLIENT_ID|STRAVA_CLIENT_SECRET)=' .env || true )
     umask 077
     printf 'VITE_STRAVA_CLIENT_ID=%s\nSTRAVA_CLIENT_SECRET=%s\n%s\n' "$id" "$secret" "$kept" > .env
+    chmod 600 .env # istniejący plik zachowuje swój tryb mimo umask
     say 'Saved to .env (never share this file).'
   fi
 fi

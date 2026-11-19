@@ -1,0 +1,2 @@
+# Skrypt startowy dla macOS/Linux musi mieć końce linii LF także po klonowaniu na Windows.
+*.sh text eol=lf

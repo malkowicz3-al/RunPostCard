@@ -307,3 +307,16 @@ describe('Postcard progress (animacja rysowania)', () => {
     expect(half.split('L').length).toBeLessThan(full.split('L').length);
   });
 });
+
+describe('Postcard styl tekstu', () => {
+  const run = mockActivities()[0];
+  it('kontur bez wypełnienia z obrysem, cień i kursywa; pusty styl bez zmian', () => {
+    const plain = renderToStaticMarkup(<Postcard activity={run} />);
+    expect(renderToStaticMarkup(<Postcard activity={run} textStyle={{}} />)).toBe(plain);
+    const svg = renderToStaticMarkup(<Postcard activity={run} textStyle={{ outline: true, shadow: true, italic: true }} />);
+    expect(svg).toMatch(/fill="none"[^>]*stroke="currentColor"/);
+    expect(svg).toContain('id="text-shadow"');
+    expect(svg).toContain('filter="url(#text-shadow)"');
+    expect(svg).toContain('font-style="italic"');
+  });
+});

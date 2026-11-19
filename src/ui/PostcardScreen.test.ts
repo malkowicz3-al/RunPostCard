@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { shouldOpenSlot } from './PostcardScreen';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { mockActivities } from '../dev/mockActivities';
+import { initialLook, shouldOpenSlot } from './PostcardScreen';
 
 describe('shouldOpenSlot', () => {
   const down = { x: 100, y: 100 };
@@ -17,3 +18,19 @@ describe('shouldOpenSlot', () => {
   });
 });
 
+
+describe('initialLook', () => {
+  const run = mockActivities()[0];
+  afterEach(() => vi.unstubAllGlobals());
+  it('bez trasy gradient, bo mapy nie ma z czego zrobić', () => {
+    expect(initialLook({ ...run, map: { ...run.map, summary_polyline: '' } })).toBe('gradient');
+  });
+  it('mapa Light przy jasnym motywie systemu, inaczej Dark', () => {
+    vi.stubGlobal('matchMedia', (q: string) => ({ matches: q.includes('light') }));
+    expect(initialLook(run)).toBe('light');
+    vi.stubGlobal('matchMedia', () => ({ matches: false }));
+    expect(initialLook(run)).toBe('dark');
+    vi.stubGlobal('matchMedia', undefined);
+    expect(initialLook(run)).toBe('dark');
+  });
+});

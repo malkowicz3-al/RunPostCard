@@ -1,11 +1,11 @@
 // Gradient + ziarno z filtra feTurbulence. Wszystkie dość ciemne, bo tekst na gradiencie jest biały.
-export type GradientId = 'dusk' | 'ocean' | 'berry' | 'forest' | 'ember' | 'aurora';
+export type GradientId = 'dusk' | 'deepsea' | 'berry' | 'moss' | 'ember' | 'aurora';
 
 export const GRADIENTS: Record<GradientId, { label: string; stops: string[]; diagonal?: boolean }> = {
   dusk: { label: 'Dusk', stops: ['#1e1b4b', '#f97316'] },
-  ocean: { label: 'Ocean', stops: ['#0f172a', '#0e7490', '#38bdf8'] },
+  deepsea: { label: 'Deep sea', stops: ['#0f172a', '#0e7490', '#38bdf8'] },
   berry: { label: 'Berry', stops: ['#3b0764', '#be185d'], diagonal: true },
-  forest: { label: 'Forest', stops: ['#052e16', '#3f6212', '#a3a635'] },
+  moss: { label: 'Moss', stops: ['#052e16', '#3f6212', '#a3a635'] },
   ember: { label: 'Ember', stops: ['#1c0a00', '#9a1c0b', '#f59e0b'], diagonal: true },
   aurora: { label: 'Aurora', stops: ['#020617', '#0f766e', '#7c3aed'], diagonal: true },
 };
@@ -14,7 +14,7 @@ export const GRADIENT_IDS = Object.keys(GRADIENTS) as GradientId[];
 
 // Ten sam gradient w CSS (podgląd w panelu i w oknie danych).
 export const gradientCss = (id: GradientId) =>
-  `linear-gradient(${GRADIENTS[id].diagonal ? '160deg' : '180deg'}, ${GRADIENTS[id].stops.join(', ')})`;
+  `linear-gradient(${GRADIENTS[id].diagonal ? '170deg' : '180deg'}, ${GRADIENTS[id].stops.join(', ')})`;
 
 export function Background({ gradient = 'dusk' }: { gradient?: GradientId }) {
   const { stops, diagonal } = GRADIENTS[gradient];

@@ -48,7 +48,7 @@ $needInstall = -not (Test-Path 'node_modules') -or
   ((Get-Item 'package-lock.json').LastWriteTime -gt (Get-Item 'node_modules').LastWriteTime)
 if ($needInstall) {
   Say 'Installing packages (first time takes a minute or two)...' Cyan
-  npm install
+  npm.cmd install
   if ($LASTEXITCODE -ne 0) { Stop-WithMessage 'npm install failed. Check your internet connection and try again.' }
   (Get-Item 'node_modules').LastWriteTime = Get-Date
 }
@@ -86,7 +86,9 @@ if (-not $id -or -not $secret) {
   if (-not $demo) {
     while ($true) {
       $secure = Read-Host 'Client Secret (hidden while you type)' -AsSecureString
-      $secret = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)).Trim()
+      $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
+      try { $secret = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr).Trim() }
+      finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr) }
       if ($secret -match '^[0-9a-fA-F]{20,}$') { break }
       Say 'The Client Secret is a long code of letters a-f and digits. Try again.' Yellow
     }
@@ -102,4 +104,5 @@ if (-not $id -or -not $secret) {
 Say ''
 Say 'Starting RunPostcard. The browser opens by itself; keep this window open while you use the app.' Cyan
 Say 'To stop the app, close this window or press Ctrl+C.'
-if ($demo) { npm run dev -- --open '/?mock=1' } else { npm run dev -- --open }
+# npm.cmd omija shim npm.ps1, który mógłby zgubić `--`.
+if ($demo) { npm.cmd run dev -- --open '/?mock=1' } else { npm.cmd run dev -- --open }

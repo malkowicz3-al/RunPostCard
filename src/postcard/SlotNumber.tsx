@@ -36,7 +36,8 @@ export function SlotNumber({
   part,
   look,
 }: SlotProps) {
-  const stroke = look?.outline ? size * 0.025 : look?.bold ? size * 0.035 : 0;
+  // Kontur z Bold = grubszy kontur.
+  const stroke = (look?.outline ? size * 0.025 : 0) + (look?.bold ? size * 0.03 : 0);
   return (
     <g>
       {part !== 'label' && (

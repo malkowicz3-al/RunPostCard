@@ -109,7 +109,7 @@ export function Postcard({
     () => colorScale(routeColor, streams, activity.max_heartrate) ?? undefined,
     [routeColor, streams, activity.max_heartrate],
   );
-  const legend = useMemo(() => (route ? routeLegend(routeColor, streams) : null), [route, routeColor, streams]);
+  const legend = useMemo(() => (route && fit ? routeLegend(routeColor, streams) : null), [route, fit, routeColor, streams]);
   const text = out?.text ?? { color: '#ffffff' };
   const { weight, scale } = FONTS[font];
   // Własne tło warstwy zakrywa mapę podstawową w prostokącie; defs motywu (filtry, wzory) są już w scene.

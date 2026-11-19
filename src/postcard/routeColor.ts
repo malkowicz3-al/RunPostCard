@@ -79,6 +79,7 @@ export function routeLegend(mode: RouteColor, streams?: RunStreams | null): Rout
   const v = series(smoothed(mode, streams), key[mode], SAMPLES);
   if (!v.length) return null;
   const [lo, hi] = bounds(mode, v);
+  if (!(hi - lo > 1e-6)) return null; // stała wartość: trasa w jednym kolorze, legenda nic nie mówi
   return mode === 'pace'
     ? { title: 'PACE /KM', stops: PACE_RAMP, from: paceText(hi), to: paceText(lo), steps: false }
     : { title: 'ELEVATION', stops: ELEVATION_RAMP, from: `${Math.round(lo)} M`, to: `${Math.round(hi)} M`, steps: false };

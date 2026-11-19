@@ -82,7 +82,7 @@ function previewColors(look: Look, accent: string, photo: string | undefined, gr
 }
 
 // Domyślne tło: mapa Dark albo Light wg motywu systemu; bez trasy nie ma mapy, więc gradient.
-function initialLook(activity: Activity): Look {
+export function initialLook(activity: Activity): Look {
   if (!fitRoute(activity.map.summary_polyline, ROUTE_BOX)) return 'gradient';
   return typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
 }
@@ -363,6 +363,8 @@ export function PostcardScreen({
     if (!map.failed) return;
     setMapFailed(true);
     setLook('gradient');
+    // Font motywu nie pasuje do gradientu; wybór ręczny zostaje.
+    setFont((f) => (look in THEMES && f === THEMES[look as ThemeId].font ? DEFAULT_FONT : f));
   }, [map.failed]);
 
   // Te same właściwości dla podglądu i klatek animacji; stały obiekt, żeby podgląd nie przerysowywał się przy postępie eksportu.

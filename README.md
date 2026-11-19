@@ -1,8 +1,39 @@
 # RunPostcard
 
-Turn one of your Strava runs into a postcard: a modern graphic with the route and your stats, ready to share or to place over a photo.
+Turn one of your Strava runs into a postcard: a modern graphic with the route on a real map and your stats, ready for Stories, chats or to place over your own photo. Everything runs on your own computer; there is no account, no database and nothing is uploaded.
 
-Status: stage 1 (Strava login, list of recent runs, default 9:16 postcard, PNG download).
+![Your runs as covers: Newspaper, Comic and Race bib](docs/media/covers.gif)
+
+![One run in different map styles](docs/media/themes.gif)
+
+![Layouts with charts from the run's streams](docs/media/charts.gif)
+
+## Quick start (no programming needed)
+
+1. Download this project: on GitHub click **Code → Download ZIP** and unpack it (or `git clone` it).
+2. Start it:
+   - **Windows:** double-click `start.cmd`.
+   - **macOS / Linux:** open a terminal in the folder and run `./start.sh`.
+3. The script checks everything for you:
+   - **Node.js**: if it is missing or too old, it offers to install it (Windows: `winget`, macOS: Homebrew) or tells you where to get it (<https://nodejs.org>, the LTS version);
+   - **packages**: it runs `npm install` the first time (a minute or two);
+   - **Strava keys**: it opens the Strava API page, explains the 4 fields to fill in and asks you to paste the **Client ID** and **Client Secret**; they are saved in a local `.env` file that never leaves your computer;
+   - then it starts the app and opens it in your browser.
+4. Type **D** instead of a Client ID to try a **demo** with sample runs, without a Strava account.
+
+Keep the window open while you use the app; close it (or press Ctrl+C) to stop. Next time just run the same file again: it skips what is already done.
+
+The manual steps the script does for you are described below, if you prefer to do them yourself.
+
+## What you can do
+
+- **Run list**: totals and your runs as covers in three styles (**Newspaper**, **Comic**, **Race bib**; the small menu in the top bar, remembered in your browser), **Refresh**, **Load more**, **Select** several runs.
+- **Postcard (9:16)**: the route on a map (by default **Dark** or **Light**, following your system's theme), 38 map styles, 6 gradients, transparent or your own photo (with editing and the runner cut out in front of the route).
+- **Views**: flat, **3D** with elevation, buildings and terrain, and **POV**, a camera flight behind the runner.
+- **Route line**: theme color, rainbow, pace, heart rate or elevation, with a small legend on the postcard.
+- **Stats**: many layouts; click any stat to change what it shows and how (numbers or charts from your run's streams). 20 fonts, plus **Bold**, **Italic**, **Outline** and **Shadow** for the stats.
+- **Download**: PNG, SVG, MP4 video and animated GIF (the route draws itself while the numbers count up), and **Share** on phones.
+- **Together**: all selected runs on one map, colored per run or as a heat map, animated.
 
 ## Strava app registration (required)
 
@@ -53,6 +84,8 @@ STRAVA_CLIENT_SECRET=your-client-secret
 
 ## Run locally
 
+The easiest way is the start script (see **Quick start** above). By hand:
+
 ```sh
 npm install
 npm run dev
@@ -70,7 +103,7 @@ Restart `npm run dev` after changing `.env`. Vite reads it only at startup.
 2. Strava asks you to log in (if you are not logged in) and to allow access to your activities.
 3. You are sent back to the app, and your recent runs appear in the list.
 
-The run list starts with totals for the loaded runs (count, distance, moving time, elevation gain). Each tile looks like a newspaper front page: the date on top, the run name as the headline, the route on a light map outline as the photo, and the distance, pace, moving time, elevation gain and average heart rate (if recorded) in columns; the longest run gets a **Longest** stamp. Hovering or focusing a tile draws its route. Animations are off when your system asks for reduced motion.
+The run list starts with totals for the loaded runs (count, distance, moving time, elevation gain). Each tile is a cover; pick the style in the small menu in the top bar (remembered in this browser). **Newspaper**: the date on top, the run name as the headline, the route on a light map outline as the photo, and the distance, pace, moving time, elevation gain and average heart rate (if recorded) in columns; the longest run gets a **Longest** stamp. **Comic**: a red title band, the map in a thick black panel and the data on both sides (under the map on a phone). **Race bib**: a start number sheet with the distance as the big number. Hovering or focusing a tile draws its route. Animations are off when your system asks for reduced motion.
 
 The list loads 50 activities at a time; **Load more** at the bottom fetches the next page, up to 200 runs. **Refresh** in the top bar loads the list again from Strava (for a run you just finished).
 
@@ -114,9 +147,9 @@ Vercel and local Node are the officially supported setups. Other hosting platfor
 
 Route thumbnails and the **Map** postcard background are a minimalist outline (streets, buildings, water, greenery) drawn by the app as SVG from vector tiles by [OpenFreeMap](https://openfreemap.org) ([OpenMapTiles](https://openmaptiles.org) schema, [OpenStreetMap](https://www.openstreetmap.org/copyright) data). No API key or configuration is needed. The attribution "Map: OpenFreeMap © OpenMapTiles © OpenStreetMap contributors" is shown under the run list, and "© OpenMapTiles © OpenStreetMap contributors" on postcards with the map background (small, running up the right edge; it is part of the exported image).
 
-The style panel is split into sections, each a drop-down list whose options show a preview: **Background** (Gradient, Transparent, Photo with a **Dim** slider, an **Edit photo** button and a **Behind** toggle, or Map), **Map style** (shown with a map background), **View**, **Font** and **Layout**; on a wide screen they sit in pairs side by side. With a map background, the same map fills the whole screen behind the panel (also in 3D, as the floor around the route), dimmed outside the white frame; only the framed postcard is downloaded.
+The style panel is split into sections, each a drop-down list whose options show a preview: **Background** (Map by default, Dark or Light following your system's light or dark mode; Gradient with 6 color presets, Transparent, Photo with a **Dim** slider, an **Edit photo** button and a **Behind** toggle, or Map), **Map style** (shown with a map background), **View**, **Font** and **Layout**; on a wide screen they sit in pairs side by side. With a map background, the same map fills the whole screen behind the panel (also in 3D, as the floor around the route), dimmed outside the white frame; only the framed postcard is downloaded.
 
-There are 33 map themes. Classic and stylized: **Dark** (the outline above), **Light**, **Neon** (glowing streets and route; pick pink, red, orange, yellow, green, cyan, violet or any custom color), **Blueprint**, **Pencil**, **Watercolor**, **Vintage**, **Riso**, **Chalk**, **Halftone**, **Synthwave**, **Terminal** and **Ink**. Inspired by film and game moods (generic looks, no brands or characters): **Digital Rain**, **Light Grid**, **Galaxy**, **Desert**, **Red Fog**, **Spellbook**, **Pop Comic**, **Bricks**, **Arcade Maze** and **Dollhouse**. In the style of video-game genres: **Handheld**, **Vector Arcade**, **Dungeon**, **Space Shooter**, **Voxel**, **Night Vision**, **Kart Race**, **Cyber HUD**, **Overworld** and **Pinball**. Each map theme sets a matching font when you pick it; you can change the font afterwards. Map themes always include land use (residential, industrial, schools and hospitals, sports grounds, fields), railways (dashed), road tunnels (dashed), bridges and airport runways. Street and place names are never drawn. Map tiles are hidden for runs without a route. Themes only change colors, line styles, glow and paper textures; they use the same map data. Thumbnails in the run list always use the minimalist outline.
+There are 38 map themes. Classic and stylized: **Dark** (the outline above), **Light**, **Neon** (glowing streets and route; pick pink, red, orange, yellow, green, cyan, violet or any custom color), **Ocean**, **Forest**, **Sunset**, **Mint**, **Mono**, **Blueprint**, **Pencil**, **Watercolor**, **Vintage**, **Riso**, **Chalk**, **Halftone**, **Synthwave**, **Terminal** and **Ink**. Inspired by film and game moods (generic looks, no brands or characters): **Digital Rain**, **Light Grid**, **Galaxy**, **Desert**, **Red Fog**, **Spellbook**, **Pop Comic**, **Bricks**, **Arcade Maze** and **Dollhouse**. In the style of video-game genres: **Handheld**, **Vector Arcade**, **Dungeon**, **Space Shooter**, **Voxel**, **Night Vision**, **Kart Race**, **Cyber HUD**, **Overworld** and **Pinball**. Each map theme sets a matching font when you pick it; you can change the font afterwards. Map themes always include land use (residential, industrial, schools and hospitals, sports grounds, fields), railways (dashed), road tunnels (dashed), bridges and airport runways. Street and place names are never drawn. Map tiles are hidden for runs without a route. Themes only change colors, line styles, glow and paper textures; they use the same map data. Thumbnails in the run list always use the minimalist outline.
 
 **Edit photo** (the sliders icon next to Dim) opens a window with a 9:16 preview: drag to move the photo, use the slider, the mouse wheel or a pinch to zoom, and pick one of 8 color presets (B&W, Noir, Vivid, Dramatic, Sepia, Warm, Cool, Fade). **Apply** bakes the edit into the postcard photo; it is always made from the original file, so repeated edits do not lose quality. Everything is processed locally in the browser.
 
@@ -124,11 +157,11 @@ There are 33 map themes. Classic and stylized: **Dark** (the outline above), **L
 
 **View**: drag, pinch, or use the mouse wheel (Ctrl + wheel at zoom 1) to zoom and move the route and map, in the flat view and in 3D; dragging works at zoom 1 too, and the map fills the area that comes into view. **Reset view** (shown once you have zoomed or moved) goes back. When you stop moving, denser tiles are loaded for the visible part so streets stay sharp.
 
-**Line** (in the **View** section, when the route is shown) colors the route: **Theme** (the map theme's color; in 3D colored by slope), **Rainbow**, **Pace** (blue for the fastest parts, red for the slowest), **Heart rate** (zone colors) or **Elevation** (green low, red high). Pace, Heart rate and Elevation need the run's streams and are disabled without them.
+**Line** (in the **View** section, when the route is shown) colors the route: **Theme** (the map theme's color; in 3D colored by slope), **Rainbow**, **Pace** (blue for the fastest parts, red for the slowest), **Heart rate** (zone colors) or **Elevation** (green low, red high). Pace, Heart rate and Elevation need the run's streams and are disabled without them. Every style except Theme adds a small legend in the bottom-right corner of the postcard (start and finish, fastest and slowest pace, heart rate zones Z1 to Z5, lowest and highest point).
 
-**Font** picks the postcard font: 20 fonts grouped as Sport, Tech, Retro and Script, each option previewed in its own font (see the license notes below). The preview fonts are downloaded only when you first open the list. Each font has its own size factor so the stats stay in their columns; very wide fonts (Press Start 2P, Rubik Mono One) are drawn smaller.
+**Font** picks the postcard font: 20 fonts grouped as Sport, Tech, Retro and Script, each option previewed in its own font (see the license notes below). The preview fonts are downloaded only when you first open the list. Each font has its own size factor so the stats stay in their columns; very wide fonts (Press Start 2P, Rubik Mono One) are drawn smaller. **Text** (under Font) toggles **Bold** and **Outline** (drawn with a stroke, so they work with every font), **Italic** and a soft **Shadow** for the stats.
 
-**Layout** picks how the stats are arranged: Classic, Hero, Grid 2x2, Dashboard, Stack left, Top & bottom, Minimal, Magazine (with the run name), Corners, Big pair, and nine layouts with chart areas: Poster, HUD, Scoreboard, Split sheet, Pulse, Two charts, Climb, Top strip and Stats & table. To change what a stat shows, click it on the postcard (or focus it with Tab and press Enter): a dialog lists the available data with a small preview of each, drawn in your font and colors. Numbers: distance, moving time, elapsed time, pace, average and max heart rate, elevation gain, average and max speed, cadence, run name, date and start time. Charts (only in chart areas, from the run's streams): elevation profile, heart rate line colored by zone, pace per km bars with the fastest kilometre highlighted, a heart rate zone ring, speed and cadence lines, a heart rate histogram (time per 5 bpm), grade per km bars (orange uphill, blue downhill), cumulative climb, speed vs heart rate dots, a table of the three fastest kilometres, and the elevation gain number with a small elevation profile. Heart rate zones are approximate (60/70/80/90% of the max heart rate), because the athlete's own zones need another Strava permission. Without streams, a chart area shows the number instead. Data your activity does not have is shown as "–". Picking data that is already on the postcard swaps the two. Each layout remembers its own choices while the page is open.
+**Layout** picks how the stats are arranged: Classic, Hero, Grid 2x2, Dashboard, Stack left, Top & bottom, Minimal, Magazine (with the run name), Corners, Big pair, and fourteen layouts with chart areas: Poster, HUD, Scoreboard, Split sheet, Pulse, Two charts, Climb, Top strip, Stats & table, Sidebar, Ticker, Half pair, Chart stack and Split compare. To change what a stat shows, click it on the postcard (or focus it with Tab and press Enter): a dialog lists the available data with a small preview of each, drawn in your font and colors. Numbers: distance, moving time, elapsed time, pace, average and max heart rate, elevation gain, average and max speed, cadence, run name, date and start time. Charts (only in chart areas, from the run's streams): elevation profile, heart rate line colored by zone, pace per km bars with the fastest kilometre highlighted, a heart rate zone ring, speed and cadence lines, a heart rate histogram (time per 5 bpm), grade per km bars (orange uphill, blue downhill), cumulative climb, speed vs heart rate dots, a table of the three fastest kilometres, the elevation gain number with a small elevation profile, a smoothed pace line (faster is up), a 100% bar of time in heart rate zones, a list of all km splits, pace over the elevation profile, a pace wheel (one slice per km), a heart rate gauge, progress toward the next round distance (5 km, 10 km, half marathon…), pace dots per km, an elevation skyline, a cadence histogram, a stylized pulse line, first vs second half (negative, positive or even split), climb rate, and a trio of highlights (max heart rate, max speed, elapsed time). Heart rate zones are approximate (60/70/80/90% of the max heart rate), because the athlete's own zones need another Strava permission. Without streams, a chart area shows the number instead. Data your activity does not have is shown as "–". Picking data that is already on the postcard swaps the two. Each layout remembers its own choices while the page is open.
 **Download** opens a menu with **PNG image**, **SVG (vector)**, **Video (MP4)** and **GIF (animated)**. The two animations draw the route from start to finish with a small runner dot at its head while the distance and moving time count up, then hold on the finished postcard: MP4 is 1080x1920 at 30 fps (about 6 s plus a 1.5 s hold), meant for Stories; GIF is 432x768 at 25 fps and loops forever, meant for chats. Both are made in your browser, frame by frame, with a progress bar and **Cancel**; this takes a while (roughly 10–30 s). MP4 needs H.264 encoding through WebCodecs; in browsers without it the item is greyed out ("not supported in this browser") and GIF still works. A transparent background turns black in both. After the file is downloaded, phones that can share files show a **Share** button that opens the system share sheet, from which you can post it to Instagram Stories or attach it to your activity in the Strava app by hand (the Strava API does not let apps upload photos or videos).
 
 ## 3D view
