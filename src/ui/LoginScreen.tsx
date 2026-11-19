@@ -46,10 +46,9 @@ const COLUMNS: Card[][] = [
   ],
 ];
 
-// shortcut: zdjęcia tylko z lokalnego folderu w .gitignore (brak praw do publikacji); w repo ich nie ma, karty
-// wracają wtedy do mapy/gradientu. Podmienić na zdjęcia z wolną licencją, jeśli mają być w repo.
+// Zdjęcia CC0 (autorzy w README), już przycięte do 9:16; brak pliku = karta z mapą/gradientem.
 const PHOTOS = Object.entries(
-  import.meta.glob('../assets/collage-local/*.{jpg,jpeg,png,webp}', { eager: true, query: '?url', import: 'default' }),
+  import.meta.glob('../assets/collage/*.jpg', { eager: true, query: '?url', import: 'default' }),
 )
   .sort(([a], [b]) => a.localeCompare(b))
   .map(([, url]) => url as string);
