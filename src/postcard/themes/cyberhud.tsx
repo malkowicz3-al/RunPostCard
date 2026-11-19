@@ -31,6 +31,7 @@ const STYLE: MapStyle = {
   widths: { waterway: 1.5, path: 0.8, minor: 1.2, mid: 2, major: 3, rail: 1.2, tunnel: 1.2, bridge: 5, runway: 5 },
   dashes: { rail: '10 6', tunnel: '4 4' },
   filters: { mid: HUD, major: HUD },
+  buildings3d: 'tower',
 };
 
 export const cyberhud: MapTheme = {

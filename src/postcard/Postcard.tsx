@@ -233,6 +233,8 @@ export function Postcard({
                 color={style.colors.building}
                 fill={style.fills?.building}
                 filter={style.filters?.building}
+                shape={style.buildings3d}
+                accent={style.colors.mid}
               />
             )}
           </g>

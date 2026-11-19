@@ -31,6 +31,7 @@ const STYLE: MapStyle = {
   widths: { waterway: 2, path: 0.8, minor: 1.2, mid: 2, major: 3, rail: 1.5, tunnel: 1.5, bridge: 6, runway: 6 },
   dashes: { rail: '10 6', tunnel: '4 4' },
   filters: { waterway: STREETS, minor: STREETS, mid: STREETS, major: STREETS },
+  buildings3d: 'tower',
 };
 
 export const synthwave: MapTheme = {

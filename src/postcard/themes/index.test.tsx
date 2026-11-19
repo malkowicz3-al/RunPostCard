@@ -18,6 +18,8 @@ const LAYERS = {
   buildings: [
     { ring: [[10, 10], [20, 10], [20, 20]] as [number, number][], h: 30, min: 0 },
     { ring: [[300, 400], [340, 400], [340, 450], [300, 450]] as [number, number][], h: 10, min: 2 },
+    // Duża i wysoka: detale wariantów brył (okna, blanki, anteny, kondygnacje).
+    { ring: [[500, 700], [800, 700], [800, 820], [500, 820]] as [number, number][], h: 60, min: 0 },
   ],
 };
 
@@ -130,6 +132,8 @@ describe('THEMES', () => {
         if (name === '3d' || name === 'refined')
           for (const t of [0.45, 0.25])
             expect(svg, `${id} ${name}: ściany`).toContain(`fill="${mix(THEMES[id].style().colors.building, '#000000', t)}"`);
+        if (THEMES[id].style().buildings3d === 'tower' && name !== 'flat' && name !== 'flat-refined')
+          expect(svg, `${id} ${name}: neon brył`).toContain(`stroke="${THEMES[id].style().colors.mid}"`);
         if (id === 'neon') expect(refs.length).toBeGreaterThan(0);
         if (id === 'blueprint') expect(svg).toContain('id="blueprint-grid"');
         // fills: kreskowanie wskazuje wzór z tej samej pocztówki.

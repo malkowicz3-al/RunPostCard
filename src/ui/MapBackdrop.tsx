@@ -114,7 +114,14 @@ export function MapBackdrop({
               )}
             </g>
             {buildings && (
-              <Buildings3D buildings={buildings} matrix={iso.matrix} pxPerM={iso.pxPerM} color={style.colors.building} />
+              <Buildings3D
+                buildings={buildings}
+                matrix={iso.matrix}
+                pxPerM={iso.pxPerM}
+                color={style.colors.building}
+                shape={style.buildings3d}
+                accent={style.colors.mid}
+              />
             )}
             <IsoRoute iso={iso} flat={routeStyle.stroke} dash={routeStyle.dash} zoom={camera.zoom} gradientId="backdrop-curtain-grad" />
           </>
