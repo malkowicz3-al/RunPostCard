@@ -79,6 +79,12 @@ function previewColors(look: Look, accent: string, photo?: string): { color: str
   return { color: '#ffffff', bg: { background: 'linear-gradient(#1e1b4b, #f97316)' } };
 }
 
+// Domyślne tło: mapa Dark albo Light wg motywu systemu; bez trasy nie ma mapy, więc gradient.
+function initialLook(activity: Activity): Look {
+  if (!fitRoute(activity.map.summary_polyline, ROUTE_BOX)) return 'gradient';
+  return typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+}
+
 export function PostcardScreen({
   activity,
   onBack,
@@ -89,7 +95,8 @@ export function PostcardScreen({
   onSessionExpired: () => void;
 }) {
   const previewRef = useRef<HTMLDivElement>(null);
-  const [font, setFont] = useState<FontId>(DEFAULT_FONT);
+  const [look, setLook] = useState<Look>(() => initialLook(activity));
+  const [font, setFont] = useState<FontId>(() => (look in THEMES ? THEMES[look as ThemeId].font : DEFAULT_FONT));
   // Stary CSS zostaje, dopóki nowy się nie wczyta; id mówi, dla którego fontu jest.
   const [fontCss, setFontCss] = useState<{ id: FontId; css?: string }>();
   const fontReady = fontCss?.id === font;
@@ -107,7 +114,6 @@ export function PostcardScreen({
   const [pickAt, setPickAt] = useState<(Point & { href?: string }) | null>(null);
   const [photoError, setPhotoError] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
-  const [look, setLook] = useState<Look>('gradient');
   const [accent, setAccent] = useState(DEFAULT_ACCENT);
   const [mapFailed, setMapFailed] = useState(false);
   const [view, setView] = useState<'flat' | '3d' | 'pov'>('flat');

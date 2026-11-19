@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { RunStreams } from '../strava/api';
 import { zoneOf } from '../lib/chartData';
 import { ZONE_COLORS } from './SlotChart';
-import { PACE_RAMP, ELEVATION_RAMP, available, colorScale, ramp, segments, trimAt, type RouteColor } from './routeColor';
+import { PACE_RAMP, ELEVATION_RAMP, available, colorScale, ramp, routeLegend, segments, trimAt, type RouteColor } from './routeColor';
 
 const colorAt = (mode: RouteColor, t: number, s?: RunStreams | null, fallback = '#ffffff') => colorScale(mode, s)?.(t) ?? fallback;
 const rgb = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
@@ -102,5 +102,18 @@ describe('trimAt', () => {
     expect(cut.nums([0, 100, 200, 300])).toEqual([0, 100, 150]);
     expect(cut.each(['a', 'b', 'c', 'd'])).toEqual(['a', 'b', 'c']);
     expect(trimAt([[1, 1]], 0.5).pts([[1, 1]])).toEqual([[1, 1]]);
+  });
+
+  it('legenda: brak dla theme i bez danych; tempo od najszybszego, wysokość od najniższej', () => {
+    expect(routeLegend('theme', streams)).toBeNull();
+    expect(routeLegend('pace', null)).toBeNull();
+    expect(routeLegend('rainbow', null)?.from).toBe('START');
+    const pace = routeLegend('pace', streams)!;
+    expect(pace.stops).toBe(PACE_RAMP);
+    expect(pace.from).toBe('4:10'); // 4 m/s
+    expect(pace.to).toBe('6:40'); // 2.5 m/s
+    const elev = routeLegend('elevation', streams)!;
+    expect([elev.from, elev.to]).toEqual(['100 M', '200 M']);
+    expect(routeLegend('heartrate', streams)?.steps).toBe(true);
   });
 });

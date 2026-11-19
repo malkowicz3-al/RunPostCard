@@ -50,23 +50,53 @@ function hsl(h: number, s: number, l: number): string {
 
 const percentile = (sorted: number[], p: number) => sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))];
 
+// Tempo: średnia krocząca ok. 100 m po dystansie, przed próbkowaniem, żeby szum zegarka nie migotał kolorami.
+const smoothed = (mode: RouteColor, streams: RunStreams): RunStreams =>
+  mode === 'pace' && streams.velocity ? { ...streams, velocity: smoothByDistance(streams.velocity, streams.distance, PACE_HALF_M) } : streams;
+
+// Zakres skali: tempo bez skrajnych 5% (pauzy, sprint na zegarku), wysokość pełna.
+function bounds(mode: RouteColor, v: number[]): [number, number] {
+  const sorted = [...v].sort((a, b) => a - b);
+  return mode === 'pace' ? [percentile(sorted, 0.05), percentile(sorted, 0.95)] : [sorted[0], sorted[sorted.length - 1]];
+}
+
+const paceText = (mps: number) => {
+  if (!(mps > 0)) return '–';
+  const s = Math.round(1000 / mps);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+};
+
+export type RouteLegend = { title: string; stops: string[]; from: string; to: string; steps: boolean };
+
+// Legenda stylu linii na pocztówce (lewa strona paska = from); null dla 'theme' i przy braku danych.
+export function routeLegend(mode: RouteColor, streams?: RunStreams | null): RouteLegend | null {
+  if (mode === 'theme') return null;
+  if (mode === 'rainbow') return { title: 'ROUTE', stops: Array.from({ length: 7 }, (_, i) => hsl(i * 50, 0.9, 0.6)), from: 'START', to: 'FINISH', steps: false };
+  if (!streams) return null;
+  if (mode === 'heartrate') {
+    return series(streams, 'heartrate', 2).length ? { title: 'HR ZONES', stops: ZONE_COLORS, from: 'Z1', to: 'Z5', steps: true } : null;
+  }
+  const v = series(smoothed(mode, streams), key[mode], SAMPLES);
+  if (!v.length) return null;
+  const [lo, hi] = bounds(mode, v);
+  return mode === 'pace'
+    ? { title: 'PACE /KM', stops: PACE_RAMP, from: paceText(hi), to: paceText(lo), steps: false }
+    : { title: 'ELEVATION', stops: ELEVATION_RAMP, from: `${Math.round(lo)} M`, to: `${Math.round(hi)} M`, steps: false };
+}
+
 // Funkcja t (ułamek długości trasy) → kolor, policzona raz dla strumieni; null dla 'theme' i przy braku danych (wtedy kolor motywu).
 export function colorScale(mode: RouteColor, streams?: RunStreams | null, maxHr?: number): ((t: number) => string) | null {
   if (mode === 'theme') return null;
   if (mode === 'rainbow') return (t) => hsl(clamp01(t) * 300, 0.9, 0.6);
   if (!streams) return null;
-  // Tempo: średnia krocząca ok. 100 m po dystansie, przed próbkowaniem, żeby szum zegarka nie migotał kolorami.
-  const source =
-    mode === 'pace' && streams.velocity ? { ...streams, velocity: smoothByDistance(streams.velocity, streams.distance, PACE_HALF_M) } : streams;
-  const v = series(source, key[mode], SAMPLES);
+  const v = series(smoothed(mode, streams), key[mode], SAMPLES);
   if (!v.length) return null;
   const at = (t: number) => v[Math.round(clamp01(t) * (v.length - 1))];
   if (mode === 'heartrate') {
     const max = maxHr || Math.max(...v);
     return (t) => ZONE_COLORS[zoneOf(at(t), max)];
   }
-  const sorted = [...v].sort((a, b) => a - b);
-  const [lo, hi] = mode === 'pace' ? [percentile(sorted, 0.05), percentile(sorted, 0.95)] : [sorted[0], sorted[sorted.length - 1]];
+  const [lo, hi] = bounds(mode, v);
   if (!(hi - lo > 1e-6)) return () => (mode === 'pace' ? ramp(PACE_RAMP, 0.5) : ramp(ELEVATION_RAMP, 0.5));
   // Tempo: większa prędkość = chłodniejszy kolor.
   return mode === 'pace' ? (t) => ramp(PACE_RAMP, (hi - at(t)) / (hi - lo)) : (t) => ramp(ELEVATION_RAMP, (at(t) - lo) / (hi - lo));

@@ -14,7 +14,8 @@ import { MapBackground } from './MapBackground';
 import { IsoRoute } from './IsoRoute';
 import { PhotoBackground } from './PhotoBackground';
 import { Route, ROUTE_BOX } from './Route';
-import { colorScale, type RouteColor } from './routeColor';
+import { colorScale, routeLegend, type RouteColor } from './routeColor';
+import { RouteLegend } from './RouteLegend';
 import { StravaMark } from './StravaMark';
 import { SlotNumber } from './SlotNumber';
 import { DATA, chartFor, defaultLayout, fitted, type LayoutItem } from './slots';
@@ -104,6 +105,7 @@ export function Postcard({
     () => colorScale(routeColor, streams, activity.max_heartrate) ?? undefined,
     [routeColor, streams, activity.max_heartrate],
   );
+  const legend = useMemo(() => (route ? routeLegend(routeColor, streams) : null), [route, routeColor, streams]);
   const text = out?.text ?? { color: '#ffffff' };
   const { weight, scale } = FONTS[font];
   // Własne tło warstwy zakrywa mapę podstawową w prostokącie; defs motywu (filtry, wzory) są już w scene.
@@ -283,6 +285,7 @@ export function Postcard({
         {layout.map((item) => slotNode(item))}
       </g>
       <StravaMark x={60} y={1820} variant={out?.mark} />
+      {legend && <RouteLegend legend={legend} color={text.color} />}
       {out && (
         <text
           transform={`translate(${ATTRIBUTION_AT.join(' ')}) rotate(-90)`}
