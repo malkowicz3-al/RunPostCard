@@ -1180,6 +1180,23 @@ button.swatch,
   background: var(--surface-hover);
 }
 
+.download-menu button:disabled {
+  opacity: 0.5;
+  cursor: default;
+  background: none;
+}
+
+.encoding {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.encoding progress {
+  flex: 1;
+  min-width: 100px;
+}
+
 @media (min-width: 900px) {
   .postcard-layout {
     flex-direction: row;

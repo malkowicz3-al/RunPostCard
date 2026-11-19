@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { IsoRoute as Iso } from '../lib/isoRoute';
-import { scaleDash } from './Route';
-import { segments } from './routeColor';
+import { RunnerDot, scaleDash } from './Route';
+import { segments, trimAt } from './routeColor';
 
 const DOWNHILL = '#5ab4ff';
 const UPHILL = '#ff9a3d';
@@ -20,6 +20,7 @@ export function IsoRoute({
   gradientId = 'iso-curtain-grad',
   onSurface = false,
   color,
+  progress = 1,
 }: {
   iso: Iso;
   flat?: string;
@@ -29,10 +30,16 @@ export function IsoRoute({
   gradientId?: string; // tło ekranu to osobny <svg> w tym samym dokumencie: inne id, bez duplikatów
   onSurface?: boolean; // trasa leży na reliefie terenu: bez kurtyny i cienia, lekko nad powierzchnią
   color?: (t: number) => string; // styl linii inny niż motyw: kolor wg ułamka długości po rzucie zamiast nachylenia
+  progress?: number; // animacja: trasa, kurtyna i cień tylko do tego ułamka dystansu, z kropką na czele
 }) {
-  const { curtain, shadow, runs, top, bottom } = useMemo(() => {
-    const { points, ground, slope } = iso;
-    const k = Math.ceil(points.length / MAX_DRAWN);
+  const { curtain, shadow, runs, top, bottom, head } = useMemo(() => {
+    // Krok próbkowania z pełnej trasy, żeby kolejne klatki animacji nie zmieniały kształtu linii.
+    const k = Math.ceil(iso.points.length / MAX_DRAWN);
+    let { points, ground, slope, distance } = iso;
+    if (progress < 1) {
+      const cut = trimAt(points, progress, distance);
+      [points, ground, slope, distance] = [cut.pts(points), cut.pts(ground), cut.each(slope), cut.nums(distance)];
+    }
     const idx = points.map((_, i) => i).filter((i) => i % k === 0 || i === points.length - 1);
     // Kurtyna: czworokąty między podłożem a trasą, jedna ścieżka.
     const curtain = idx
@@ -42,7 +49,8 @@ export function IsoRoute({
     const shadow = `M${idx.map((i) => pt(ground[i])).join('L')}`;
     // Kolejne odcinki w tym samym kolorze łączymy w jedną ścieżkę.
     const runs: { color: string; d: string; start?: number }[] = [];
-    if (color) runs.push(...segments(points, 150, iso.distance).map((g) => ({ color: color(g.t), d: g.d, start: g.start })));
+    // t przyciętej linii liczone od jej dystansu, czyli razy progress względem całej trasy.
+    if (color) runs.push(...segments(points, 150, distance).map((g) => ({ color: color(g.t * progress), d: g.d, start: g.start })));
     else idx.slice(1).forEach((i, j) => {
       const s = slope[idx[j]];
       const color = s < 0 ? DOWNHILL : s > 0 ? UPHILL : flat;
@@ -50,10 +58,11 @@ export function IsoRoute({
       if (lastRun?.color === color) lastRun.d += `L${pt(points[i])}`;
       else runs.push({ color, d: `M${pt(points[idx[j]])}L${pt(points[i])}` });
     });
-    const top = points.reduce((min, [, y]) => Math.min(min, y), Infinity);
-    const bottom = ground.reduce((max, [, y]) => Math.max(max, y), -Infinity);
-    return { curtain, shadow, runs, top, bottom };
-  }, [iso, flat, color]);
+    // Gradient kurtyny z całej trasy: w animacji nie zmienia się z klatki na klatkę.
+    const top = iso.points.reduce((min, [, y]) => Math.min(min, y), Infinity);
+    const bottom = iso.ground.reduce((max, [, y]) => Math.max(max, y), -Infinity);
+    return { curtain, shadow, runs, top, bottom, head: progress < 1 ? points[points.length - 1] : null };
+  }, [iso, flat, color, progress]);
 
   const dashed = scaleDash(dash, zoom);
   const line = (
@@ -61,6 +70,7 @@ export function IsoRoute({
       {runs.map((r, i) => (
         <path key={i} d={r.d} fill="none" stroke={r.color} strokeWidth={7 / zoom} strokeDasharray={dashed} strokeDashoffset={dashed ? r.start : undefined} strokeLinecap="round" strokeLinejoin="round" />
       ))}
+      {head && <RunnerDot at={head} color={color ? color(progress) : flat} r={9} zoom={zoom} />}
     </g>
   );
   if (onSurface) return <g transform={`translate(0 ${-2 / zoom})`}>{line}</g>;

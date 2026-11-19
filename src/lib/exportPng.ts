@@ -1,12 +1,12 @@
 // Ten sam SVG co podgląd, z jawnym rozmiarem 1080x1920.
-function serialize(svg: SVGSVGElement): string {
+export function serialize(svg: SVGSVGElement): string {
   const clone = svg.cloneNode(true) as SVGSVGElement;
   clone.setAttribute('width', '1080');
   clone.setAttribute('height', '1920');
   return new XMLSerializer().serializeToString(clone);
 }
 
-function download(blob: Blob, filename: string): void {
+export function download(blob: Blob, filename: string): void {
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
   link.download = filename;

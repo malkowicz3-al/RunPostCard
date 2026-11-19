@@ -107,3 +107,24 @@ export function segments(points: [number, number][], n = 150, along?: number[]):
     return { d: `M${pts.map(pt).join('L')}`, t: tAt((a + b) / 2), start: a };
   });
 }
+
+const lerp2 = (a: [number, number], b: [number, number], f: number): [number, number] => [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
+
+// Przycięcie do ułamka p (animacja rysowania): ile punktów zostaje i jak przyciąć kolejne tablice tej samej długości.
+// along: narastająca długość jak w segments (np. dystans w 3D); bez niej długość na ekranie. Zwraca przycinarkę punktów i liczb.
+export function trimAt(points: [number, number][], p: number, along?: number[]) {
+  const cum = along && along.length === points.length && along[along.length - 1] > along[0] ? along : [0];
+  if (cum.length === 1) for (let i = 1; i < points.length; i++) cum.push(cum[i - 1] + Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]));
+  const n = cum.length - 1;
+  if (n < 1) return { pts: (a: [number, number][]) => a, nums: (a: number[]) => a, each: <T>(a: T[]) => a };
+  const s = cum[0] + (cum[n] - cum[0]) * clamp01(p);
+  let i = 0;
+  while (i < n - 1 && cum[i + 1] < s) i++;
+  const f = Math.min(1, Math.max(0, (s - cum[i]) / (cum[i + 1] - cum[i] || 1)));
+  return {
+    pts: (a: [number, number][]) => [...a.slice(0, i + 1), lerp2(a[i], a[i + 1], f)],
+    nums: (a: number[]) => [...a.slice(0, i + 1), a[i] + (a[i + 1] - a[i]) * f],
+    // wartości odcinków (np. nachylenie odcinka i → i+1): ostatni przycięty zostaje
+    each: <T>(a: T[]) => a.slice(0, i + 2),
+  };
+}

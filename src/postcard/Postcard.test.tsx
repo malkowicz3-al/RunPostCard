@@ -260,3 +260,46 @@ describe('Postcard styl linii', () => {
     expect(pace).toContain('filter="url(#neon-route)"');
   });
 });
+
+describe('Postcard progress (animacja rysowania)', () => {
+  const base = { activity: hills, background: 'map' as const, map: LAYERS, theme: 'neon' as const, streams };
+  const photo = { href: 'data:image/jpeg;base64,AAAA', dim: 0.35 };
+  const person = { href: 'data:image/png;base64,BBBB', rect: [100, 200, 700, 800] as Rect, grid: new Uint8Array(GRID_W * GRID_H) };
+  const paths = (svg: string) => svg.match(/<path /g)?.length ?? 0;
+  const dots = (svg: string) => svg.match(/<circle [^>]*stroke="#ffffff"/g)?.length ?? 0;
+
+  it('progress=1 daje to samo co bez propa (2D, 3D, styl linii, Behind)', () => {
+    for (const view of ['flat', '3d'] as const) {
+      for (const extra of [{}, { routeColor: 'pace' as const }, { background: 'photo' as const, photo, person }]) {
+        const props = { ...base, view, ...extra };
+        expect(renderToStaticMarkup(<Postcard {...props} progress={1} />)).toBe(renderToStaticMarkup(<Postcard {...props} />));
+      }
+    }
+  });
+
+  it('progress=0.5: krótsza trasa z kropką, dystans i czas o połowę, bez NaN i z unikalnymi id', () => {
+    for (const view of ['flat', '3d'] as const) {
+      for (const extra of [{}, { routeColor: 'rainbow' as const }, { background: 'photo' as const, photo, person }]) {
+        const props = { ...base, view, ...extra };
+        const full = renderToStaticMarkup(<Postcard {...props} />);
+        const half = renderToStaticMarkup(<Postcard {...props} progress={0.5} />);
+        expect(half).not.toMatch(/NaN|Infinity/);
+        expect(dots(full)).toBe(0);
+        expect(dots(half)).toBe('person' in extra ? 2 : 1); // Behind: kropka w obu warstwach obręczy
+        expect(half).toContain('>3.20<'); // 6.4 km
+        expect(half).toContain('>19:00<'); // 38 min
+        expect(full).toContain('>6.40<');
+        if (extra && 'routeColor' in extra) expect(paths(half)).toBe(paths(full)); // ta sama liczba odcinków, krótszych
+        const ids = [...half.matchAll(/id="([^"]+)"/g)].map(([, id]) => id);
+        expect(new Set(ids).size).toBe(ids.length);
+      }
+    }
+  });
+
+  it('płasko: przycięta ścieżka ma mniej punktów niż pełna', () => {
+    const d = (svg: string) => svg.match(/<path d="([^"]+)"[^>]*filter="url\(#neon-route\)"/)![1];
+    const full = d(renderToStaticMarkup(<Postcard {...base} />));
+    const half = d(renderToStaticMarkup(<Postcard {...base} progress={0.5} />));
+    expect(half.split('L').length).toBeLessThan(full.split('L').length);
+  });
+});

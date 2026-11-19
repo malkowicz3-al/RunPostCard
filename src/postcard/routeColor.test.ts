@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { RunStreams } from '../strava/api';
 import { zoneOf } from '../lib/chartData';
 import { ZONE_COLORS } from './SlotChart';
-import { PACE_RAMP, ELEVATION_RAMP, available, colorScale, ramp, segments, type RouteColor } from './routeColor';
+import { PACE_RAMP, ELEVATION_RAMP, available, colorScale, ramp, segments, trimAt, type RouteColor } from './routeColor';
 
 const colorAt = (mode: RouteColor, t: number, s?: RunStreams | null, fallback = '#ffffff') => colorScale(mode, s)?.(t) ?? fallback;
 const rgb = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
@@ -88,5 +88,19 @@ describe('routeColor', () => {
     const byDistance = segments([[0, 0], [100, 0], [100, 50]], 6, [0, 10, 110]);
     expect(byDistance[0].t).toBeCloseTo((12.5 / 100) * 10 / 110);
     expect(byDistance[5].t).toBeCloseTo((10 + (125 + 12.5 - 100) / 50 * 100) / 110);
+  });
+});
+
+describe('trimAt', () => {
+  const pts: [number, number][] = [[0, 0], [10, 0], [20, 0], [40, 0]];
+  it('ułamek długości ekranu albo dystansu, z punktem cięcia na końcu', () => {
+    expect(trimAt(pts, 0.5).pts(pts)).toEqual([[0, 0], [10, 0], [20, 0]]);
+    expect(trimAt(pts, 0.25).pts(pts)).toEqual([[0, 0], [10, 0]]);
+    expect(trimAt(pts, 0).pts(pts)).toEqual([[0, 0], [0, 0]]);
+    const cut = trimAt(pts, 0.5, [0, 100, 200, 300]); // po dystansie: połowa w środku odcinka 1→2
+    expect(cut.pts(pts)).toEqual([[0, 0], [10, 0], [15, 0]]);
+    expect(cut.nums([0, 100, 200, 300])).toEqual([0, 100, 150]);
+    expect(cut.each(['a', 'b', 'c', 'd'])).toEqual(['a', 'b', 'c']);
+    expect(trimAt([[1, 1]], 0.5).pts([[1, 1]])).toEqual([[1, 1]]);
   });
 });

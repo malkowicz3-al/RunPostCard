@@ -50,6 +50,7 @@ export function Postcard({
   route = true,
   person,
   routeColor = 'theme',
+  progress = 1,
 }: {
   activity: Activity;
   fontCss?: string;
@@ -69,6 +70,7 @@ export function Postcard({
   route?: boolean; // false: tylko tło i statystyki (np. na własnym zdjęciu)
   person?: Cutout; // wycinanka osoby lub obiektu ze zdjęcia (ADR 0009): przed tym, co zasłania częściowo
   routeColor?: RouteColor; // styl linii trasy; 'theme' lub brak danych: kolor motywu (3D: nachylenie)
+  progress?: number; // animacja rysowania (0..1): trasa do tego ułamka, dystans i czas rosną; 1 = gotowa pocztówka
 }) {
   // Jedna projekcja dla mapy i trasy („scena”).
   const polyline = activity.map.summary_polyline;
@@ -146,6 +148,7 @@ export function Postcard({
                 zoom={camera.zoom}
                 onSurface={!!relief}
                 color={lineColor}
+                progress={progress}
                 gradientId={part === 'front' ? 'iso-curtain-grad-front' : undefined}
               />,
             )}
@@ -153,7 +156,7 @@ export function Postcard({
         )
       : fit &&
         route && (
-          <g transform={cameraTransform(camera)}>{clipped(part, <Route {...out?.route} d={fit.d} zoom={camera.zoom} points={fit.points} color={lineColor} />)}</g>
+          <g transform={cameraTransform(camera)}>{clipped(part, <Route {...out?.route} d={fit.d} zoom={camera.zoom} points={fit.points} color={lineColor} progress={progress} />)}</g>
         );
   const slotNode = (item: LayoutItem) => {
     const value = DATA[item.slot.data].value(activity);
@@ -171,7 +174,12 @@ export function Postcard({
         />
       );
     }
+    // Rozmiar z wartości końcowej, żeby rosnąca liczba nie skakała.
     const { size, labelSize, label } = fitted(item, value, scale);
+    const grows = progress < 1 && (item.slot.data === 'distance' || item.slot.data === 'time');
+    const shown = grows
+      ? DATA[item.slot.data].value({ ...activity, distance: activity.distance * progress, moving_time: Math.round(activity.moving_time * progress) })
+      : value;
     return (
       <SlotNumber
         key={item.slot.id}
@@ -183,7 +191,7 @@ export function Postcard({
         labelPos={item.labelPos}
         labelSize={labelSize}
         label={label}
-        value={value}
+        value={shown}
       />
     );
   };

@@ -15,6 +15,8 @@
     "@mapbox/vector-tile": "^3.0.0",
     "@mediapipe/tasks-vision": "1.2.3",
     "d3-geo": "^3.1.1",
+    "gifenc": "1.0.3",
+    "mediabunny": "1.65.2",
     "pbf": "^5.1.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
