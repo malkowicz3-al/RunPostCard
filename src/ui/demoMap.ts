@@ -16,17 +16,14 @@ const BANK = 40; // bulwar wzdłuż rzeki
 
 // Deterministyczny „szum” w (-1, 1).
 const hash = (i: number) => (Math.sin(i * 12.9898) * 43758.5453) % 1;
-// Meandry z dwóch fal o niewspółmiernych okresach, żeby nie powtarzały się co kilometr; pas 760–1040.
-const riverY = (x: number) => 900 + 80 * Math.sin(x / 260) + 60 * Math.sin(x / 730 + 1);
+// Szerokie zakola z dwóch długich fal (okresy ~6 i ~14 km), bez drobnego falowania; pas 830–970.
+const riverY = (x: number) => 900 + 45 * Math.sin(x / 950) + 25 * Math.sin(x / 2300 + 1);
 const validRow = (j: number) => j <= NORTH_ROW || j >= SOUTH_ROW;
 
-// Graf jest kratką, a miasto nie: gładkie wygięcie płaszczyzny (do ~240 m, nachylenie < 0,3, więc bez zawinięć).
-// Długie fale obracają dzielnice o różne kąty (ulice prawie proste), krótka dodaje lekki łuk.
+// Graf jest kratką, a miasto nie: gładkie wygięcie płaszczyzny (do ~180 m, nachylenie < 0,2, więc bez zawinięć).
+// Tylko długie fale (okres ~7–8 km): dzielnice obrócone o różne kąty, ulice na pocztówce prawie proste, bez marszczenia.
 // Mapa i trasy przechodzą przez nie przy wyjściu.
-export const warp = ([x, y]: Pt): Pt => [
-  x + 180 * Math.sin(y / 1300 + 0.4) + 30 * Math.sin((x - y) / 480),
-  y + 180 * Math.sin(x / 1100 + 1.3) + 30 * Math.sin((x + y) / 520),
-];
+export const warp = ([x, y]: Pt): Pt => [x + 180 * Math.sin(y / 1300 + 0.4), y + 180 * Math.sin(x / 1100 + 1.3)];
 
 // Odcinki dłuższe niż 40 m dzielimy, żeby po wygięciu były łukiem, a nie cięciwą.
 export function densify(pts: Pt[]): Pt[] {
