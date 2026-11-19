@@ -210,6 +210,7 @@ button.text-button {
   z-index: -1;
   display: flex;
   justify-content: center;
+  align-items: flex-start;
   gap: 28px;
   overflow: hidden;
   pointer-events: none;
@@ -227,26 +228,31 @@ button.text-button {
   );
 }
 
+/* Taśma: karty kolumny są w niej dwa razy, więc przesunięcie o połowę wysokości zapętla się bez szwu.
+   Odstęp jako margines każdej karty (nie gap), żeby połowa taśmy była dokładnie jednym okresem. */
 .login-column {
   display: flex;
   flex-direction: column;
-  gap: 28px;
-  margin-top: -20vh;
   will-change: transform;
-  animation: login-drift 70s ease-in-out infinite alternate;
+  animation: login-down 80s linear infinite;
 }
 
 .login-column:nth-child(2) {
-  margin-top: -30vh;
-  animation-direction: alternate-reverse;
+  animation-name: login-up;
+  animation-duration: 70s;
+}
+
+.login-column:nth-child(3) {
+  animation-duration: 90s;
 }
 
 .login-card {
+  display: block;
   flex: none;
   width: clamp(150px, 22vw, 300px);
   aspect-ratio: 9 / 16;
+  margin-bottom: 28px;
   border-radius: 16px;
-  overflow: hidden;
   transform: rotate(-4deg);
   box-shadow: 0 12px 40px rgb(0 0 0 / 0.35);
 }
@@ -255,23 +261,27 @@ button.text-button {
   transform: rotate(3deg);
 }
 
-@keyframes login-drift {
+@keyframes login-down {
+  from {
+    transform: translateY(-50%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes login-up {
   from {
     transform: translateY(0);
   }
   to {
-    transform: translateY(-25vh);
+    transform: translateY(-50%);
   }
 }
 
 @media (max-width: 600px) {
   .login-column:nth-child(3) {
     display: none;
-  }
-
-  .login-column,
-  .login-column:nth-child(2) {
-    margin-top: -5vh;
   }
 
   .login-card {
