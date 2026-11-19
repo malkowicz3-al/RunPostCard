@@ -1,4 +1,4 @@
-import { useEffect, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
+import { useEffect, useState, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
 import type { Activity } from '../strava/api';
 import {
   formatDate,
@@ -9,6 +9,7 @@ import {
   formatPace,
 } from '../lib/format';
 import { RouteThumb } from './RouteThumb';
+import { Select } from './Select';
 
 // Sumy dla nagłówka listy; longestId tylko przy co najmniej 2 biegach (przy jednym odznaka nic nie mówi).
 export function summarize(runs: Activity[]) {
@@ -37,14 +38,40 @@ export function mergePage(base: Activity[], more: Activity[], done: boolean, max
   return { runs, hasMore: !done && runs.length < max };
 }
 
-function Skeleton() {
+// Styl okładek na liście; wybór zapamiętany w przeglądarce (tylko wygoda, bez wpływu na dane).
+export type Cover = 'newspaper' | 'comic' | 'bib';
+const COVERS: { id: Cover; label: string; masthead: string }[] = [
+  { id: 'newspaper', label: 'Newspaper', masthead: 'The Daily Run' },
+  { id: 'comic', label: 'Comic', masthead: 'Run Tales' },
+  { id: 'bib', label: 'Race bib', masthead: 'Finisher' },
+];
+const COVER_KEY = 'runpostcard.cover';
+
+function readCover(): Cover {
+  try {
+    const v = localStorage.getItem(COVER_KEY);
+    return COVERS.some((c) => c.id === v) ? (v as Cover) : 'newspaper';
+  } catch {
+    return 'newspaper';
+  }
+}
+
+function saveCover(c: Cover) {
+  try {
+    localStorage.setItem(COVER_KEY, c);
+  } catch {
+    // prywatne okno: wybór tylko do zamknięcia karty
+  }
+}
+
+function Skeleton({ cover }: { cover: Cover }) {
   return (
     <div className="loading" role="status">
       <span className="sr-only">Loading runs</span>
       <ul className="runs skeleton" aria-hidden="true">
         {Array.from({ length: 6 }, (_, i) => (
           <li key={i}>
-            <div className="run-tile">
+            <div className={`run-tile cover-${cover}`}>
               <div className="skeleton-bar short" />
               <div className="skeleton-bar" />
               <div className="route-thumb" />
@@ -84,11 +111,13 @@ function Runs({
   onSelect,
   selection,
   onToggle,
+  cover,
 }: {
   runs: Activity[];
   onSelect: (activity: Activity) => void;
   selection: number[] | null;
   onToggle: (id: number) => void;
+  cover: Cover;
 }) {
   if (runs.length === 0)
     return (
@@ -98,6 +127,7 @@ function Runs({
       </div>
     );
   const s = summarize(runs);
+  const masthead = COVERS.find((c) => c.id === cover)!.masthead;
   return (
     <>
       <Summary s={s} />
@@ -107,14 +137,14 @@ function Runs({
           return (
             <li key={a.id} style={{ '--i': i } as CSSProperties}>
               <button
-                className="run-tile"
+                className={`run-tile cover-${cover}`}
                 role={selection ? 'checkbox' : undefined}
                 aria-checked={selection ? checked : undefined}
                 onClick={() => (selection ? onToggle(a.id) : onSelect(a))}
               >
-                {/* Okładka gazety: winieta z datą, nagłówek = nazwa biegu, mapa jako zdjęcie, dane w kolumnach. */}
+                {/* Okładka: winieta z datą, nagłówek = nazwa biegu, mapa jako zdjęcie, dane; układ i wygląd wg stylu w CSS. */}
                 <span className="run-masthead">
-                  <span aria-hidden="true">The Daily Run</span>
+                  <span aria-hidden="true">{masthead}</span>
                   <span>{formatDate(a.start_date_local)}</span>
                 </span>
                 <span className="run-name">{a.name}</span>
@@ -132,10 +162,10 @@ function Runs({
                     {formatDistanceKm(a.distance)}
                     <span className="unit"> km</span>
                   </span>
-                  <span>{formatPace(a.distance, a.moving_time)} /km</span>
-                  <span>{formatDuration(a.moving_time)}</span>
-                  <span>{formatElevation(a.total_elevation_gain)} m up</span>
-                  {a.average_heartrate ? <span>{formatHeartRate(a.average_heartrate)} bpm</span> : null}
+                  <span className="run-pace">{formatPace(a.distance, a.moving_time)} /km</span>
+                  <span className="run-time">{formatDuration(a.moving_time)}</span>
+                  <span className="run-elev">{formatElevation(a.total_elevation_gain)} m up</span>
+                  {a.average_heartrate ? <span className="run-hr">{formatHeartRate(a.average_heartrate)} bpm</span> : null}
                 </span>
               </button>
             </li>
@@ -172,6 +202,7 @@ export function ActivityList({
   onTogether: (all?: boolean) => void; // all = wszystkie wczytane biegi, kolory Heat
 }) {
   const selecting = selection !== null;
+  const [cover, setCover] = useState(readCover);
   useEffect(() => {
     if (!selecting) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onSelection(null);
@@ -194,6 +225,16 @@ export function ActivityList({
               All together
             </button>
           )}
+          <Select
+            label="Cover style"
+            className="cover-select"
+            value={cover}
+            options={COVERS}
+            onChange={(c) => {
+              setCover(c);
+              saveCover(c);
+            }}
+          />
           <button className="text-button" disabled={loading} onClick={onRefresh}>
             Refresh
           </button>
@@ -203,9 +244,9 @@ export function ActivityList({
         </div>
       </div>
       {loading ? (
-        <Skeleton />
+        <Skeleton cover={cover} />
       ) : (
-        <Runs runs={runs} onSelect={onSelect} selection={selection} onToggle={(id) => onSelection((s) => toggleId(s ?? [], id))} />
+        <Runs runs={runs} onSelect={onSelect} selection={selection} onToggle={(id) => onSelection((s) => toggleId(s ?? [], id))} cover={cover} />
       )}
       {!loading && hasMore && (
         <button className="load-more" disabled={loadingMore} onClick={onLoadMore}>
