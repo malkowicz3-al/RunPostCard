@@ -1398,3 +1398,29 @@ footer {
 .picking .slot-hit {
   pointer-events: none;
 }
+
+/* POV (ADR 0010): canvas WebGL pod nakładką pocztówki (SVG bez tła), poza eksportem SVG. */
+.pov {
+  position: absolute;
+  inset: 0;
+}
+
+.pov-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.pov-frame .postcard {
+  position: relative;
+}
+
+.pov-status {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  color: #ffffff;
+  pointer-events: none;
+}

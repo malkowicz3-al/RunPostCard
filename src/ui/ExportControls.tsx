@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
+import { drawFrame } from '../lib/animate';
 import { download, exportPng, exportSvg } from '../lib/exportPng';
 import { canEncodeMp4, encodeGif, encodeMp4 } from '../lib/encodeVideo';
 import { DownloadMenu } from './DownloadMenu';
@@ -8,18 +9,23 @@ import { DownloadMenu } from './DownloadMenu';
 // Download (PNG, SVG, MP4, GIF) z paskiem postępu, Cancel i Share; wspólne dla pocztówki i widoku „Together”.
 // svg: podgląd na ekranie (PNG i SVG); frame: ta sama karta z postępem animacji, renderowana poza ekranem.
 // resetKey: zmiana karty unieważnia plik do udostępnienia.
+// under: POV (ADR 0010), klatka WebGL pod nakładką SVG (p pominięte = bieżąca klatka podglądu); wtedy bez eksportu SVG.
 export function ExportControls({
   name,
   svg,
   frame,
   resetKey,
   disabled,
+  under,
+  onBusy,
 }: {
   name: string; // nazwa pliku bez rozszerzenia
   svg: () => SVGSVGElement | null;
   frame: (p: number) => ReactElement;
   resetKey: unknown;
   disabled: boolean;
+  under?: (canvas: HTMLCanvasElement, p?: number) => void;
+  onBusy?: (busy: boolean) => void; // MP4/GIF w trakcie
 }) {
   const [exportFailed, setExportFailed] = useState<string | null>(null); // format, którego nie udało się zrobić
   const [encoding, setEncoding] = useState<{ format: 'mp4' | 'gif'; pct: number } | null>(null); // null = nie trwa
@@ -41,6 +47,9 @@ export function ExportControls({
     }
   }, [encoding]);
 
+  const busy = encoding !== null;
+  useEffect(() => onBusy?.(busy), [busy]);
+
   useEffect(() => {
     canEncodeMp4().then(setMp4Ok);
   }, []);
@@ -50,7 +59,12 @@ export function ExportControls({
     const el = svg();
     if (!el) return;
     setExportFailed(null);
-    exportPng(el, `${name}.png`).catch(() => setExportFailed('PNG'));
+    const fail = () => setExportFailed('PNG');
+    if (!under) return void exportPng(el, `${name}.png`).catch(fail);
+    const canvas = Object.assign(document.createElement('canvas'), { width: 1080, height: 1920 });
+    drawFrame(el, canvas, (c) => under(c))
+      .then(() => new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png')))
+      .then((blob) => (blob ? download(blob, `${name}.png`) : fail()), fail);
   };
 
   const downloadSvg = () => {
@@ -78,7 +92,7 @@ export function ExportControls({
       setEncoding((e) => (e && e.pct !== pct ? { ...e, pct } : e));
     };
     try {
-      const opts = { onProgress, signal: abort.signal };
+      const opts = { onProgress, signal: abort.signal, under };
       const blob = format === 'mp4' ? await encodeMp4(frameAt, opts) : await encodeGif(frameAt, opts);
       if (abort.signal.aborted) return; // Cancel w chwili domykania pliku
       const file = new File([blob], `${name}.${format}`, { type: blob.type });
@@ -109,6 +123,7 @@ export function ExportControls({
         onMp4={() => downloadAnimation('mp4')}
         onGif={() => downloadAnimation('gif')}
         mp4Supported={mp4Ok}
+        svgNote={under ? 'not in POV' : undefined}
       />
       {encoding !== null && (
         <div className="encoding">

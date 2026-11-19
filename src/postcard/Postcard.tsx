@@ -51,6 +51,7 @@ export function Postcard({
   person,
   routeColor = 'theme',
   progress = 1,
+  bare = false,
 }: {
   activity: Activity;
   fontCss?: string;
@@ -71,6 +72,7 @@ export function Postcard({
   person?: Cutout; // wycinanka osoby lub obiektu ze zdjęcia (ADR 0009): przed tym, co zasłania częściowo
   routeColor?: RouteColor; // styl linii trasy; 'theme' lub brak danych: kolor motywu (3D: nachylenie)
   progress?: number; // animacja rysowania (0..1): trasa do tego ułamka, dystans i czas rosną; 1 = gotowa pocztówka
+  bare?: boolean; // nakładka POV (ADR 0010): bez tła, mapy i trasy; statystyki, znak i podpis w kolorach motywu
 }) {
   // Jedna projekcja dla mapy i trasy („scena”).
   const polyline = activity.map.summary_polyline;
@@ -229,7 +231,7 @@ export function Postcard({
         </defs>
       )}
       {background === 'gradient' && <Background />}
-      {iso ? (
+      {bare ? null : iso ? (
         <g>
           {out && <rect width={1080} height={1920} fill={style.background} />}
           <g transform={cameraTransform(camera)}>
@@ -277,7 +279,7 @@ export function Postcard({
           {routeLayer(splitRoute ? 'front' : undefined)}
         </>
       )}
-      <g color={text.color} filter={text.filter}>
+      <g color={text.color} filter={bare ? undefined : text.filter}>
         {layout.map((item) => slotNode(item))}
       </g>
       <StravaMark x={60} y={1820} variant={out?.mark} />

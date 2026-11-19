@@ -82,6 +82,10 @@ describe('Postcard 3D', () => {
     expect(svg).toContain('transform="translate(1056 1890) rotate(-90)" font-size="18"');
     expect(renderToStaticMarkup(<Postcard activity={hills} />)).not.toContain(MAP_ATTRIBUTION);
   });
+  it('bare (nakładka POV) z neonem: każde url(#id) ma swoje id', () => {
+    const svg = renderToStaticMarkup(<Postcard activity={hills} background="map" map={LAYERS} theme="neon" streams={streams} bare />);
+    for (const [, ref] of svg.matchAll(/url\(#([\w-]+)\)/g)) expect(svg).toContain(`id="${ref}"`);
+  });
 });
 
 describe('Postcard teren', () => {

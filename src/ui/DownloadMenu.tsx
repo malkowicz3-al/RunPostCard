@@ -10,6 +10,7 @@ export function DownloadMenu({
   onMp4,
   onGif,
   mp4Supported,
+  svgNote,
 }: {
   disabled: boolean;
   onPng: () => void;
@@ -17,6 +18,7 @@ export function DownloadMenu({
   onMp4: () => void;
   onGif: () => void;
   mp4Supported: boolean; // WebCodecs H.264; bez niego pozycja MP4 nieaktywna
+  svgNote?: string; // powód braku SVG (pozycja nieaktywna)
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -81,8 +83,8 @@ export function DownloadMenu({
           <button role="menuitem" tabIndex={-1} onClick={() => choose(onPng)}>
             PNG image
           </button>
-          <button role="menuitem" tabIndex={-1} onClick={() => choose(onSvg)}>
-            SVG (vector)
+          <button role="menuitem" tabIndex={-1} disabled={!!svgNote} onClick={() => choose(onSvg)}>
+            SVG (vector){svgNote && ` (${svgNote})`}
           </button>
           <button role="menuitem" tabIndex={-1} disabled={!mp4Supported} onClick={() => choose(onMp4)}>
             Video (MP4){!mp4Supported && ' (not supported in this browser)'}
