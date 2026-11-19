@@ -1,6 +1,25 @@
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+import { writeFile, mkdir } from 'node:fs/promises';
 import { exchangeToken } from './server/stravaToken';
+
+// Tylko dev (configureServer): zapis wycinanek kolażu z src/dev/collageCutouts.ts do src/assets/collage/cutouts.
+function collageCutoutsSink(): Plugin {
+  return {
+    name: 'collage-cutouts-sink',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        const name = req.url?.match(/^\/__dev\/collage-cutouts\/([0-9a-z]+\.(?:png|json))$/)?.[1];
+        if (!name || req.method !== 'POST') return next();
+        const chunks: Buffer[] = [];
+        for await (const chunk of req) chunks.push(chunk);
+        await mkdir('src/assets/collage/cutouts', { recursive: true });
+        await writeFile(`src/assets/collage/cutouts/${name}`, Buffer.concat(chunks));
+        res.end();
+      });
+    },
+  };
+}
 
 // Lokalny odpowiednik api/strava/token.ts (Vercel): ten sam moduł, tylko inne wejście HTTP.
 function stravaTokenApi(env: Record<string, string>): Plugin {
@@ -32,5 +51,5 @@ function stravaTokenApi(env: Record<string, string>): Plugin {
 }
 
 export default defineConfig(({ mode }) => ({
-  plugins: [react(), stravaTokenApi(loadEnv(mode, process.cwd(), ''))],
+  plugins: [react(), stravaTokenApi(loadEnv(mode, process.cwd(), '')), collageCutoutsSink()],
 }));
