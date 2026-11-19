@@ -146,6 +146,7 @@ export function ActivityList({
   loading,
   onSelect,
   onLogout,
+  onRefresh,
   hasMore,
   loadingMore,
   onLoadMore,
@@ -157,6 +158,7 @@ export function ActivityList({
   loading: boolean;
   onSelect: (activity: Activity) => void;
   onLogout: () => void;
+  onRefresh: () => void; // lista od nowa ze Stravy (nowy bieg)
   hasMore: boolean;
   loadingMore: boolean;
   onLoadMore: () => void;
@@ -187,6 +189,9 @@ export function ActivityList({
               All together
             </button>
           )}
+          <button className="text-button" disabled={loading} onClick={onRefresh}>
+            Refresh
+          </button>
           <button className="text-button" onClick={onLogout}>
             Log Out
           </button>

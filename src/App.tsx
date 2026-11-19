@@ -168,6 +168,7 @@ export function App() {
           loading={loading}
           onSelect={onSelect}
           onLogout={onLogout}
+          onRefresh={loadRuns}
           hasMore={list.hasMore}
           loadingMore={loadingMore}
           onLoadMore={loadMore}
