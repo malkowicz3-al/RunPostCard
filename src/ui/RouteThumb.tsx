@@ -4,12 +4,8 @@ import { LINE_KEYS, MAP_KEYS, THUMB, type MapKey } from '../lib/vectorMap';
 import type { MapStyle } from '../postcard/mapStyle';
 import { useMapLayers } from './useMapLayers';
 
-// Miniatura w viewBox 100x100; margines 8, żeby zaokrąglone końce nie były ucinane.
-const BOX: [[number, number], [number, number]] = [
-  [8, 8],
-  [92, 92],
-];
-const SIZE: [number, number] = [100, 100];
+// Miniatura w viewBox 100 x height (domyślnie kwadrat); margines 8, żeby zaokrąglone końce nie były ucinane.
+const MARGIN = 8;
 
 // Grubości linii mapy w jednostkach viewBox (ok. 3 piksele ekranu na jednostkę).
 const WIDTHS: Partial<Record<MapKey, number>> = { waterway: 1, minor: 0.5, mid: 0.8, major: 1.2 };
@@ -19,16 +15,26 @@ export function RouteThumb({
   polyline,
   style,
   route = 'currentColor',
+  height = 100,
 }: {
   polyline: string;
   style?: MapStyle | null;
   route?: string;
+  height?: number; // np. 75 = kadr 4:3 (okładki na liście)
 }) {
-  const fit = useMemo(() => fitRoute(polyline, BOX), [polyline]);
-  const { layers } = useMapLayers(fit?.projection ?? null, SIZE, THUMB, style !== null);
+  const fit = useMemo(
+    () =>
+      fitRoute(polyline, [
+        [MARGIN, MARGIN],
+        [100 - MARGIN, height - MARGIN],
+      ]),
+    [polyline, height],
+  );
+  const size = useMemo((): [number, number] => [100, height], [height]);
+  const { layers } = useMapLayers(fit?.projection ?? null, size, THUMB, style !== null);
   return (
-    <svg className="route-thumb" viewBox="0 0 100 100" aria-hidden="true">
-      {style && <rect width={100} height={100} fill={style.background} />}
+    <svg className="route-thumb" viewBox={`0 0 100 ${height}`} style={{ aspectRatio: `100 / ${height}` }} aria-hidden="true">
+      {style && <rect width={100} height={height} fill={style.background} />}
       {layers &&
         style !== null &&
         MAP_KEYS.map((key) => {

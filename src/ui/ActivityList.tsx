@@ -45,9 +45,10 @@ function Skeleton() {
         {Array.from({ length: 6 }, (_, i) => (
           <li key={i}>
             <div className="run-tile">
+              <div className="skeleton-bar short" />
+              <div className="skeleton-bar" />
               <div className="route-thumb" />
               <div className="skeleton-bar" />
-              <div className="skeleton-bar short" />
             </div>
           </li>
         ))}
@@ -111,8 +112,14 @@ function Runs({
                 aria-checked={selection ? checked : undefined}
                 onClick={() => (selection ? onToggle(a.id) : onSelect(a))}
               >
+                {/* Okładka gazety: winieta z datą, nagłówek = nazwa biegu, mapa jako zdjęcie, dane w kolumnach. */}
+                <span className="run-masthead">
+                  <span aria-hidden="true">The Daily Run</span>
+                  <span>{formatDate(a.start_date_local)}</span>
+                </span>
+                <span className="run-name">{a.name}</span>
                 <span className="run-thumb">
-                  <RouteThumb polyline={a.map.summary_polyline} />
+                  <RouteThumb polyline={a.map.summary_polyline} height={75} />
                   {a.id === s.longestId && <span className="run-badge">Longest</span>}
                   {selection && (
                     <span className="run-check" aria-hidden="true">
@@ -120,18 +127,16 @@ function Runs({
                     </span>
                   )}
                 </span>
-                <span className="run-distance">
-                  {formatDistanceKm(a.distance)}
-                  <span className="unit"> km</span>
-                </span>
-                <span className="run-name">{a.name}</span>
                 <span className="run-stats">
+                  <span className="run-distance">
+                    {formatDistanceKm(a.distance)}
+                    <span className="unit"> km</span>
+                  </span>
                   <span>{formatPace(a.distance, a.moving_time)} /km</span>
                   <span>{formatDuration(a.moving_time)}</span>
                   <span>{formatElevation(a.total_elevation_gain)} m up</span>
                   {a.average_heartrate ? <span>{formatHeartRate(a.average_heartrate)} bpm</span> : null}
                 </span>
-                <span className="run-meta">{formatDate(a.start_date_local)}</span>
               </button>
             </li>
           );

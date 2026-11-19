@@ -70,7 +70,7 @@ Restart `npm run dev` after changing `.env`. Vite reads it only at startup.
 2. Strava asks you to log in (if you are not logged in) and to allow access to your activities.
 3. You are sent back to the app, and your recent runs appear in the list.
 
-The run list starts with totals for the loaded runs (count, distance, moving time, elevation gain). Each tile shows the route on the map outline, the distance, pace, moving time, elevation gain, average heart rate (if recorded) and the date; the longest run gets a **Longest** badge. Hovering or focusing a tile draws its route. Animations are off when your system asks for reduced motion.
+The run list starts with totals for the loaded runs (count, distance, moving time, elevation gain). Each tile looks like a newspaper front page: the date on top, the run name as the headline, the route on a light map outline as the photo, and the distance, pace, moving time, elevation gain and average heart rate (if recorded) in columns; the longest run gets a **Longest** stamp. Hovering or focusing a tile draws its route. Animations are off when your system asks for reduced motion.
 
 The list loads 50 activities at a time; **Load more** at the bottom fetches the next page, up to 200 runs. **Refresh** in the top bar loads the list again from Strava (for a run you just finished).
 

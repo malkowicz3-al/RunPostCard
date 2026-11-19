@@ -72,10 +72,21 @@ body {
   background: var(--bg);
 }
 
+.top-bar .toggle-row {
+  justify-content: flex-end;
+  padding: 0;
+}
+
+/* Wąski ekran: przyciski listy w jednym rzędzie pod tytułem zamiast w trzech. */
+.list-screen .top-bar {
+  flex-wrap: wrap;
+}
+
 .screen-title {
   margin: 0;
   font-size: 28px;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .run-title {
@@ -382,20 +393,20 @@ button.text-button {
   padding: 0 16px;
   box-sizing: border-box;
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
 @media (min-width: 720px) {
   .runs {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 16px;
   }
 }
 
 @media (min-width: 1040px) {
   .runs {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
@@ -455,6 +466,11 @@ button.text-button {
 }
 
 .run-tile {
+  /* Okładka gazety: papier i tusz w obu motywach, krój szeryfowy systemu (bez pobierania fontu). */
+  --paper: #f4efe4;
+  --ink: #1b1a17;
+  --map-road: rgb(27 26 23 / 0.16);
+  --map-water: rgb(27 26 23 / 0.1);
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -463,8 +479,12 @@ button.text-button {
   box-sizing: border-box;
   padding: 10px 10px 12px;
   text-align: left;
-  border-radius: 16px;
+  border-radius: 3px;
+  font-family: Georgia, 'Times New Roman', serif;
   font-weight: 400;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
   transition:
     background 0.15s,
     transform 0.2s ease-out,
@@ -473,15 +493,51 @@ button.text-button {
 
 .runs button.run-tile:hover,
 .runs button.run-tile:focus-visible {
+  background: var(--paper);
   transform: translateY(-3px);
   box-shadow: 0 10px 24px rgb(0 0 0 / 0.35);
+}
+
+.run-tile > * {
+  flex-shrink: 0; /* stała proporcja okładki nie ściska nagłówka do zera */
+}
+
+.run-masthead {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 3px;
+  border-bottom: 3px double var(--ink);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.run-masthead span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Telefon (2 wąskie kolumny): w winiecie tylko data, bez uciętej nazwy. */
+@media (max-width: 719px) {
+  .run-masthead {
+    justify-content: center;
+  }
+
+  .run-masthead span:first-child {
+    display: none;
+  }
 }
 
 .run-thumb {
   position: relative;
   display: block;
-  margin-bottom: 4px;
+  border: 1px solid var(--ink);
 }
+
 
 .run-tile .route-line {
   stroke-dasharray: 1;
@@ -516,7 +572,6 @@ button.text-button {
 }
 
 .run-tile[aria-checked='true'] {
-  background: var(--surface-hover);
   outline: 3px solid var(--select);
   outline-offset: -3px;
 }
@@ -556,14 +611,15 @@ button.text-button {
   position: absolute;
   top: 6px;
   left: 6px;
-  padding: 2px 8px;
-  border-radius: 999px;
+  padding: 1px 6px;
+  border: 2px solid #b3261e;
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  background: var(--primary-bg);
-  color: var(--primary-text);
+  color: #b3261e;
+  background: var(--paper);
+  transform: rotate(-6deg);
 }
 
 .route-thumb {
@@ -573,16 +629,21 @@ button.text-button {
 }
 
 .run-distance {
-  font-size: 26px;
+  grid-column: 1 / -1;
+  font-size: 24px;
   font-weight: 700;
   line-height: 1;
-  font-variant-numeric: tabular-nums;
+}
+
+.run-tile .unit {
+  color: inherit;
+  opacity: 0.7;
 }
 
 .run-name {
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1.25;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.15;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -590,18 +651,20 @@ button.text-button {
 }
 
 .run-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px 10px;
-  font-size: 13px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px 8px;
+  margin-top: auto;
+  padding-top: 5px;
+  border-top: 1px solid var(--ink);
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
 
-.run-meta {
-  margin-top: auto;
-  font-size: 12px;
-  color: var(--text-secondary);
-  font-variant-numeric: tabular-nums;
+/* Kolumny gazety: pionowa linia między danymi. */
+.run-stats > span:nth-child(odd):not(:first-child) {
+  padding-left: 8px;
+  border-left: 1px solid rgb(27 26 23 / 0.35);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -619,6 +682,11 @@ button.text-button {
 
 .skeleton .run-tile {
   background: var(--surface);
+  box-shadow: none;
+}
+
+.skeleton .route-thumb {
+  aspect-ratio: 4 / 3; /* jak mapa na okładce: bez skoku po wczytaniu */
 }
 
 .skeleton .route-thumb,
