@@ -554,12 +554,11 @@ button.text-button {
   flex-shrink: 0; /* przy braku miejsca kolumna flex ściskała pasek do zera */
 }
 
-/* Nazwa zawsze na dwie linie wysokości, typ pod nią: wszystkie paski równe, mapy w jednej linii. */
+/* Nazwa zawsze na dwie linie wysokości, typ obok w prawym górnym rogu: wszystkie paski równe, mapy w jednej linii. */
 .bib-band {
   display: flex;
-  flex-direction: column;
   align-items: flex-start;
-  gap: 4px 8px;
+  gap: 8px;
   padding: 7px 10px;
   background: var(--band);
   color: var(--band-ink);
@@ -578,12 +577,12 @@ button.text-button {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  width: 100%;
   min-height: 2.3em;
 }
 
 .bib-tag {
-  max-width: 100%;
+  flex: 0 0 auto;
+  max-width: 55%;
   padding: 1px 5px;
   border: 1px solid currentColor;
   border-radius: 3px;
@@ -1691,9 +1690,23 @@ button.swatch,
 }
 
 @media (max-width: 899px) {
+  /* Pocztówka na całą szerokość telefonu; wysokość = ekran minus pasek u góry i stopka, więc strona się nie przewija. */
   .postcard-screen .postcard-frame {
-    width: max(180px, min(100% - 32px, 480px, calc((100dvh - 150px) * 9 / 16)));
+    width: max(180px, min(100%, calc((100dvh - 130px) * 9 / 16)));
+    border-radius: 0;
     transition: width 0.25s ease;
+  }
+
+  .postcard-screen .top-bar {
+    padding: 8px 16px;
+  }
+
+  .postcard-screen .top-bar .run-title {
+    margin-right: 96px; /* miejsce na przycisk Style w pasku */
+  }
+
+  .app:has(.postcard-screen) footer {
+    padding: 8px 0 12px;
   }
 
   /* Otwarty arkusz zajmuje dół: pocztówka maleje, żeby zmiany było widać. */
@@ -1761,18 +1774,19 @@ button.swatch,
     box-shadow: none;
   }
 
+  /* Style w górnym pasku, po prawej (nad pocztówką, nie na niej). */
   .style-fab {
-    position: fixed;
-    left: 50%;
-    bottom: calc(16px + env(safe-area-inset-bottom));
-    z-index: 10;
+    position: absolute;
+    top: 8px;
+    right: 16px;
+    z-index: 2;
+    min-height: 44px;
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 12px 22px;
+    padding: 0 18px;
     border: 0;
     border-radius: 999px;
-    transform: translateX(-50%);
     background: var(--text);
     color: var(--bg);
     font-size: 16px;
@@ -1784,8 +1798,8 @@ button.swatch,
     display: none;
   }
 
-  .postcard-layout {
-    padding-bottom: 72px; /* miejsce na pływający przycisk */
+  .postcard-screen .postcard-layout {
+    padding-bottom: 0;
   }
 }
 
