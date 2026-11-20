@@ -1,5 +1,8 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 
+// Escape zamyka arkusz tylko, gdy nie ma nad nim otwartego okna ani rozwiniętej listy/menu (te zamykają się same).
+export const closesSheet = (key: string, dialogOpen: boolean, listOpen: boolean) => key === 'Escape' && !dialogOpen && !listOpen;
+
 // Panel „Style”: od 900 px stała kolumna obok pocztówki; węższy ekran: arkusz od dołu otwierany pływającym przyciskiem (CSS).
 export function StyleSheet({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
@@ -16,9 +19,8 @@ export function StyleSheet({ children }: { children: ReactNode }) {
     if (!open) return;
     // Escape w otwartym oknie (Change, edycja zdjęcia), liście albo menu Download zamyka tylko je.
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape' || document.querySelector('dialog[open]')) return;
-      if (panel.current?.querySelector('[aria-expanded="true"]')) return;
-      setOpen(false);
+      if (closesSheet(e.key, !!document.querySelector('dialog[open]'), !!panel.current?.querySelector('[aria-expanded="true"]')))
+        setOpen(false);
     };
     // Faza przechwytywania: lista sprawdzana, zanim jej własny Escape ją zamknie.
     window.addEventListener('keydown', onKey, true);
@@ -26,9 +28,11 @@ export function StyleSheet({ children }: { children: ReactNode }) {
   }, [open]);
   return (
     <>
-      <div className="style-panel" id={id} data-open={open} ref={panel}>
+      <div className="style-panel" id={id} data-open={open} ref={panel} role="region" aria-labelledby={`${id}-title`}>
         <div className="panel-head">
-          <h2 className="panel-title">Style</h2>
+          <h2 className="panel-title" id={`${id}-title`}>
+            Style
+          </h2>
           <button className="text-button sheet-close" ref={done} onClick={() => setOpen(false)}>
             Done
           </button>

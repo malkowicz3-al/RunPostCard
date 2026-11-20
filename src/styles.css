@@ -1145,6 +1145,11 @@ button.slot-hit[data-active='true'] {
   width: 100%;
 }
 
+/* Done tylko w arkuszu na telefonie (domyślnie ukryte, żeby przy ułamkowej szerokości okna nie wyszło na komputerze). */
+.sheet-close {
+  display: none;
+}
+
 .panel-title {
   display: none;
   margin: 0;
@@ -1733,6 +1738,19 @@ button.swatch,
     display: block;
   }
 
+  .postcard-screen .sheet-close {
+    display: inline-flex;
+  }
+
+  /* Menu Download w przewijanym arkuszu: w miejscu, nie absolutnie (inaczej przycina je góra arkusza). */
+  .postcard-screen .style-panel .download-menu {
+    position: static;
+    transform: none;
+    margin-bottom: 8px;
+    background: var(--bg);
+    box-shadow: none;
+  }
+
   /* W przewijanym arkuszu lista rozwija się w miejscu (absolutna była przycinana przez górę arkusza). */
   .postcard-screen .style-panel .select-list,
   .postcard-screen .style-panel .select-list.up {
@@ -1779,10 +1797,6 @@ button.swatch,
 }
 
 @media (min-width: 900px) {
-  .sheet-close {
-    display: none;
-  }
-
   .postcard-layout {
     flex-direction: row;
     align-items: flex-start;
