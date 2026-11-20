@@ -25,7 +25,8 @@ export type FontId =
   | 'marker'
   | 'pacifico'
   | 'lobster'
-  | 'kaushan';
+  | 'kaushan'
+  | 'pirata';
 export const DEFAULT_FONT: FontId = 'barlow';
 
 type Font = {
@@ -101,6 +102,7 @@ export const FONTS: Record<FontId, Font> = {
   pacifico: { label: 'Pacifico', file: 'Pacifico-Regular.ttf', family: 'Pacifico', weight: 400, scale: 0.85, group: 'Script' },
   lobster: { label: 'Lobster', file: 'Lobster-Regular.ttf', family: 'Lobster', weight: 400, scale: 0.95, group: 'Script' },
   kaushan: { label: 'Kaushan', file: 'KaushanScript-Regular.ttf', family: 'Kaushan Script', weight: 400, scale: 0.73, group: 'Script' },
+  pirata: { label: 'Pirata One', file: 'PirataOne-Regular.ttf', family: 'Pirata One', weight: 400, scale: 0.85, group: 'Script' },
 };
 
 export const fontStack = (id: FontId) => `'${FONTS[id].family}', system-ui, sans-serif`;

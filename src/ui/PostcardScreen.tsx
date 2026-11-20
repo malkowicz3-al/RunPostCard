@@ -180,7 +180,9 @@ export function PostcardScreen({
   const worldTheme = GENRES[worldGenre].theme;
   // 3D liczy się na płaskiej projekcji trasy, więc bez niej przycisk nie ma sensu.
   const has3d = !!streams?.altitude && fit !== null;
-  const is3d = view === '3d' && has3d;
+  // Ilustrowana mapa Fantasy jest tylko płaska (Genre.flat).
+  const flatOnly = isWorld && GENRES[worldGenre].flat;
+  const is3d = view === '3d' && has3d && !flatOnly;
   const profile = POSTCARD_DETAILED;
   const map = useMapLayers(fit?.projection ?? null, SIZE, profile, hasMap);
   const mapMissing = hasMap && !map.layers;
@@ -698,7 +700,7 @@ export function PostcardScreen({
           <section className="panel-section" inert={exporting}>
               <h3 className="panel-heading">View</h3>
               <div className="toggle-row">
-                {fit && has3d && (
+                {fit && has3d && !flatOnly && (
                   <button
                     className="toggle"
                     title={is3d ? 'View: 3D. Switch to 2D' : 'View: 2D. Switch to 3D'}

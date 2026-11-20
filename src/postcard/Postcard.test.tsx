@@ -12,7 +12,7 @@ import { SlotNumber } from './SlotNumber';
 import { fitRoute } from '../lib/routePath';
 import { decorateWorld, worldProps } from '../world/decorate';
 import type { MapLayers } from '../lib/vectorMap';
-import { GENRES, GENRE_IDS } from '../world/genres';
+import { GENRES } from '../world/genres';
 
 const LAYERS = { water: 'M0 0L50 0L50 50Z', major: 'M0 100L500 100' };
 const hills = mockActivities().find((r) => r.name === 'Hill repeats')!;
@@ -371,7 +371,7 @@ describe('Postcard poświata i przyciemnienie mapy', () => {
   });
 });
 
-describe.each(GENRE_IDS)('Postcard World %s', (genre) => {
+describe.each(['scifi'] as const)('Postcard World %s', (genre) => {
   const points = fitRoute(hills.map.summary_polyline, ROUTE_BOX)!.points;
   // Ręczna mapa: siatka brył i ulic na płótnie, dekorowana jak w PostcardScreen.
   const buildings = Array.from({ length: 40 }, (_, k) => {
@@ -395,7 +395,7 @@ describe.each(GENRE_IDS)('Postcard World %s', (genre) => {
     props: worldProps(layers, points, 1, genre),
     streams,
   };
-  // Ulica trasy: asfalt (Sci-fi, Post-apo) albo ubita droga (Fantasy), 28 px pod trasą.
+  // Ulica trasy: asfalt 28 px pod trasą.
   const road = new RegExp(`stroke="${theme.style().colors.major}" stroke-width="28"`);
 
   it('2D i 3D: z podpisem OSM, lokalne i unikalne id, bez NaN, pojazdy nad mapą i pod trasą', () => {
@@ -423,9 +423,8 @@ describe.each(GENRE_IDS)('Postcard World %s', (genre) => {
         expect(svg).toContain('transform="matrix(');
         // Auta pod bryłami, statki nad nimi (dwie grupy, gdy są pojazdy).
         if (base.props.length) expect(svg.split('class="world-props"')).toHaveLength(3);
-        // Sci-fi: neon okien i krawędzi; Fantasy i Post-apo: dachy w kolorach gatunku.
-        const attr = genre === 'scifi' ? 'stroke' : 'fill';
-        expect(accents.filter((c) => svg.includes(`${attr}="${c}"`)).length).toBeGreaterThanOrEqual(3);
+        // Neon okien i krawędzi w kolorach gatunku.
+        expect(accents.filter((c) => svg.includes(`stroke="${c}"`)).length).toBeGreaterThanOrEqual(3);
       }
     }
   });
@@ -435,5 +434,58 @@ describe.each(GENRE_IDS)('Postcard World %s', (genre) => {
     const svg = renderToStaticMarkup(<Postcard {...base} refined={{ rect, layers: decorated }} />);
     // Po scenie bazowej: bez floor fragment miałby tylko cienką linię major z MapBackground.
     expect(svg.slice(svg.indexOf('clip-path="url(#refined-clip)"'))).toMatch(road);
+  });
+});
+
+describe('Postcard World fantasy', () => {
+  const points = fitRoute(hills.map.summary_polyline, ROUTE_BOX)!.points;
+  // Ręczna mapa: gęsta siatka małych domków, kilka dużych brył, las, pole i duże jezioro pod trasą.
+  const ring = (x: number, y: number, w: number, h: number): [number, number][] => [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
+  const buildings = [
+    ...Array.from({ length: 600 }, (_, k) => ({ ring: ring(20 + (k % 40) * 26, 1250 + Math.floor(k / 40) * 40, 12, 10), h: 8, min: 0 })),
+    ...[[100, 300], [700, 320], [400, 900]].map(([x, y]) => ({ ring: ring(x, y, 50, 40), h: 15, min: 0 })),
+  ];
+  const layers: MapLayers = {
+    minor: 'M0 1240L1080 1240',
+    mid: 'M30 0L30 1920',
+    water: 'M0 1300L1080 1300L1080 1920L0 1920Z',
+    green: 'M600 400L1000 400L1000 700L600 700Z',
+    field: 'M100 400L400 400L400 600L100 600Z',
+    building: buildings.map((b) => `M${b.ring.join('L')}Z`).join(''),
+    buildings,
+  };
+  const decorated = decorateWorld(layers, points, 1, 'fantasy');
+  const base = { activity: hills, background: 'map' as const, map: decorated, theme: GENRES.fantasy.theme, streams };
+  const check = (svg: string) => {
+    expect(svg).toContain(MAP_ATTRIBUTION);
+    for (const [, ref] of svg.matchAll(/url\(#([\w-]+)\)/g)) expect(svg, `#${ref}`).toContain(`id="${ref}"`);
+    const ids = [...svg.matchAll(/id="([^"]+)"/g)].map(([, id]) => id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(svg).not.toMatch(/NaN|Infinity/);
+    return ids;
+  };
+
+  it('płasko: wzory, ramka, domki do 150, trasa z filtrem, nowe id z prefiksem', () => {
+    const svg = renderToStaticMarkup(<Postcard {...base} view="flat" />);
+    const ids = check(svg);
+    for (const id of ['world-fantasy-trees', 'world-fantasy-waves', 'world-fantasy-field', 'world-fantasy-meadow', 'world-fantasy-route'])
+      expect(ids).toContain(id);
+    for (const id of ids.filter((i) => i.startsWith('world-'))) expect(id).toMatch(/^world-fantasy-/);
+    expect(svg).toContain('filter="url(#world-fantasy-route)"');
+    expect(svg).toContain('width="1064" height="1904"'); // ramka
+    expect(svg).toContain('paint-order="stroke"'); // obrys wody i lasu
+    const walls = svg.match(/<path d="([^"]+)" fill="#f1e4c2"/)!;
+    const houses = walls[1].split('M').length - 1;
+    expect(houses).toBeGreaterThan(20);
+    expect(houses).toBeLessThanOrEqual(150);
+    // Obrysy brył nie są rysowane, tylko domki.
+    expect(svg).not.toContain(decorated.buildings![0].ring.map(([x, y]) => `${x} ${y}`).join('L'));
+    expect(svg).toMatch(/fill="#7a4a26"/); // statek na jeziorze
+  });
+
+  it('refined bez zdublowanych id; 3D się renderuje', () => {
+    const rect: Rect = [-500, -500, 1580, 2420];
+    check(renderToStaticMarkup(<Postcard {...base} refined={{ rect, layers: decorated }} />));
+    check(renderToStaticMarkup(<Postcard {...base} view="3d" />));
   });
 });

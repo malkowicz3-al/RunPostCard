@@ -32,7 +32,6 @@ describe('LookPicker World', () => {
     expect(svg).toContain('New world');
     expect(svg).toContain('Sci-fi');
     expect(picker('world', 'fantasy')).toContain('Fantasy'); // zamknięta lista pokazuje tylko wybrany styl
-    expect(picker('world', 'postapo')).toContain('Post-apo');
     expect(picker('dark')).not.toContain('New world');
   });
 });

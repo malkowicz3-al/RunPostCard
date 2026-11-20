@@ -31,6 +31,18 @@ export function MapBackground({
             strokeLinejoin="round"
             filter={filter}
           />
+        ) : style.outlines?.[key] ? (
+          // paint-order: obrys pod wypełnieniem, więc szwy kafelków przecinających poligon nie dają kresek w środku.
+          <path
+            key={key}
+            d={d}
+            fill={style.fills?.[key] ?? style.colors[key]}
+            stroke={style.outlines[key]}
+            strokeWidth={style.widths[key]}
+            paintOrder="stroke"
+            strokeLinejoin="round"
+            filter={filter}
+          />
         ) : (
           <path key={key} d={d} fill={style.fills?.[key] ?? style.colors[key]} filter={filter} />
         );

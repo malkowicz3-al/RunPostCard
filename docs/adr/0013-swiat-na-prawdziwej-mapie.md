@@ -83,9 +83,15 @@ Bryły w 3D to prawdziwe wysokości z `render_height` i istniejące przewyższen
   - akcenty po indeksie bryły, bo indeks jest inny w bazie, `refined` i tle;
   - pojazdy z warstwy `path`, bo to ścieżki piesze.
 
-## Gatunki Fantasy i Post-apo
-- `Genre` dostał pola `signs` (szyldy tylko w Sci-fi), `keep` (odsetek zostawionych brył), `ruin` (odsetek brył z obciętą wysokością, co najmniej `min + 3` m) i `props.look` (kolory aut i statków, smuga, poświata).
-- Gęstość i ruiny losujemy z osobnego skrótu środka bryły na grubszej siatce 16 px (kolor i szyld zostają na siatce 4 px), więc ten sam budynek w bazie, `refined` i tle wygląda tak samo z dokładnością do drobnych różnic wierzchołków. Duże bryły (od 18 m albo dłuższy bok od 60 px) zostają zawsze. Strumień koloru i szyldu jest nietknięty, więc Sci-fi się nie zmienia.
+## Gatunki: Sci-fi i Fantasy (Post-apo usunięte)
+- Post-apo usunięte decyzją właściciela, razem z polami `Genre.keep` (gęstość) i `Genre.ruin` (ruiny) i ich strumieniem losowania w `decorateWorld`. Strumień koloru i szyldu jest nietknięty, więc Sci-fi się nie zmienia.
+- `Genre` ma pola `signs` (szyldy tylko w Sci-fi), `props.look` (kolory aut i statków, smuga, poświata) i `flat` (tylko widok płaski).
 - `Buildings3D`: `accent` bryły jest kolorem dachu we wszystkich wariantach poza `tower` (tam to nadal neon okien i krawędzi). Motywy bez `accent` bez zmian.
-- Fantasy: bryły `castle`, bez pojazdów. Post-apo: bryły `voxel`, wraki aut bez smugi i poświaty.
+- Fantasy to ilustrowana mapa na pergaminie na tym samym szkielecie (decyzja właściciela):
+  - zamiast obrysów brył domki (`src/world/fantasyIcons.ts`): komórka 40 px dostaje domek, gdy jej skrót przechodzi próg (ok. 230 na płótnie w gęstym mieście, limit 400 tylko jako bezpiecznik), a w komórce wygrywa bryła ze skrótem z grubej siatki 16 px; zamek to największa bryła od 1000 px² w komórce 400 px z wylosowanym progiem (ok. 3 na płótno). Wybór nie zależy od zestawu brył, więc baza, refined po zoomie i tło pokazują te same domki i zamki; dach w kolorze `accent`, więc „New world” zmienia tylko dachy;
+  - lasy, pola i łąki to wzory przez `MapStyle.fills`; obrys wody i lasu przez nowe `MapStyle.outlines` z `paint-order: stroke`, bo kafelki tną poligony i zwykły obrys rysowałby szwy kafelków;
+  - statki (do 3) tylko na dużej wodzie (od 25 000 px²), z dala od brzegu i trasy; zwykłe pojazdy wyłączone;
+  - ramka, róża wiatrów i wąż morski w nakładce (przestrzeń płótna, więc bez dublowania w refined); róża (r 52) i wąż (skala 0,8) na wysokości y 350, pod statystykami górnych układów (test kolizji z `LAYOUTS`), róża w rogu z mniejszą liczbą punktów trasy;
+  - trasa z jednym filtrem (drżenie i kontur tuszem); ulice bez filtrów (wydajność);
+  - tylko widok płaski (`Genre.flat`): `PostcardScreen` ukrywa przełącznik 2D/3D i nie włącza 3D.
 - Bez animacji: ruch pojazdów był zrobiony i usunięty, bo za bardzo spadała liczba klatek.

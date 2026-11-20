@@ -21,8 +21,8 @@ function contrast(a: string, b: string): number {
 }
 
 describe('GENRES', () => {
-  it('pełna paleta, font z listy, bryły gatunku, kolory brył i gęstość', () => {
-    const shapes = { scifi: 'tower', fantasy: 'castle', postapo: 'voxel' };
+  it('pełna paleta, font z listy, bryły gatunku i kolory brył', () => {
+    const shapes = { scifi: 'tower', fantasy: undefined };
     for (const id of GENRE_IDS) {
       const { theme } = GENRES[id];
       const style = theme.style();
@@ -31,8 +31,6 @@ describe('GENRES', () => {
       expect(FONTS[theme.font]).toBeDefined();
       expect(style.buildings3d).toBe(shapes[id]);
       for (const c of GENRES[id].accents) expect(c).toMatch(/^#[0-9a-f]{6}$/);
-      expect(GENRES[id].keep).toBeGreaterThan(0);
-      expect(GENRES[id].keep).toBeLessThanOrEqual(1);
     }
   });
 

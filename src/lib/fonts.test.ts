@@ -28,7 +28,7 @@ describe('fonty pocztówki', () => {
 
   it('20 fontów; każdy ma plik, licencję, unikalną rodzinę i rozsądną skalę', () => {
     const ids = Object.keys(FONTS) as FontId[];
-    expect(ids).toHaveLength(25);
+    expect(ids).toHaveLength(26);
     const licenses = readdirSync('public/fonts/licenses');
     for (const id of ids) {
       expect(existsSync(`public/fonts/${FONTS[id].file}`), id).toBe(true);

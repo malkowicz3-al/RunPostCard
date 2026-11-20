@@ -13,5 +13,6 @@ export type MapStyle = {
   dashes?: Partial<Record<MapKey, string>>; // stroke-dasharray linii
   filters?: Partial<Record<MapKey, string>>;
   fills?: Partial<Record<MapKey, string>>; // farba poligonu (np. url(#kreskowanie)); colors zostają heksami dla miniatur
+  outlines?: Partial<Record<MapKey, string>>; // obrys poligonu (grubość z widths), pod wypełnieniem
   buildings3d?: BuildingShape; // domyślnie plain
 };
