@@ -756,6 +756,16 @@ button.text-button {
   }
 }
 
+.bib-medal {
+  position: absolute;
+  right: 8px;
+  bottom: 6px;
+  width: 64px;
+  height: 85px;
+  transform: rotate(8deg);
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.5));
+}
+
 .run-tile .route-line {
   stroke-dasharray: 1;
   stroke-dashoffset: 0;
@@ -764,6 +774,35 @@ button.text-button {
 .run-tile:hover .route-line,
 .run-tile:focus-visible .route-line {
   animation: route-draw 0.9s ease-out;
+}
+
+/* Pasek pod danymi wypełnia się razem z rysowaniem trasy. */
+.bib-data {
+  position: relative;
+}
+
+.bib-data::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -3px;
+  height: 2px;
+  background: currentColor;
+  opacity: 0.5;
+  transform: scaleX(0);
+  transform-origin: left;
+}
+
+.run-tile:hover .bib-data::after,
+.run-tile:focus-visible .bib-data::after {
+  animation: bib-fill 0.9s ease-out forwards;
+}
+
+@keyframes bib-fill {
+  to {
+    transform: scaleX(1);
+  }
 }
 
 @keyframes route-draw {
@@ -863,6 +902,10 @@ button.text-button {
   .runs button.run-tile:hover,
   .runs button.run-tile:focus-visible {
     transform: none;
+  }
+
+  .run-tile .bib-data::after {
+    animation: none;
   }
 }
 

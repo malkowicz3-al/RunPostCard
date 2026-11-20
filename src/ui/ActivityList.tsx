@@ -103,6 +103,38 @@ function Summary({ s }: { s: ReturnType<typeof summarize> }) {
   );
 }
 
+// Naklejka medalu na mapie numeru zawodów (wstążka + krążek z gwiazdką).
+function Medal() {
+  return (
+    <svg className="bib-medal" viewBox="0 0 36 48" aria-hidden="true">
+      <path d="M8 0h9l5 16h-9zM28 0h-9l-5 16h9z" fill="#c8102e" stroke="#111" strokeWidth="1" />
+      <circle cx="18" cy="31" r="13" fill="#f5b700" stroke="#111" strokeWidth="1.5" />
+      <circle cx="18" cy="31" r="9" fill="none" stroke="#a77a00" strokeWidth="1" />
+      <path d="M18 24.5l1.9 4 4.3.4-3.3 2.9 1 4.2-3.9-2.3-3.9 2.3 1-4.2-3.3-2.9 4.3-.4z" fill="#fff8d6" />
+    </svg>
+  );
+}
+
+const DRAW_MS = 900; // jak animacja route-draw w CSS
+
+// Dystans i czas liczą się w górę razem z rysowaniem trasy (tekst końcowy zostaje w DOM dla czytników ekranu).
+function countUp(tile: HTMLElement, a: Activity) {
+  if (tile.dataset.counting || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const [dist, time] = tile.querySelectorAll<HTMLElement>('.bib-data > span');
+  if (!dist || !time) return;
+  tile.dataset.counting = '1';
+  const start = performance.now();
+  const step = (now: number) => {
+    const t = Math.min(1, (now - start) / DRAW_MS);
+    const e = 1 - (1 - t) ** 2; // ease-out
+    dist.textContent = `${formatDistanceKm(a.distance * e)} km`;
+    time.textContent = formatDuration(Math.round(a.moving_time * e));
+    if (t < 1) requestAnimationFrame(step);
+    else delete tile.dataset.counting;
+  };
+  requestAnimationFrame(step);
+}
+
 function Runs({
   runs,
   onSelect,
@@ -137,6 +169,8 @@ function Runs({
                 role={selection ? 'checkbox' : undefined}
                 aria-checked={selection ? checked : undefined}
                 onClick={() => (selection ? onToggle(a.id) : onSelect(a))}
+                onMouseEnter={(e) => countUp(e.currentTarget, a)}
+                onFocus={(e) => countUp(e.currentTarget, a)}
               >
                 {/* Numer startowy: pasek z nazwą i typem, mapa z trasą, dane; kolory wariantu w CSS. */}
                 <span className="bib-band">
@@ -146,6 +180,7 @@ function Runs({
                 <span className="run-thumb">
                   <RouteThumb polyline={a.map.summary_polyline} height={75} />
                   {a.id === s.longestId && <span className="run-badge">Longest</span>}
+                  {b.kind === 'race' && <Medal />}
                   {selection && (
                     <span className="run-check" aria-hidden="true">
                       {checked ? '✓' : ''}
