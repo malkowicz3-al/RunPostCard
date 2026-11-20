@@ -66,4 +66,21 @@ describe('Buildings3D', () => {
     const paths = (svg: string) => svg.split('<path').length;
     expect(paths(render('castle'))).toBeGreaterThan(paths(plain));
   });
+
+  it('tower: własny neon bryły i szyld; bez nich bez zmian', () => {
+    const tower = (bld: typeof big & { accent?: string; sign?: boolean }) =>
+      renderToStaticMarkup(
+        <svg>
+          <Buildings3D buildings={[bld]} matrix={MATRIX} pxPerM={1} color="#808080" shape="tower" accent="#00ffff" />
+        </svg>,
+      );
+    const tall = { ...big, h: 120 };
+    const own = tower({ ...tall, accent: '#ff2bd6', sign: true });
+    expect(own).toContain('stroke="#ff2bd6"');
+    expect(own).not.toContain('#00ffff');
+    expect(own).toContain('fill="#ff2bd6" opacity="0.9"');
+    expect(own.split('<path').length).toBe(tower({ ...tall, accent: '#ff2bd6' }).split('<path').length + 2);
+    expect(tower({ ...tall, sign: true })).toBe(tower(tall)); // szyld tylko z własnym neonem
+    expect(tower(big)).toContain('stroke="#00ffff"');
+  });
 });

@@ -4,7 +4,7 @@ import type { Prop } from './generate';
 const SHIP_LIFT = 60; // statki w 3D wiszą nad podłożem (px pocztówki)
 const GLOW = 'world-scifi-props-glow';
 // shortcut: kolory Sci-fi na sztywno, bo jest jeden gatunek; przy drugim przenieść je do Genre.
-const CAR = '#3ff0ff';
+const CARS = ['#2ef2ff', '#ff2bd6'];
 const TRAIL = '#ff3fc8';
 const SHIP = '#c8fbff';
 const ENGINE = '#ff3fc8';
@@ -42,7 +42,7 @@ export function Props({ props, matrix, layer }: { props: Prop[]; matrix?: IsoRou
             return (
               <g key={k} transform={`translate(${x} ${y}) rotate(${angle})`}>
                 <line x1={-16} y1={0} x2={-5} y2={0} stroke={TRAIL} strokeWidth={2} strokeLinecap="round" opacity={0.7} />
-                <rect x={-5} y={-2} width={10} height={4} rx={2} fill={CAR} />
+                <rect x={-5} y={-2} width={10} height={4} rx={2} fill={CARS[k % 2]} />
                 <circle cx={5} cy={0} r={1.5} fill="#ffffff" />
               </g>
             );

@@ -32,7 +32,8 @@ export const MAP_KEYS = [
 ] as const;
 export type MapKey = (typeof MAP_KEYS)[number];
 // Obrys budynku w px płótna (tylko zewnętrzny pierścień) z wysokością dachu i dołu bryły w metrach.
-export type Building = { ring: [number, number][]; h: number; min: number };
+// accent i sign ustawia tylko świat generowany: neon bryły i świecący szyld na ścianie.
+export type Building = { ring: [number, number][]; h: number; min: number; accent?: string; sign?: boolean };
 // buildings: bryły widoku 3D, tylko dla profilu z extrude (obok sklejonej warstwy building dla widoku płaskiego).
 export type MapLayers = Partial<Record<MapKey, string>> & { buildings?: Building[] };
 // Linie się obrysowuje, resztę (poligony) tylko wypełnia.

@@ -386,9 +386,17 @@ describe('Postcard World', () => {
       const props = svg.indexOf('class="world-props"');
       expect(props).toBeGreaterThan(svg.indexOf('id="world-scifi-lines"'));
       expect(props).toBeLessThan(svg.indexOf('filter="url(#world-scifi-route)"'));
+      expect(svg, view).toMatch(/stroke="#120a2a" stroke-width="28"/); // ulica pod trasą
+      if (view === 'flat') {
+        // Każda bryła narysowana raz (obrysy z neonem zamiast warstwy building).
+        const ring = world.layers.buildings![0].ring.map(([x, y]) => `${x} ${y}`).join('L');
+        expect(svg.split(ring)).toHaveLength(2);
+      }
       if (view === '3d') {
         expect(svg).toContain('transform="matrix(');
         expect(svg.split('class="world-props"')).toHaveLength(3); // auta pod bryłami, statki nad nimi
+        const accents = GENRES.scifi.accents.filter((c) => svg.includes(`stroke="${c}"`));
+        expect(accents.length).toBeGreaterThanOrEqual(3);
       }
     }
   });

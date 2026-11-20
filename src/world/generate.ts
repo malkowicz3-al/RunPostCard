@@ -69,7 +69,7 @@ export function generateWorld(
   seed: number,
   genre: GenreId,
 ): World {
-  const { block: B, heights, props: limits } = GENRES[genre];
+  const { block: B, heights, props: limits, accents } = GENRES[genre];
   const corridor = 0.45 * B;
   const rc = (i: number, j: number, kind: string) => mulberry32(hashSeed(seed, genre, i, j, kind));
   const nearRoute = routeIndex(points, corridor);
@@ -119,6 +119,14 @@ export function generateWorld(
     return top * (1 - v) + bottom * v;
   };
   const blocked = (ring: Pt[]) => ring.some(([x, y]) => nearRoute(x, y));
+  // Bryła: wierzchołki i punkty na 1/4, 1/2, 3/4 każdej krawędzi poza korytarzem, więc nic nie wchodzi na ulicę trasy (34 px).
+  const edgeBlocked = (ring: Pt[]) =>
+    blocked(
+      ring.flatMap(([ax, ay], k) => {
+        const [bx, by] = ring[(k + 1) % ring.length];
+        return [0, 0.25, 0.5, 0.75].map((t): Pt => [ax + (bx - ax) * t, ay + (by - ay) * t]);
+      }),
+    );
   // Woda nigdy pod trasą: ani środek, ani rogi komórki w korytarzu.
   const isWater = (i: number, j: number) => noise(i, j) < 0.1 && !blocked([inCell(i, j, 0.5, 0.5), ...quad(i, j, 0, 0, 1, 1)]);
   // Ulica prosto między wygiętymi rogami: fala wygięcia (~2 km płótna) jest o wiele dłuższa niż kwartał, a dwa punkty
@@ -176,6 +184,9 @@ export function generateWorld(
       }
       if (rc(i, j, 'keep')() >= density(inCell(i, j, 0.5, 0.5))) continue;
       const r = rc(i, j, 'b');
+      // Neon i szyld z osobnego strumienia, więc układ miasta zostaje ten sam; losowane dla każdej kandydatki, nie tylko dodanej.
+      const ar = rc(i, j, 'a');
+      const accent = () => accents[Math.floor(ar() * accents.length)];
       const height = (k = r()) => Math.max(0, Math.round(heights[0] + (heights[1] - heights[0]) * k * k));
       if (r() < 0.1) {
         // Niska kopuła: ośmiokąt w środku kwartału.
@@ -184,7 +195,7 @@ export function generateWorld(
           return round(inCell(i, j, 0.5 + 0.3 * Math.cos(ang), 0.5 + 0.3 * Math.sin(ang)));
         });
         const [cx, cy] = inCell(i, j, 0.5, 0.5);
-        if (!nearRoute(cx, cy) && !blocked(ring)) buildings.push({ ring, h: Math.round(heights[0] * 0.6), min: 0 });
+        if (!nearRoute(cx, cy) && !edgeBlocked(ring)) buildings.push({ ring, h: Math.round(heights[0] * 0.6), min: 0, accent: accent() });
         continue;
       }
       const count = 1 + Math.floor(r() * 3);
@@ -194,9 +205,13 @@ export function generateWorld(
         const v0 = 0.12 + r() * 0.2;
         const v1 = 0.88 - r() * 0.2;
         const ring = quad(i, j, u0, v0, u0 + span, v1);
+        const [tint, sign] = [accent(), ar() < 0.3];
         const cx = ring.reduce((s, p) => s + p[0], 0) / 4;
         const cy = ring.reduce((s, p) => s + p[1], 0) / 4;
-        if (!nearRoute(cx, cy) && !blocked(ring)) buildings.push({ ring, h: height(), min: 0 });
+        if (!nearRoute(cx, cy) && !edgeBlocked(ring)) {
+          const h = height();
+          buildings.push({ ring, h, min: 0, accent: tint, sign: sign && h >= 80 });
+        }
       }
     }
 

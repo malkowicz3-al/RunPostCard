@@ -160,13 +160,14 @@ export const Buildings3D = memo(function Buildings3D({
     };
 
     const key = [a, b, c, d, e, f, pxPerM, color, fill, shape, accent, tall].join();
-    const build = ({ ring, h, min }: Building): Solid => {
+    const build = ({ ring, h, min, accent: own, sign }: Building): Solid => {
       let x0 = Infinity, x1 = -Infinity, maxY = -Infinity;
       for (const [x, y] of ring) {
         x0 = Math.min(x0, sx(x, y));
         x1 = Math.max(x1, sx(x, y));
         maxY = Math.max(maxY, sy(x, y));
       }
+      const edge = ([i, j]: [number, number, boolean]) => Math.hypot(ring[j][0] - ring[i][0], ring[j][1] - ring[i][1]);
       const detail = x1 - x0 >= DETAIL_PX && (h - min) * s >= DETAIL_WALL_PX;
       // Klucz: najniższy punkt rzutu na podłoże + wysokość dołu, więc część na podium idzie po podium.
       const solid: Solid = { y: maxY + min * s, parts: [] };
@@ -227,12 +228,25 @@ export const Buildings3D = memo(function Buildings3D({
           solid.parts.push({ d: dd, fill: right });
         }
         if (shape === 'tower') {
-          if (detail) solid.parts.push(lines(pts, floors(min, h), neon, 0.45));
-          solid.parts.push({ d: poly(pts), stroke: neon, width: 1, opacity: 0.85 });
+          const glow = own ?? neon;
+          if (detail) solid.parts.push(lines(pts, floors(min, h), glow, own ? 0.75 : 0.45));
+          solid.parts.push({ d: poly(pts), stroke: glow, width: 1, opacity: 0.85 });
+          if (sign && own && detail) {
+            // Szyld na najdłuższej widocznej ścianie: środkowe 50% krawędzi, od 55% do 85% wysokości.
+            const [i, j] = visible(pts).reduce((u, v) => (edge(v) > edge(u) ? v : u), [0, 0, false]);
+            if (i !== j) {
+              const [ax, ay] = ring[i];
+              const [bx, by] = ring[j];
+              const at = (t: number): Pt => [ax + (bx - ax) * t, ay + (by - ay) * t];
+              const [z0, z1] = [min + (h - min) * 0.55, min + (h - min) * 0.85];
+              const d = `M${P(...at(0.25), z0)}L${P(...at(0.75), z0)}L${P(...at(0.75), z1)}L${P(...at(0.25), z1)}Z`;
+              solid.parts.push({ d, fill: own, opacity: 0.9 }, { d, stroke: mix(own, '#ffffff', 0.6), width: 1 });
+            }
+          }
           if (detail && h >= tall && h - min >= ANTENNA_M) {
             const cx = ring.reduce((sum, [x]) => sum + x, 0) / ring.length;
             const cy = ring.reduce((sum, [, y]) => sum + y, 0) / ring.length;
-            solid.parts.push({ d: `M${P(cx, cy, h)}L${P(cx, cy, h + Math.max(8, (h - min) * 0.25))}`, stroke: neon, width: 1.2 });
+            solid.parts.push({ d: `M${P(cx, cy, h)}L${P(cx, cy, h + Math.max(8, (h - min) * 0.25))}`, stroke: glow, width: 1.2 });
           }
         }
       }

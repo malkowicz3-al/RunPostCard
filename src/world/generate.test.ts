@@ -97,6 +97,25 @@ describe('generateWorld', () => {
     }
   });
 
+  it('każda bryła z neonem gatunku, szyld tylko na wysokich; ulica trasy (pół szerokości 17 px) z dala od brył', () => {
+    for (const seed of [1, 4, 99, 12345]) {
+      const { buildings } = generateWorld(routes[0], POSTCARD, seed, 'scifi').layers;
+      for (const b of buildings!) {
+        expect(GENRES.scifi.accents).toContain(b.accent);
+        if (b.sign) expect(b.h).toBeGreaterThanOrEqual(80);
+        // Odległość krawędzi obrysu od trasy: próbki co 1/8 krawędzi, tylko brył blisko trasy (bok kwartału < 100 px).
+        if (routeDist(centroid(b), routes[0]) < 100)
+          b.ring.forEach(([ax, ay], k) => {
+            const [bx, by] = b.ring[(k + 1) % b.ring.length];
+            for (let t = 0; t <= 1; t += 0.125)
+              expect(routeDist([ax + (bx - ax) * t, ay + (by - ay) * t], routes[0])).toBeGreaterThan(17);
+          });
+      }
+      expect(new Set(buildings!.map((b) => b.accent)).size).toBe(GENRES.scifi.accents.length);
+      expect(buildings!.some((b) => b.sign)).toBe(true);
+    }
+  });
+
   it('budżet: prostokąt pocztówki < 500 ms (tylko rząd wielkości) i < 300 KB', () => {
     generateWorld(routes[2], POSTCARD, 9, 'scifi'); // rozgrzanie JIT
     const t = performance.now();
