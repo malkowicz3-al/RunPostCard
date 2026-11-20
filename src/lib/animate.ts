@@ -26,6 +26,7 @@ export type FrameOptions = {
   fps: number;
   seconds: number;
   holdSeconds: number;
+  progresses?: number[]; // postęp w każdej klatce zamiast frameProgress (POV: zwolnienia przy momentach)
   onProgress?: (done: number) => void; // 0..1
   signal?: AbortSignal;
 };
@@ -55,10 +56,10 @@ export async function drawFrame(svg: SVGSVGElement | string, canvas: HTMLCanvasE
 
 // Klatka po klatce do canvas, potem onFrame (koder). Ta sama wartość postępu co poprzednio nie rysuje się od nowa.
 export async function renderFrames(
-  { frame, canvas, under, fps, seconds, holdSeconds, onProgress, signal }: FrameOptions,
+  { frame, canvas, under, fps, seconds, holdSeconds, progresses, onProgress, signal }: FrameOptions,
   onFrame: (index: number, count: number) => Promise<void> | void,
 ): Promise<void> {
-  const ps = frameProgress(fps, seconds, holdSeconds);
+  const ps = progresses ?? frameProgress(fps, seconds, holdSeconds);
   let last = NaN;
   for (let i = 0; i < ps.length; i++) {
     signal?.throwIfAborted();

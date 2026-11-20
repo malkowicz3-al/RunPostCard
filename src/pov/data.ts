@@ -27,6 +27,7 @@ const HEADING_HALF_M = 120; // kierunek z różnicy punktów ±120 m
 const HEADING_SMOOTH_M = 150; // wytłumienie skrętów kamery
 export const CLEAR_M = 20; // kamera co najmniej tyle nad terenem
 export const MAX_BUILDINGS = 3000;
+export const FOV = 55; // pionowy kąt kamery w stopniach (PerspectiveCamera w scene.ts)
 
 export function localFrame(projection: GeoProjection, points: [number, number][]): Frame {
   let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity];
@@ -158,6 +159,27 @@ export function cameraAt(path: CameraPath, progress: number): { eye: V3; look: V
   const eye = spline(path.eye, d);
   eye[1] = Math.max(eye[1], path.ground(eye[0], eye[2]) + CLEAR_M);
   return { eye, look: spline(path.look, d), runner: along(path.track, d) };
+}
+
+const sub = (a: V3, b: V3): V3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const dot = (a: V3, b: V3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const cross = (a: V3, b: V3): V3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const unit = (a: V3): V3 => {
+  const l = Math.hypot(...a) || 1;
+  return [a[0] / l, a[1] / l, a[2] / l];
+};
+
+// Punkt sceny na ekranie kamery w p, jak PerspectiveCamera(fov, aspect) z lookAt i osią y w górę: [0..1, 0..1] od lewego górnego rogu; null = za kamerą.
+export function project(path: CameraPath, p: number, v: V3, aspect: number, fov = FOV): [number, number] | null {
+  const { eye, look } = cameraAt(path, p);
+  const forward = unit(sub(look, eye));
+  const right = unit(cross(forward, [0, 1, 0]));
+  const up = cross(right, forward);
+  const d = sub(v, eye);
+  const z = dot(d, forward);
+  if (z <= 1) return null; // 1 = near kamery
+  const tan = Math.tan((fov * Math.PI) / 360);
+  return [(1 + dot(d, right) / (z * tan * aspect)) / 2, (1 - dot(d, up) / (z * tan)) / 2];
 }
 
 export function hexRgb(hex: string): [number, number, number] {

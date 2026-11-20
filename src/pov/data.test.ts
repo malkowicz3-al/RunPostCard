@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { geoMercator } from 'd3-geo';
 import type { RunStreams } from '../strava/api';
-import { CLEAR_M, buildingsData, cameraAt, cameraPath, extrude, localFrame, ribbon, toLocal, track } from './data';
+import { CLEAR_M, buildingsData, cameraAt, cameraPath, extrude, localFrame, project, ribbon, toLocal, track } from './data';
 
 // Prosto na wschód ~3 km (Kraków), wysokość rośnie o 30 m.
 const n = 200;
@@ -74,5 +74,18 @@ describe('pov data', () => {
     const m = ribbon(t, 5, () => '#ff0000');
     const nums = [...t.pos.flat(), ...path.eye.flat(), ...path.look.flat(), ...Object.values(cameraAt(path, 0.5)).flat(), ...m.positions, ...m.colors];
     expect(nums.every(Number.isFinite)).toBe(true);
+  });
+});
+
+describe('project', () => {
+  it('biegacz w poziomym środku kadru, nad dołem; punkt za kamerą = null', () => {
+    const { track: t, ground } = track(east, proj, null);
+    const path = cameraPath(t, ground);
+    const { runner, eye } = cameraAt(path, 0.5);
+    const [x, y] = project(path, 0.5, runner, 1080 / 1920)!;
+    expect(x).toBeCloseTo(0.5, 2);
+    expect(y).toBeGreaterThan(0.2);
+    expect(y).toBeLessThan(0.8);
+    expect(project(path, 0.5, [eye[0] - 100, eye[1], eye[2]], 1080 / 1920)).toBeNull();
   });
 });

@@ -29,7 +29,8 @@ The manual steps the script does for you are described below, if you prefer to d
 
 - **Run list**: totals and your runs as race bibs whose look follows the run type you set in Strava (training, long run, workout, race, trail), **Refresh**, **Load more**, **Select** several runs.
 - **Postcard (9:16)**: the route on a map (by default **Dark** or **Light**, following your system's theme), 43 map styles, 6 gradients, transparent or your own photo (with editing and the runner cut out in front of the route).
-- **Views**: flat, **3D** with elevation, buildings and terrain, and **POV**, a camera flight behind the runner; each **Still** or **Animated**.
+- **Views**: **2D** or **3D** with elevation, buildings and terrain, each **Still** or **Animated**.
+- **POV video**: in **Download**, an MP4 camera flight behind the runner in your chosen look; the stats count along, and it slows down at key moments (max heart rate, fastest pace, highest point) with a banner over the route.
 - **Route**: line by theme color, rainbow, fire, ice, pace, heart rate, effort, elevation, grade or cadence (with a small legend on the postcard), **Glow** to make it stand out and **Map dim** to calm the map.
 - **Stats**: many layouts; click any stat to change what it shows and how (numbers or charts from your run's streams). 20 fonts, plus **Bold**, **Italic**, **Outline** and **Shadow** for the stats.
 - **Download**: PNG or SVG for a still postcard; MP4 video or animated GIF for an animated one (the route draws itself while the numbers count up), and **Share** on phones.
@@ -189,7 +190,7 @@ When you open a postcard, the app makes one extra Strava request for that run on
 - The "Connect with Strava" button and the "Powered by Strava" marks (`src/assets/brand/strava/`) are the official Strava brand assets, used without modification.
 - Postcard fonts (`public/fonts/`): Barlow Condensed Bold, Bebas Neue, Anton, Oswald, Teko, Archivo Black, Russo One, Black Ops One, Space Grotesk, Orbitron, Audiowide, Rubik Mono One, Bungee, Monoton, Righteous, Racing Sans One, Press Start 2P, Pacifico and Lobster under the SIL Open Font License 1.1; Permanent Marker under the Apache License 2.0. License texts: `public/fonts/licenses/`.
 - Person segmentation (**Behind**): the MediaPipe Selfie Segmentation multiclass model (`public/models/selfie_multiclass_256x256.tflite`, Google), the MediaPipe Interactive Segmenter model for **Pick object** (`public/models/magic_touch.tflite`, Google) and `@mediapipe/tasks-vision`, all under the Apache License 2.0. Notice: `public/models/LICENSE`.
-- POV view: [Three.js](https://github.com/mrdoob/three.js) (MIT), loaded only when you open POV.
+- POV video: [Three.js](https://github.com/mrdoob/three.js) (MIT), loaded only when you download a POV video.
 - Animation export: [Mediabunny](https://github.com/Vanilagy/mediabunny) (MP4 muxing, Mozilla Public License 2.0) and [gifenc](https://github.com/mattdesl/gifenc) (GIF encoding, MIT), both loaded only when you export an animation.
 - Map data: OpenFreeMap, © OpenMapTiles, © OpenStreetMap contributors (see **Maps** above).
 - Login screen photos (`src/assets/collage/`, cropped and resized): CC0 1.0 via Wikimedia Commons (originally on Unsplash). 01 "Long road into the mountains" by Bruno Bergher; 02 "Winding mountain road" by adrian; 03 "Runner" by Jenny Hill; 04 "Running down Mount Tamalpais in gold" by Todd Diemer; 05 "Running in the rain" by Dominik Schröder; 06 "The Runner" and 07 "Ready, set, go" by William Stitt; 08 "Starting line" by Kolleen Gladden. The runner cut-outs in `src/assets/collage/cutouts/` (made once in dev with `src/dev/collageCutouts.ts`, no model runs on the login screen) are derived from photos 03, 06 and 07 and are under the same CC0 1.0.

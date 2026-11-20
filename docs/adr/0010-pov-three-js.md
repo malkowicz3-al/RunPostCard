@@ -1,5 +1,7 @@
 # 0010. POV: lot wzdłuż trasy w Three.js (leniwy chunk)
 
+Zmienione przez 0011: brak podglądu i widoku POV; eksport tylko MP4.
+
 ## Kontekst
 Etap 6 planu animacji: widok „POV”, kamera leci za biegaczem nad mapą motywu, z budynkami i terenem, z eksportem MP4/GIF. Izometria SVG (ADR 0006, 0008) nie daje perspektywy z bliska ani zasłaniania; rysowanie perspektywy w SVG klatka po klatce byłoby wolne i bez bufora głębi. Właściciel zgodził się na Three.js tylko dla POV.
 

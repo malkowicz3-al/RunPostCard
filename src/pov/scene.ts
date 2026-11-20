@@ -3,9 +3,9 @@ import type { GeoProjection } from 'd3-geo';
 import type { RunStreams } from '../strava/api';
 import type { Dem } from '../lib/dem';
 import type { Building } from '../lib/vectorMap';
-import { buildingsData, cameraAt, cameraPath, ribbon, toLocal, track, type Mesh } from './data';
+import { FOV, buildingsData, cameraAt, cameraPath, ribbon, toLocal, track, type CameraPath, type Mesh } from './data';
 
-// Scena POV (ADR 0010): ładowana tylko przez import() z PovView, więc Three.js trafia do osobnego chunku.
+// Scena POV (ADR 0010, 0011): ładowana tylko przez import() eksportu POV, więc Three.js trafia do osobnego chunku.
 export type PovInput = {
   streams: RunStreams;
   projection: GeoProjection;
@@ -19,18 +19,18 @@ export type PovInput = {
 };
 
 export type Pov = {
-  render: (p: number) => void; // podgląd na canvasie z createRenderer
-  paint: (target: HTMLCanvasElement, p: number) => void; // klatka eksportu w rozmiarze target (osobny renderer)
+  path: CameraPath; // ścieżka kamery (rzutowanie napisów nad trasą)
+  paint: (target: HTMLCanvasElement, p: number) => void; // klatka eksportu w rozmiarze target
   dispose: () => void;
 };
 
 const SIZE: [number, number] = [1080, 1920];
-const FOV = 55;
 
-export function createRenderer(canvas: HTMLCanvasElement): THREE.WebGLRenderer {
+// Renderer poza ekranem; preserveDrawingBuffer, żeby drawImage po render() widział klatkę.
+export function createRenderer(): THREE.WebGLRenderer {
   // Kolory jak w SVG (sRGB bez konwersji): tekstura mapy i wierzchołki mają wyglądać jak pocztówka.
   THREE.ColorManagement.enabled = false;
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
   renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
   return renderer;
 }
@@ -113,7 +113,6 @@ export function createPov(renderer: THREE.WebGLRenderer, input: PovInput): Pov {
   scene.add(runner);
 
   const view = new THREE.PerspectiveCamera(FOV, SIZE[0] / SIZE[1], 1, far * 2);
-  const shot = view.clone();
   const pose = (camera: THREE.PerspectiveCamera, p: number) => {
     const { eye, look, runner: at } = cameraAt(path, p);
     camera.position.set(...eye);
@@ -122,29 +121,13 @@ export function createPov(renderer: THREE.WebGLRenderer, input: PovInput): Pov {
     glowMat.color.set(input.color(p));
   };
 
-  let exporter: THREE.WebGLRenderer | null = null;
-
   return {
-    render(p) {
+    path,
+    paint(target, p) {
       const c = renderer.domElement;
-      const ratio = Math.min(2, window.devicePixelRatio || 1);
-      const w = Math.round(c.clientWidth * ratio);
-      const h = Math.round(c.clientHeight * ratio);
-      if (w > 0 && h > 0 && (c.width !== w || c.height !== h)) {
-        renderer.setSize(w, h, false);
-        view.aspect = w / h;
-        view.updateProjectionMatrix();
-      }
+      if (c.width !== target.width || c.height !== target.height) renderer.setSize(target.width, target.height, false);
       pose(view, p);
       renderer.render(scene, view);
-    },
-    paint(target, p) {
-      exporter ??= new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-      exporter.outputColorSpace = THREE.LinearSRGBColorSpace;
-      const c = exporter.domElement;
-      if (c.width !== target.width || c.height !== target.height) exporter.setSize(target.width, target.height, false);
-      pose(shot, p);
-      exporter.render(scene, shot);
       target.getContext('2d')!.drawImage(c, 0, 0, target.width, target.height);
     },
     dispose() {
@@ -154,10 +137,8 @@ export function createPov(renderer: THREE.WebGLRenderer, input: PovInput): Pov {
         (o.material as THREE.Material).dispose();
       });
       texture?.dispose();
-      for (const r of [renderer, exporter]) {
-        r?.dispose();
-        r?.forceContextLoss();
-      }
+      renderer.dispose();
+      renderer.forceContextLoss();
     },
   };
 }

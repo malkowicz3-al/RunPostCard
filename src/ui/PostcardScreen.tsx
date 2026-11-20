@@ -37,7 +37,7 @@ import { LayoutPicker } from './LayoutPicker';
 import { LinePicker } from './LinePicker';
 import { LookPicker, type Look } from './LookPicker';
 import { MapBackdrop } from './MapBackdrop';
-import { PovView, hasWebGL, type PovPaint } from './PovView';
+import { hasWebGL } from '../pov/webgl';
 import { TextStyleToggles } from './TextStyleToggles';
 import { useMapLayers } from './useMapLayers';
 import { useRegionLayers } from './useRegionLayers';
@@ -45,6 +45,7 @@ import { usePersonCutout } from './usePersonCutout';
 import { usePreviewProgress } from './usePreviewProgress';
 import { useRunStreams } from './useRunStreams';
 import { toDataUrl, useTerrain } from './useTerrain';
+import { toggleView, type View } from './viewState';
 
 const SIZE: [number, number] = [1080, 1920];
 const IDENTITY: [number, number, number, number, number, number] = [1, 0, 0, 1, 0, 0];
@@ -90,6 +91,13 @@ export function initialLook(activity: Activity): Look {
   return typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
 }
 
+// Ikona przy przyciskach, które przełączają między dwoma stanami (etykieta = stan bieżący).
+const SwapIcon = () => (
+  <svg className="swap-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M4 8h14l-4-4M20 16H6l4 4" />
+  </svg>
+);
+
 // Podgląd z własnym stanem animacji: co klatkę renderuje się tylko pocztówka, nie cały panel.
 const PreviewCard = memo(function PreviewCard({ props, playing }: { props: Parameters<typeof Postcard>[0]; playing: boolean }) {
   const progress = usePreviewProgress(playing);
@@ -129,12 +137,9 @@ export function PostcardScreen({
   const [gradient, setGradient] = useState<GradientId>('dusk');
   const [textStyle, setTextStyle] = useState<TextStyle>({});
   const [mapFailed, setMapFailed] = useState(false);
-  const [view, setView] = useState<'flat' | '3d' | 'pov'>('flat');
-  const [povReady, setPovReady] = useState(false);
-  const [playing, setPlaying] = useState(true);
-  const [animated, setAnimated] = useState(false); // Flat/3D: podgląd animacji rysowania; POV ma własne playing
-  const povPaint = useRef<PovPaint | null>(null);
-  // W trakcie MP4/GIF scena POV musi zostać ta sama: wybór widoku i wyglądu zablokowany.
+  const [view, setView] = useState<View>('flat');
+  const [animated, setAnimated] = useState(false); // podgląd animacji rysowania
+  // W trakcie eksportu karta musi zostać ta sama: wybór widoku i wyglądu zablokowany.
   const [exporting, setExporting] = useState(false);
   const [showRoute, setShowRoute] = useState(true);
   const [routeColor, setRouteColor] = useState<RouteColor>('theme');
@@ -156,13 +161,12 @@ export function PostcardScreen({
   // 3D liczy się na płaskiej projekcji trasy, więc bez niej przycisk nie ma sensu.
   const has3d = !!streams?.altitude && fit !== null;
   const is3d = view === '3d' && has3d;
-  // POV (ADR 0010): lot nad mapą motywu (bez motywu mapy: Dark), trasa ze strumieni.
+  // POV (ADR 0010, 0011): tylko eksport MP4, lot nad mapą motywu (bez motywu mapy: Dark), trasa ze strumieni.
   const webgl = useMemo(hasWebGL, []);
   const hasPov = (streams?.latlng.length ?? 0) >= 2 && fit !== null && webgl;
-  const isPov = view === 'pov' && hasPov;
   const povTheme: ThemeId = isMap ? (look as ThemeId) : 'dark';
   const profile = POSTCARD_DETAILED;
-  const map = useMapLayers(fit?.projection ?? null, SIZE, profile, isMap || isPov);
+  const map = useMapLayers(fit?.projection ?? null, SIZE, profile, isMap || hasPov);
   const mapMissing = isMap && !map.layers;
   const mapLoading = isMap && (!map.layers || map.loading);
   const [camera, setCamera] = useState<Camera>(DEFAULT_CAMERA);
@@ -227,7 +231,6 @@ export function PostcardScreen({
     return { href: toDataUrl(shadeOverlay(dem, shade), 'image/png'), rect };
   }, [dem, shade]);
   // 3D: relief JPEG (do 8 MP); kolor tła odroczony, żeby przeciąganie koloru neonu nie liczyło reliefu przy każdym zdarzeniu.
-  const povAccent = useDeferredValue(accent); // suwak koloru nie buduje sceny WebGL co krok
   const reliefBg = useDeferredValue(isMap ? THEMES[look as ThemeId].style({ accent }).background : null);
   const reliefImg = useMemo(() => {
     if (!dem || !shade || !iso || !reliefBg) return undefined;
@@ -257,13 +260,9 @@ export function PostcardScreen({
   const terrainLoading = terrainOn && terrain.loading;
   // Punkt należy do zdjęcia, przy którym go kliknięto: po zmianie zdjęcia nie liczymy go na nowym ani przez jeden render.
   const cutout = usePersonCutout(photo, behind && look === 'photo', pickAt?.href === photo ? pickAt : null);
-  // POV czeka na mapę i teren, żeby scena nie budowała się dwa razy.
-  const povWaiting = isPov && ((!map.layers && !map.failed) || terrainLoading);
-  const loading = mapLoading || zoomed.loading || terrainLoading || cutout.loading || povWaiting;
-  // Motion: w POV lot kamery, w Flat/3D rysowanie trasy; od niego zależą też formaty pobierania.
-  const motion = isPov ? playing : animated;
+  const loading = mapLoading || zoomed.loading || terrainLoading || cutout.loading;
   // Bez zoomed.loading: przesunięcie mapy nie restartuje animacji.
-  const playPreview = animated && !isPov && !exporting && !mapLoading && !terrainLoading && !cutout.loading;
+  const playPreview = animated && !exporting && !mapLoading && !terrainLoading && !cutout.loading;
 
   useEffect(() => {
     let cancelled = false;
@@ -282,7 +281,7 @@ export function PostcardScreen({
   }, [activity, is3d]);
 
   // Płasko przy zoomie 1 nie ma czego przesuwać: kółko i palec przewijają stronę (ctrl+kółko i szczypanie nadal przybliżają).
-  const scrollsPage = isPov || (!is3d && camera.zoom <= 1);
+  const scrollsPage = !is3d && camera.zoom <= 1;
   // Listener nie-pasywny, żeby preventDefault blokował przewijanie strony; is3d w zależnościach przez scrollsPage.
   useEffect(() => {
     const el = previewRef.current;
@@ -329,7 +328,7 @@ export function PostcardScreen({
     const all = pointers.current;
     const prev = all.get(e.pointerId);
     const svg = currentSvg();
-    if (pickArmed || isPov || !prev || !svg) return;
+    if (pickArmed || !prev || !svg) return;
     const next = { x: e.clientX, y: e.clientY };
     const units = SIZE[0] / svg.getBoundingClientRect().width; // px ekranu -> jednostki SVG
     const other = [...all].find(([id]) => id !== e.pointerId)?.[1];
@@ -374,14 +373,14 @@ export function PostcardScreen({
   // Bez wczytanej mapy pocztówka ma gradient, więc podgląd też.
   const preview = previewColors(mapMissing ? 'gradient' : look, accent, photo, gradient);
 
-  // Przy błędzie mapy wracamy do gradientu.
+  // Przy błędzie mapy wracamy do gradientu (mapa wczytywana tylko dla POV przy innym tle nie zmienia wyglądu).
   useEffect(() => {
-    if (!map.failed) return;
+    if (!map.failed || !isMap) return;
     setMapFailed(true);
     setLook('gradient');
     // Font motywu nie pasuje do gradientu; wybór ręczny zostaje.
     setFont((f) => (look in THEMES && f === THEMES[look as ThemeId].font ? DEFAULT_FONT : f));
-  }, [map.failed]);
+  }, [map.failed, isMap]);
 
   // Te same właściwości dla podglądu i klatek animacji; stały obiekt, żeby podgląd nie przerysowywał się przy postępie eksportu.
   const person = look === 'photo' ? (cutout.person ?? undefined) : undefined;
@@ -389,21 +388,11 @@ export function PostcardScreen({
     activity,
     fontCss: fontCss?.css,
     font,
-    background: isPov
-      ? map.layers
-        ? 'map'
-        : 'transparent'
-      : isMap && !mapMissing
-        ? 'map'
-        : look === 'photo' && photo
-          ? 'photo'
-          : look === 'transparent'
-            ? 'transparent'
-            : 'gradient',
+    background: isMap && !mapMissing ? 'map' : look === 'photo' && photo ? 'photo' : look === 'transparent' ? 'transparent' : 'gradient',
     gradient,
     map: map.layers,
     photo: photo ? { href: photo, dim: dim / 100 } : undefined,
-    theme: isMap || isPov ? povTheme : undefined,
+    theme: isMap ? (look as ThemeId) : undefined,
     accent,
     streams,
     view: is3d ? '3d' : 'flat',
@@ -416,10 +405,9 @@ export function PostcardScreen({
     routeColor,
     textStyle,
     person,
-    bare: isPov,
-    glow: isPov ? 0 : glow,
-    mapDim: isPov ? 0 : mapDim,
-  }), [glow, mapDim, textStyle, activity, fontCss?.css, font, isMap, mapMissing, look, gradient, photo, map.layers, dim, accent, streams, is3d, camera, iso, zoomed.refined, terrainImage, items, showRoute, routeColor, person, isPov, povTheme]);
+    glow,
+    mapDim,
+  }), [glow, mapDim, textStyle, activity, fontCss?.css, font, isMap, mapMissing, look, gradient, photo, map.layers, dim, accent, streams, is3d, camera, iso, zoomed.refined, terrainImage, items, showRoute, routeColor, person]);
   const previewCard = <PreviewCard props={postcardProps} playing={playPreview} />;
 
   const currentSvg = () => previewRef.current?.querySelector('svg') ?? null;
@@ -498,7 +486,7 @@ export function PostcardScreen({
       <div className="postcard-layout">
         {/* Szachownica tylko na otoczce podglądu, żeby nie trafiła do eksportu. */}
         <div
-          className={`postcard-frame${look === 'transparent' ? ' checkerboard' : ''}${fit ? ' pannable' : ''}${scrollsPage ? ' scrolls-page' : ''}${pickArmed ? ' picking' : ''}${isPov ? ' pov-frame' : ''}`}
+          className={`postcard-frame${look === 'transparent' ? ' checkerboard' : ''}${fit ? ' pannable' : ''}${scrollsPage ? ' scrolls-page' : ''}${pickArmed ? ' picking' : ''}`}
           ref={previewRef}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
@@ -508,7 +496,7 @@ export function PostcardScreen({
           tabIndex={fit ? 0 : undefined}
           aria-label={fit ? 'Postcard preview. Plus and minus zoom, arrow keys move the map.' : undefined}
           onKeyDown={(e) => {
-            if (!fit || isPov) return;
+            if (!fit) return;
             const step = 60;
             const keys: Record<string, (c: Camera) => Camera> = {
               '+': (c) => ({ ...c, zoom: c.zoom * 1.25 }),
@@ -525,21 +513,6 @@ export function PostcardScreen({
             moveCamera(fn);
           }}
         >
-          {isPov && !povWaiting && streams && fit && (
-            <PovView
-              streams={streams}
-              projection={fit.projection}
-              layers={map.layers}
-              theme={povTheme}
-              accent={povAccent}
-              dem={dem}
-              color={showRoute ? lineColor : undefined}
-              route={showRoute}
-              playing={playing}
-              paintRef={povPaint}
-              onReady={setPovReady}
-            />
-          )}
           {previewCard}
           {/* Nakładka w HTML obok <svg>, żeby nie trafiła do eksportu. */}
           {items.map((item) => {
@@ -643,43 +616,38 @@ export function PostcardScreen({
           <section className="panel-section" inert={exporting}>
               <h3 className="panel-heading">View</h3>
               <div className="toggle-row">
-                {fit && <div className="toggle-group" role="group" aria-label="View">
-                  <button className="toggle" aria-pressed={!is3d && !isPov} onClick={() => setView('flat')}>
-                    Flat
+                {fit && has3d && (
+                  <button
+                    className="toggle"
+                    title={is3d ? 'View: 3D. Switch to 2D' : 'View: 2D. Switch to 3D'}
+                    aria-label={is3d ? 'View: 3D. Switch to 2D' : 'View: 2D. Switch to 3D'}
+                    onClick={() => setView(toggleView(is3d ? '3d' : 'flat', has3d))}
+                  >
+                    {is3d ? '3D' : '2D'}
+                    <SwapIcon />
                   </button>
-                  {has3d && (
-                    <button className="toggle" aria-pressed={is3d} onClick={() => setView('3d')}>
-                      3D
-                    </button>
-                  )}
-                  <button className="toggle" aria-pressed={isPov} disabled={!hasPov} onClick={() => setView('pov')}>
-                    POV{!webgl ? ' (WebGL not available)' : !hasPov && ' (needs streams)'}
-                  </button>
-                </div>}
-                <div className="toggle-group" role="group" aria-label="Motion">
-                  {(
-                    [
-                      [false, 'Still'],
-                      [true, 'Animated'],
-                    ] as const
-                  ).map(([on, label]) => (
-                    <button key={label} className="toggle" aria-pressed={motion === on} onClick={() => (isPov ? setPlaying : setAnimated)(on)}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
+                )}
+                <button
+                  className="toggle"
+                  title={animated ? 'Motion: Animated. Switch to Still' : 'Motion: Still. Switch to Animated'}
+                  aria-label={animated ? 'Motion: Animated. Switch to Still' : 'Motion: Still. Switch to Animated'}
+                  onClick={() => setAnimated(!animated)}
+                >
+                  {animated ? 'Animated' : 'Still'}
+                  <SwapIcon />
+                </button>
                 {hasTerrain && (
                   <button className="toggle" aria-pressed={terrainOn} onClick={() => setTerrainPick(!terrainOn)}>
                     Terrain
                   </button>
                 )}
-                {moved && !isPov && (
+                {moved && (
                   <button className="text-button" onClick={() => setCamera((c) => keepCamera(c, DEFAULT_CAMERA))}>
                     Reset view
                   </button>
                 )}
               </div>
-              {fit && !isPov && <p className="panel-hint">Drag, Ctrl + scroll or pinch to move and zoom the map.</p>}
+              {fit && <p className="panel-hint">Drag, Ctrl + scroll or pinch to move and zoom the map.</p>}
           </section>
           {fit && (
             <section className="panel-section" inert={exporting}>
@@ -695,20 +663,18 @@ export function PostcardScreen({
                     Line
                     <LinePicker value={routeColor} onChange={setRouteColor} streams={streams} />
                   </div>
-                  {!isPov && (
-                    <div className="toggle-row">
+                  <div className="toggle-row">
+                    <label className="zoom-control">
+                      Glow
+                      <input type="range" min={0} max={100} step={10} value={glow} onChange={(e) => setGlow(Number(e.target.value))} />
+                    </label>
+                    {isMap && (
                       <label className="zoom-control">
-                        Glow
-                        <input type="range" min={0} max={100} step={10} value={glow} onChange={(e) => setGlow(Number(e.target.value))} />
+                        Map dim
+                        <input type="range" min={0} max={70} step={5} value={mapDim} onChange={(e) => setMapDim(Number(e.target.value))} />
                       </label>
-                      {isMap && (
-                        <label className="zoom-control">
-                          Map dim
-                          <input type="range" min={0} max={70} step={5} value={mapDim} onChange={(e) => setMapDim(Number(e.target.value))} />
-                        </label>
-                      )}
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </>
               )}
             </section>
@@ -740,10 +706,52 @@ export function PostcardScreen({
             svg={currentSvg}
             frame={(p) => <Postcard {...postcardProps} progress={p} />}
             resetKey={postcardProps}
-            disabled={loading || !fontReady || (isPov && !povReady)}
-            under={isPov ? (c, p) => povPaint.current?.(c, p) : undefined}
+            disabled={loading || !fontReady}
+            pov={
+              hasPov && streams && fit
+                ? (o) =>
+                    import('../pov/export').then(({ encodePovMp4 }) =>
+                      encodePovMp4(
+                        {
+                          streams,
+                          projection: fit.projection,
+                          layers: map.layers,
+                          theme: povTheme,
+                          accent,
+                          dem,
+                          color: showRoute ? lineColor : undefined,
+                          route: showRoute,
+                          // Nakładka: statystyki, znak i podpis w kolorach motywu; mapa i trasa są w klatce WebGL.
+                          overlay: (p, banner) => (
+                            <Postcard
+                              {...postcardProps}
+                              background={map.layers ? 'map' : 'transparent'}
+                              theme={povTheme}
+                              view="flat"
+                              bare
+                              glow={0}
+                              mapDim={0}
+                              progress={p}
+                              banner={banner}
+                            />
+                          ),
+                        },
+                        o,
+                      ),
+                    )
+                : undefined
+            }
+            povNote={
+              fit && streams && !hasPov
+                ? 'needs WebGL and run streams'
+                : hasPov && !map.layers
+                  ? map.failed
+                    ? 'map could not load'
+                    : 'loading map…'
+                  : undefined
+            }
             onBusy={setExporting}
-            mode={motion ? 'animation' : 'still'}
+            mode={animated ? 'animation' : 'still'}
           />
           {loading && (
             <p className="hint" role="status">

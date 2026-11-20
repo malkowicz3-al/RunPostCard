@@ -9,8 +9,10 @@ export function DownloadMenu({
   onSvg,
   onMp4,
   onGif,
+  onPov,
   mp4Supported,
-  svgNote,
+  povSupported,
+  povNote,
   mode,
 }: {
   disabled: boolean;
@@ -18,8 +20,10 @@ export function DownloadMenu({
   onSvg: () => void;
   onMp4: () => void;
   onGif: () => void;
-  mp4Supported: boolean; // WebCodecs H.264; bez niego pozycja MP4 nieaktywna
-  svgNote?: string; // powód braku SVG (pozycja nieaktywna)
+  onPov?: () => void;
+  mp4Supported: boolean; // WebCodecs H.264; bez niego pozycje MP4 nieaktywne
+  povSupported?: boolean; // jest eksport POV (pozycja w obu trybach)
+  povNote?: string; // powód braku POV (pozycja nieaktywna)
   mode: 'still' | 'animation'; // still: PNG i SVG; animation: MP4 i GIF
 }) {
   const [open, setOpen] = useState(false);
@@ -85,8 +89,9 @@ export function DownloadMenu({
           <DownloadItems
             mode={mode}
             mp4Supported={mp4Supported}
-            svgNote={svgNote}
-            onPick={(f) => choose({ png: onPng, svg: onSvg, mp4: onMp4, gif: onGif }[f])}
+            povSupported={povSupported}
+            povNote={povNote}
+            onPick={(f) => choose({ png: onPng, svg: onSvg, mp4: onMp4, gif: onGif, pov: onPov ?? (() => {}) }[f])}
           />
         </div>
       )}
@@ -94,26 +99,35 @@ export function DownloadMenu({
   );
 }
 
-// Pozycje menu: zdjęcie (PNG, SVG) albo animacja (MP4, GIF), wg trybu podglądu.
+// Pozycje menu: zdjęcie (PNG, SVG) albo animacja (MP4, GIF), wg trybu podglądu; POV (tylko plik) w obu.
 export function DownloadItems({
   mode,
   mp4Supported,
-  svgNote,
+  povSupported,
+  povNote,
   onPick,
 }: {
   mode: 'still' | 'animation';
   mp4Supported: boolean;
-  svgNote?: string;
-  onPick: (format: 'png' | 'svg' | 'mp4' | 'gif') => void;
+  povSupported?: boolean;
+  povNote?: string;
+  onPick: (format: 'png' | 'svg' | 'mp4' | 'gif' | 'pov') => void;
 }) {
+  const note = !mp4Supported ? 'not supported in this browser' : povNote;
+  const pov = (povSupported || povNote) && (
+    <button role="menuitem" tabIndex={-1} disabled={!!note} onClick={() => onPick('pov')}>
+      POV video (MP4){note && ` (${note})`}
+    </button>
+  );
   return mode === 'still' ? (
     <>
       <button role="menuitem" tabIndex={-1} onClick={() => onPick('png')}>
         PNG image
       </button>
-      <button role="menuitem" tabIndex={-1} disabled={!!svgNote} onClick={() => onPick('svg')}>
-        SVG (vector){svgNote && ` (${svgNote})`}
+      <button role="menuitem" tabIndex={-1} onClick={() => onPick('svg')}>
+        SVG (vector)
       </button>
+      {pov}
     </>
   ) : (
     <>
@@ -123,6 +137,7 @@ export function DownloadItems({
       <button role="menuitem" tabIndex={-1} onClick={() => onPick('gif')}>
         GIF (animated)
       </button>
+      {pov}
     </>
   );
 }

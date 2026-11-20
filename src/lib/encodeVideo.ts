@@ -2,6 +2,7 @@ import { DRAW_S, HOLD_S, drawFrame, renderFrames, type FrameOptions, type Under 
 
 type Frame = FrameOptions['frame'];
 type Progress = { onProgress?: (done: number) => void; signal?: AbortSignal; under?: Under };
+type Mp4Options = Progress & { progresses?: number[] };
 
 const MP4 = { width: 1080, height: 1920, fps: 30, bitrate: 8e6 };
 // 25 kl./s: płynnie jak wideo, a opóźnienie GIF-a w setnych sekundy wychodzi równe (40 ms).
@@ -27,7 +28,7 @@ export async function canEncodeMp4(): Promise<boolean> {
   }
 }
 
-export async function encodeMp4(frame: Frame, { onProgress, signal, under }: Progress): Promise<Blob> {
+export async function encodeMp4(frame: Frame, { onProgress, signal, under, progresses }: Mp4Options): Promise<Blob> {
   const { Output, Mp4OutputFormat, BufferTarget, CanvasSource } = await import('mediabunny');
   const canvas = canvasOf(MP4.width, MP4.height);
   const target = new BufferTarget();
@@ -37,7 +38,7 @@ export async function encodeMp4(frame: Frame, { onProgress, signal, under }: Pro
   output.addVideoTrack(source, { frameRate: MP4.fps });
   await output.start();
   try {
-    await renderFrames({ frame, canvas, under, fps: MP4.fps, seconds: DRAW_S, holdSeconds: HOLD_S, onProgress, signal }, (i) =>
+    await renderFrames({ frame, canvas, under, fps: MP4.fps, seconds: DRAW_S, holdSeconds: HOLD_S, progresses, onProgress, signal }, (i) =>
       source.add(i / MP4.fps, 1 / MP4.fps),
     );
     await output.finalize();
