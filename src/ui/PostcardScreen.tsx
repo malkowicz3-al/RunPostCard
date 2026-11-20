@@ -37,6 +37,7 @@ import { LayoutPicker } from './LayoutPicker';
 import { LinePicker } from './LinePicker';
 import { LookPicker, type Look } from './LookPicker';
 import { MapBackdrop } from './MapBackdrop';
+import { StyleSheet } from './StyleSheet';
 import { sceneryUrl, type SceneryId } from './scenery';
 import { TextStyleToggles } from './TextStyleToggles';
 import { useMapLayers } from './useMapLayers';
@@ -569,8 +570,7 @@ export function PostcardScreen({
             );
           })}
         </div>
-        <div className="style-panel">
-          <h2 className="panel-title">Style</h2>
+        <StyleSheet>
           <div className="panel-pair" inert={exporting}>
             <LookPicker
               polyline={activity.map.summary_polyline}
@@ -720,23 +720,6 @@ export function PostcardScreen({
             <LayoutPicker layout={layoutId} onLayout={setLayoutId} />
           </div>
           <TextStyleToggles value={textStyle} onChange={setTextStyle} />
-          <DataModal
-            slot={editingItem}
-            activity={activity}
-            font={font}
-            scale={scale}
-            color={preview.color}
-            bg={preview.bg}
-            streams={streams}
-            onPick={pick}
-            onClose={() => setEditing(null)}
-          />
-          <PhotoEditor
-            file={editingPhoto ? (photoFile ?? null) : null}
-            initial={photoEdit}
-            onApply={applyPhotoEdit}
-            onClose={() => setEditingPhoto(false)}
-          />
           <ExportControls
             name={`runpostcard-${activity.id}`}
             svg={currentSvg}
@@ -759,8 +742,25 @@ export function PostcardScreen({
             </p>
           )}
           {mapFailed && <p className="error">Could not load the map.</p>}
-        </div>
+        </StyleSheet>
       </div>
+      <DataModal
+        slot={editingItem}
+        activity={activity}
+        font={font}
+        scale={scale}
+        color={preview.color}
+        bg={preview.bg}
+        streams={streams}
+        onPick={pick}
+        onClose={() => setEditing(null)}
+      />
+      <PhotoEditor
+        file={editingPhoto ? (photoFile ?? null) : null}
+        initial={photoEdit}
+        onApply={applyPhotoEdit}
+        onClose={() => setEditingPhoto(false)}
+      />
     </div>
   );
 }

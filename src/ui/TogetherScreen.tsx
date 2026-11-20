@@ -6,6 +6,7 @@ import { TogetherCard, nearRuns, togetherFit, type TogetherColors, type Together
 import { THEMES, type ThemeId } from '../postcard/themes';
 import { DEFAULT_ACCENT } from '../postcard/themes/neon';
 import { ExportControls } from './ExportControls';
+import { StyleSheet } from './StyleSheet';
 import { RouteThumb } from './RouteThumb';
 import { Select } from './Select';
 import { useMapLayers } from './useMapLayers';
@@ -64,8 +65,7 @@ export function TogetherScreen({ runs, heat = false, onBack }: { runs: Activity[
         <div className="postcard-frame" ref={previewRef}>
           <TogetherCard {...cardProps} progress={progress} />
         </div>
-        <div className="style-panel">
-          <h2 className="panel-title">Style</h2>
+        <StyleSheet>
           <section className="panel-section">
             <h3 className="panel-heading">Map style</h3>
             <Select
@@ -116,7 +116,7 @@ export function TogetherScreen({ runs, heat = false, onBack }: { runs: Activity[
             mode="animation"
           />
           {map.failed && <p className="error">Could not load the map.</p>}
-        </div>
+        </StyleSheet>
       </div>
     </div>
   );

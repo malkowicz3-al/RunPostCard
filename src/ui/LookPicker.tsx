@@ -11,7 +11,7 @@ type Background = 'gradient' | 'scenery' | 'transparent' | 'photo' | 'map';
 
 const THEME_IDS = Object.keys(THEMES) as ThemeId[];
 const THEME_OPTIONS = THEME_IDS.map((id) => ({ id, label: THEMES[id].label }));
-const SCENERY_OPTIONS = SCENERY.map(({ id, label }) => ({ id, label }));
+const SCENERY_OPTIONS = SCENERY.map(({ id, label, group }) => ({ id, label, group }));
 const GRADIENT_OPTIONS = GRADIENT_IDS.map((id) => ({ id, label: GRADIENTS[id].label }));
 const isTheme = (look: Look): look is ThemeId => look in THEMES;
 
