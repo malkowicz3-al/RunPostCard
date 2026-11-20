@@ -120,6 +120,15 @@ body {
     gap: 2px;
   }
 
+/* Węższe niż telefon (wąskie okno): przyciski w dwóch rzędach zamiast wychodzić poza ekran. */
+@media (max-width: 319px) {
+  .list-screen .top-bar .toggle-row {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 6px;
+  }
+}
+
   .list-screen .top-bar .toggle-row > * {
     padding-inline: 7px;
     font-size: 14px;
@@ -441,6 +450,13 @@ button.text-button {
   gap: 12px;
 }
 
+/* Telefon: jeden numer w rzędzie (w dwóch kolumnach nazwy łamały się w pół słowa), podsumowanie 2x2. */
+@media (max-width: 479px) {
+  .runs {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 @media (min-width: 720px) {
   .runs {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -499,6 +515,14 @@ button.text-button {
   font-size: 0.6em;
   font-weight: 600;
   color: var(--text-secondary);
+}
+
+@media (max-width: 479px) {
+  .runs-summary {
+    grid-template-columns: repeat(2, auto);
+    justify-content: start;
+    column-gap: 32px;
+  }
 }
 
 @media (min-width: 720px) {
@@ -627,8 +651,8 @@ button.text-button {
   padding-right: 6px;
 }
 
-/* Telefon: dystans w pierwszym wierszu, czas i tempo pod nim (bez separatora na początku wiersza). */
-@media (max-width: 719px) {
+/* Dwie kolumny numerów (480–719 px): dystans w pierwszym wierszu, czas i tempo pod nim. Jedna kolumna (telefon) mieści cały wiersz. */
+@media (min-width: 480px) and (max-width: 719px) {
   .bib-data {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -1690,23 +1714,9 @@ button.swatch,
 }
 
 @media (max-width: 899px) {
-  /* Pocztówka na całą szerokość telefonu; wysokość = ekran minus pasek u góry i stopka, więc strona się nie przewija. */
   .postcard-screen .postcard-frame {
-    width: max(180px, min(100%, calc((100dvh - 130px) * 9 / 16)));
-    border-radius: 0;
+    width: max(180px, min(100% - 32px, 480px, calc((100dvh - 226px) * 9 / 16))); /* bez przewijania: pasek, odstępy, przycisk Style i stopka */
     transition: width 0.25s ease;
-  }
-
-  .postcard-screen .top-bar {
-    padding: 8px 16px;
-  }
-
-  .postcard-screen .top-bar .run-title {
-    margin-right: 96px; /* miejsce na przycisk Style w pasku */
-  }
-
-  .app:has(.postcard-screen) footer {
-    padding: 8px 0 12px;
   }
 
   /* Otwarty arkusz zajmuje dół: pocztówka maleje, żeby zmiany było widać. */
@@ -1774,19 +1784,18 @@ button.swatch,
     box-shadow: none;
   }
 
-  /* Style w górnym pasku, po prawej (nad pocztówką, nie na niej). */
   .style-fab {
-    position: absolute;
-    top: 8px;
-    right: 16px;
-    z-index: 2;
-    min-height: 44px;
+    position: fixed;
+    left: 50%;
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    z-index: 10;
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 0 18px;
+    padding: 12px 22px;
     border: 0;
     border-radius: 999px;
+    transform: translateX(-50%);
     background: var(--text);
     color: var(--bg);
     font-size: 16px;
@@ -1798,8 +1807,8 @@ button.swatch,
     display: none;
   }
 
-  .postcard-screen .postcard-layout {
-    padding-bottom: 0;
+  .postcard-layout {
+    padding-bottom: 72px; /* miejsce na pływający przycisk */
   }
 }
 
