@@ -52,7 +52,7 @@ src/
     ActivityList.tsx      # lista ostatnich biegów (nazwa, data, dystans) do wyboru
     PostcardScreen.tsx    # podgląd pocztówki, stan look (gradient / transparent / motyw mapy), accent i detailed (przełącznik Details: profil POSTCARD_DETAILED; błąd -> profil podstawowy); telefon: kolumna, ≥900px: pocztówka + panel „Style”
     LookPicker.tsx        # kafelki wyglądu z podglądem trasy (aria-pressed) + kółka koloru neonu i własny kolor (<input type="color">)
-    DownloadMenu.tsx      # przycisk „Download” z menu (role=menu): PNG image / SVG (vector); Escape, kliknięcie obok, fokus wraca
+    ExportControls.tsx    # przycisk Download: PNG (Still) albo MP4 (Animated); na iPhonie/iPadzie arkusz udostępniania (zapis do Zdjęć)
     RouteThumb.tsx        # miniatura trasy na zarysie mapy (profil THUMB); kolory z tokenów CSS --map-* (lista) albo z MapStyle motywu; style=null = sama trasa
     useMapLayers.ts       # hook: projekcja -> ścieżki mapy {layers, failed, loading}; przy zmianie profilu stare warstwy zostają do czasu nowych; anulowanie przy odmontowaniu
     useRegionLayers.ts    # hook: region przybliżenia 3D -> ostrzejsze warstwy {refined: {rect, layers}, loading}; błąd cichy (zostaje mapa podstawowa)

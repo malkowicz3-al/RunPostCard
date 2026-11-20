@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
-import { download, exportPng, exportSvg } from '../lib/exportPng';
-import { canEncodeMp4, encodeGif, encodeMp4 } from '../lib/encodeVideo';
-import { DownloadMenu } from './DownloadMenu';
+import { download, pngBlob } from '../lib/exportPng';
+import { canEncodeMp4, encodeMp4 } from '../lib/encodeVideo';
 
 // Karta renderowana poza ekranem (odłączony div): frameAt(p) zwraca SVG klatki z postępem p.
 export function offscreenFrames(render: (p: number) => ReactElement) {
@@ -16,12 +15,14 @@ export function offscreenFrames(render: (p: number) => ReactElement) {
   return { frameAt, unmount: () => root.unmount() };
 }
 
-// Download (PNG, SVG, MP4, GIF) z paskiem postępu, Cancel i Share; wspólne dla pocztówki i widoku „Together”.
-// svg: podgląd na ekranie (PNG i SVG); frame: ta sama karta z postępem animacji, renderowana poza ekranem.
+// Download: PNG (zdjęcie) albo MP4 (animacja), jedyne formaty, które przyjmuje Strava; pasek postępu, Cancel i Share.
+// Wspólne dla pocztówki i widoku „Together”. svg: podgląd na ekranie (PNG); frame: ta sama karta z postępem animacji, renderowana poza ekranem.
 // resetKey: zmiana karty unieważnia plik do udostępnienia.
-type Format = 'mp4' | 'gif';
-const STATUS: Record<Format, string> = { mp4: 'Creating video…', gif: 'Creating GIF…' };
-const FAILED: Record<Format, string> = { mp4: 'video', gif: 'GIF' };
+// iPhone i iPad: arkusz udostępniania zamiast pobrania, bo pobranie trafia do Plików, a z arkusza „Zachowaj obrazek/wideo”
+// zapisuje prosto do Zdjęć (stamtąd dodaje się je do aktywności w Stravie). Android zostaje przy pobraniu (trafia do galerii),
+// bo jego arkusz zwykle nie ma zapisu. iPadOS przedstawia się jak Mac, stąd maxTouchPoints.
+export const savesViaShare = (ua: string, platform: string, touchPoints: number, canShare: boolean) =>
+  canShare && (/iP(hone|ad|od)/.test(ua) || (platform === 'MacIntel' && touchPoints > 1));
 
 export function ExportControls({
   name,
@@ -38,16 +39,16 @@ export function ExportControls({
   resetKey: unknown;
   disabled: boolean;
   onBusy?: (busy: boolean) => void; // MP4/GIF w trakcie
-  mode: 'still' | 'animation'; // still: PNG i SVG; animation: MP4 i GIF
+  mode: 'still' | 'animation'; // still: PNG; animation: MP4
 }) {
   const [exportFailed, setExportFailed] = useState<string | null>(null); // format, którego nie udało się zrobić
-  const [encoding, setEncoding] = useState<{ format: Format; pct: number } | null>(null); // null = nie trwa
+  const [encoding, setEncoding] = useState<{ pct: number } | null>(null); // null = nie trwa
   const encodeAbort = useRef<AbortController | null>(null);
   const [shareFile, setShareFile] = useState<File | null>(null);
   const [mp4Ok, setMp4Ok] = useState(false);
 
   // Plik do udostępnienia dotyczy karty z chwili eksportu; po zmianie już nie.
-  useEffect(() => setShareFile(null), [resetKey]);
+  useEffect(() => setShareFile(null), [resetKey, mode]);
 
   // Po eksporcie fokus na Share, a bez niego z powrotem na Download (był wyłączony w trakcie).
   const shareRef = useRef<HTMLButtonElement>(null);
@@ -68,40 +69,43 @@ export function ExportControls({
   }, []);
   useEffect(() => () => encodeAbort.current?.abort(), []);
 
+  const save = (file: File) => {
+    if (!savesViaShare(navigator.userAgent, navigator.platform, navigator.maxTouchPoints, !!navigator.canShare?.({ files: [file] })))
+      return download(file, file.name);
+    setShareFile(file);
+    // Arkusz od razu, póki przeglądarka uznaje kliknięcie (PNG jest szybkie); po długim MP4 zostaje przycisk Save or share.
+    navigator.share({ files: [file] }).catch(() => {});
+  };
+
   const downloadPng = () => {
     const el = svg();
     if (!el) return;
     setExportFailed(null);
-    exportPng(el, `${name}.png`).catch(() => setExportFailed('PNG'));
-  };
-
-  const downloadSvg = () => {
-    const el = svg();
-    if (el) exportSvg(el, `${name}.svg`);
+    setShareFile(null);
+    pngBlob(el)
+      .then((blob) => save(new File([blob], `${name}.png`, { type: 'image/png' })))
+      .catch(() => setExportFailed('PNG'));
   };
 
   // Klatki animacji: ta sama karta z postępem, renderowana poza ekranem (odłączony div).
-  const downloadAnimation = async (format: Format) => {
+  const downloadVideo = async () => {
     const frames = offscreenFrames(frame);
     const abort = new AbortController();
     encodeAbort.current = abort;
     setExportFailed(null);
     setShareFile(null);
-    setEncoding({ format, pct: 0 });
+    setEncoding({ pct: 0 });
     // Stan tylko przy zmianie pełnego procentu, nie w każdej klatce.
     const onProgress = (done: number) => {
       const pct = Math.floor(done * 100);
-      setEncoding((e) => (e && e.pct !== pct ? { ...e, pct } : e));
+      setEncoding((e) => (e && e.pct !== pct ? { pct } : e));
     };
     try {
-      const opts = { onProgress, signal: abort.signal };
-      const blob = format === 'mp4' ? await encodeMp4(frames.frameAt, opts) : await encodeGif(frames.frameAt, opts);
+      const blob = await encodeMp4(frames.frameAt, { onProgress, signal: abort.signal });
       if (abort.signal.aborted) return; // Cancel w chwili domykania pliku
-      const file = new File([blob], `${name}.${format}`, { type: blob.type });
-      download(file, file.name);
-      if (navigator.canShare?.({ files: [file] })) setShareFile(file);
+      save(new File([blob], `${name}.mp4`, { type: 'video/mp4' }));
     } catch {
-      if (!abort.signal.aborted) setExportFailed(FAILED[format]);
+      if (!abort.signal.aborted) setExportFailed('video');
     } finally {
       frames.unmount();
       if (encodeAbort.current === abort) {
@@ -116,20 +120,18 @@ export function ExportControls({
     if (shareFile) navigator.share({ files: [shareFile] }).catch(() => {});
   };
 
+  const still = mode === 'still';
   return (
     <>
-      <DownloadMenu
-        disabled={disabled || encoding !== null}
-        onPng={downloadPng}
-        onSvg={downloadSvg}
-        onMp4={() => downloadAnimation('mp4')}
-        onGif={() => downloadAnimation('gif')}
-        mp4Supported={mp4Ok}
-        mode={mode}
-      />
+      <div className="download">
+        <button className="primary" disabled={disabled || busy || (!still && !mp4Ok)} onClick={still ? downloadPng : downloadVideo}>
+          {still ? 'Download image' : 'Download video'}
+        </button>
+      </div>
+      {!still && !mp4Ok && <p className="hint">Video needs a browser that can encode H.264 (WebCodecs).</p>}
       {encoding !== null && (
         <div className="encoding">
-          <span role="status">{STATUS[encoding.format]}</span>
+          <span role="status">Creating video…</span>
           <progress value={encoding.pct} max={100} aria-label="Progress" />
           <span aria-hidden="true">{encoding.pct}%</span>
           <button autoFocus onClick={() => encodeAbort.current?.abort()}>
@@ -139,7 +141,7 @@ export function ExportControls({
       )}
       {shareFile && encoding === null && (
         <button ref={shareRef} onClick={share}>
-          Share
+          Save or share
         </button>
       )}
       {exportFailed && <p className="error">Could not create the {exportFailed}.</p>}

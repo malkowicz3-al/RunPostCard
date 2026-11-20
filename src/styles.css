@@ -1664,39 +1664,6 @@ button.swatch,
   min-width: 200px;
 }
 
-.download-menu {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 2;
-  display: flex;
-  flex-direction: column;
-  min-width: 200px;
-  padding: 4px;
-  border-radius: 12px;
-  background: var(--surface);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-}
-
-.download-menu button {
-  background: none;
-  text-align: left;
-  font-weight: 400;
-  border-radius: 8px;
-}
-
-.download-menu button:hover,
-.download-menu button:focus-visible {
-  background: var(--surface-hover);
-}
-
-.download-menu button:disabled {
-  opacity: 0.5;
-  cursor: default;
-  background: none;
-}
-
 .encoding {
   display: flex;
   align-items: center;
@@ -1763,15 +1730,6 @@ button.swatch,
 
   .postcard-screen .sheet-close {
     display: inline-flex;
-  }
-
-  /* Menu Download w przewijanym arkuszu: w miejscu, nie absolutnie (inaczej przycina je góra arkusza). */
-  .postcard-screen .style-panel .download-menu {
-    position: static;
-    transform: none;
-    margin-bottom: 8px;
-    background: var(--bg);
-    box-shadow: none;
   }
 
   /* W przewijanym arkuszu lista rozwija się w miejscu (absolutna była przycinana przez górę arkusza). */
@@ -1890,14 +1848,6 @@ button.swatch,
     width: 100%;
   }
 
-  /* Na komputerze menu pod przyciskiem. */
-  .download-menu {
-    bottom: auto;
-    top: calc(100% + 8px);
-    left: 0;
-    right: 0;
-    transform: none;
-  }
 }
 
 .raw-json {

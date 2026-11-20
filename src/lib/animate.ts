@@ -1,6 +1,6 @@
 import { serialize } from './exportPng';
 
-// Długość animacji (eksport MP4/GIF i podgląd na ekranie): rysowanie trasy i pauza na gotowej karcie.
+// Długość animacji (eksport MP4 i podgląd na ekranie): rysowanie trasy i pauza na gotowej karcie.
 export const DRAW_S = 6;
 export const HOLD_S = 1.5;
 
@@ -38,8 +38,8 @@ export async function drawFrame(svg: SVGSVGElement | string, canvas: HTMLCanvasE
     const img = new Image();
     img.src = url;
     await img.decode();
-    const ctx = canvas.getContext('2d')!; // GIF bierze kontekst wcześniej, z willReadFrequently
-    // Wideo i GIF nie mają przezroczystości: przezroczyste tło wychodzi czarne.
+    const ctx = canvas.getContext('2d')!;
+    // Wideo nie ma przezroczystości: przezroczyste tło wychodzi czarne.
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);

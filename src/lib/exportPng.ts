@@ -15,16 +15,9 @@ export function download(blob: Blob, filename: string): void {
   setTimeout(() => URL.revokeObjectURL(link.href), 1000);
 }
 
-// SVG jest skalowalny bez utraty jakości; fonty są osadzone w <style>.
-export function exportSvg(svg: SVGSVGElement, filename: string): void {
-  download(new Blob([serialize(svg)], { type: 'image/svg+xml;charset=utf-8' }), filename);
-}
-
 // PNG 1080x1920; bez tła w SVG wynik ma przezroczyste tło (canvas nie jest wypełniany).
-export async function exportPng(svg: SVGSVGElement, filename: string): Promise<void> {
-  const xml = serialize(svg);
-
-  const svgUrl = URL.createObjectURL(new Blob([xml], { type: 'image/svg+xml;charset=utf-8' }));
+export async function pngBlob(svg: SVGSVGElement): Promise<Blob> {
+  const svgUrl = URL.createObjectURL(new Blob([serialize(svg)], { type: 'image/svg+xml;charset=utf-8' }));
   try {
     const img = new Image();
     img.src = svgUrl;
@@ -36,7 +29,7 @@ export async function exportPng(svg: SVGSVGElement, filename: string): Promise<v
     canvas.getContext('2d')!.drawImage(img, 0, 0);
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
     if (!blob) throw new Error('PNG export failed');
-    download(blob, filename);
+    return blob;
   } finally {
     URL.revokeObjectURL(svgUrl);
   }
