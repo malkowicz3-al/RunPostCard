@@ -1,5 +1,7 @@
 # 0012. Tło „World”: miasto generowane pod prawdziwą trasą
 
+> Status: zastąpione przez [0013](0013-swiat-na-prawdziwej-mapie.md) (World na prawdziwej mapie; generator usunięty).
+
 ## Kontekst
 Właściciel chce zmyślonego świata pod swoją trasą zamiast prawdziwej mapy. Ma działać w 2D i 3D, a w 3D ze spinnerem na czas budowy. Na start jest tylko gatunek Sci-fi, później kolejne (fantasy, dziki zachód). Ten sam bieg ma dawać ten sam świat, a przycisk „New world” losuje inny wariant. Wcześniejsze motywy 8-bit i fantasy (ADR 0005) zostały usunięte jako „za dużo”, więc trasa zostaje głównym elementem, a pojazdów jest mało i są małe.
 

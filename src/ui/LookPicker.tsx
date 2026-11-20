@@ -71,7 +71,7 @@ export function LookPicker({
     />
   );
 
-  // Miniatura bez generowania świata: tło i kolor trasy gatunku.
+  // Miniatura bez mapy i dekoracji: tło i kolor trasy gatunku.
   const worldThumb = (id: GenreId) => (
     <span className="look-preview" style={{ background: GENRES[id].theme.style().background }}>
       <RouteThumb polyline={polyline} style={null} route={GENRES[id].theme.render({}).route.stroke} />

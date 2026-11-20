@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { FontId } from '../../lib/fonts';
+import type { Rect } from '../../lib/mapTiles';
 import type { MapLayers } from '../../lib/vectorMap';
 import type { MapStyle } from '../mapStyle';
 import type { RouteStyle } from '../Route';
@@ -119,6 +120,8 @@ export type MapTheme = {
   font: FontId; // font ustawiany przy wyborze motywu; potem można go zmienić
   style: (opts?: ThemeOptions) => MapStyle; // paleta jako dane (miniatury w wyborze wyglądu)
   render: (layers: MapLayers, opts?: ThemeOptions) => ThemeOutput;
+  // Scena bez <defs> dla fragmentu refined (ADR 0013); bez niej refined rysuje MapBackground ze stylem.
+  floor?: (layers: MapLayers, rect: Rect) => ReactNode;
 };
 
 export const THEMES: Record<ThemeId, MapTheme> = {

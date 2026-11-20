@@ -28,7 +28,7 @@ The manual steps the script does for you are described below, if you prefer to d
 ## What you can do
 
 - **Run list**: totals and your runs as race bibs whose look follows the run type you set in Strava (training, long run, workout, race, trail), **Refresh**, **Load more**, **Select** several runs.
-- **Postcard (9:16)**: the route on a map (by default **Dark** or **Light**, following your system's theme), 48 map styles, 11 gradients, 19 bundled **Scenery** photos (running and landscapes), transparent, your own photo (with editing and the runner cut out in front of the route) or a made-up **World** around your route.
+- **Postcard (9:16)**: the route on a map (by default **Dark** or **Light**, following your system's theme), 48 map styles, 11 gradients, 19 bundled **Scenery** photos (running and landscapes), transparent, your own photo (with editing and the runner cut out in front of the route) or a neon-styled **World** version of the real map.
 - **Views**: **2D** or **3D** with elevation, buildings and terrain, each **Still** or **Animated**.
 - **Route**: line by theme color, rainbow, fire, ice, sunset, ocean, lime, gold, candy, pace, heart rate, effort, elevation, grade or cadence (with a small legend on the postcard), **Glow** to make it stand out and **Map dim** to calm the map.
 - **Stats**: many layouts; click any stat to change what it shows and how (numbers or charts from your run's streams). 25 fonts, plus **Bold**, **Italic**, **Outline** and **Shadow** for the stats.
@@ -166,7 +166,7 @@ There are 48 map themes. Classic and stylized: **Dark** (the outline above), **L
 
 ## World
 
-**World** (a background option, shown for runs with a route) replaces the real map with a made-up city built around your route: the route becomes the main road, with a street grid, towers, domes, parks, canals, landing pads, hover cars and a few ships around it. It is generated in your browser from the run, so it needs no map tiles and no network, and it carries no map credit. The same run always gets the same world; **New world** draws another one. **World style** picks the genre (for now **Sci-fi**, which also sets its font). It works in the flat and the 3D view (in 3D the towers stand as blocks; a small spinner shows while the world is being built) and in still and animated downloads.
+**World** (a background option, shown for runs with a route) is the real map around your run (the same streets, buildings, parks and water) in a neon **Sci-fi** style: glowing building outlines, signs on taller buildings (in the 3D view), the route as a street with neon curbs, haze, cars on the real streets and a few ships. It loads the same map tiles as the Map background and shows the OpenStreetMap credit. The same run always gets the same look; **New world** changes the colors, signs and vehicles (the map itself stays). **World style** picks the genre (for now **Sci-fi**, which also sets its font). It works in the flat and the 3D view (no terrain) and in still and animated downloads.
 
 ## 3D view
 

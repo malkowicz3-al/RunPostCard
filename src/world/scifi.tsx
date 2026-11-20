@@ -1,7 +1,9 @@
 import { MapBackground } from '../postcard/MapBackground';
 import type { MapStyle } from '../postcard/mapStyle';
 import { mix } from '../lib/color';
-import type { Building } from '../lib/vectorMap';
+import type { ReactNode } from 'react';
+import type { Rect } from '../lib/mapTiles';
+import type { Building, MapLayers } from '../lib/vectorMap';
 import type { MapTheme } from '../postcard/themes';
 import { Glow } from '../postcard/themes/neon';
 import { Overlay } from '../postcard/themes/texture';
@@ -47,10 +49,30 @@ function outlines(buildings: Building[] = []): Map<string, string> {
   return out;
 }
 
+// Scena bez <defs> (id są w render().scene); refined w Postcard rysuje ją we własnym prostokącie.
+function floor(layers: MapLayers, rect?: Rect): ReactNode {
+  return (
+    <>
+      {/* building i major rysujemy niżej (obrysy z neonem, ulica trasy), więc każdy kształt tylko raz. */}
+      <MapBackground layers={{ ...layers, building: layers.buildings ? undefined : layers.building, major: undefined }} style={STYLE} rect={rect} />
+      {/* Jedna poświata na krawężnik i obrysy; asfalt po niej, więc z krawężnika zostają dwie linie. */}
+      <g filter={LINES} strokeLinejoin="round" strokeLinecap="round">
+        {layers.major && <path d={layers.major} fill="none" stroke={CURB} strokeWidth={34} opacity={0.7} />}
+        {/* W 3D Postcard zdejmuje building z podłogi (bryły stoją same), więc i bez płaskich obrysów. */}
+        {[...outlines(layers.building ? layers.buildings : undefined)].map(([color, d]) => (
+          <path key={color} d={d} stroke={color} strokeWidth={1.5} fill={mix(color, STYLE.colors.building, 0.88)} />
+        ))}
+      </g>
+      {layers.major && <path d={layers.major} fill="none" stroke={ROAD} strokeWidth={28} strokeLinejoin="round" strokeLinecap="round" />}
+    </>
+  );
+}
+
 export const scifi: MapTheme = {
   label: 'Sci-fi',
   font: 'orbitron',
   style: () => STYLE,
+  floor,
   render: (layers) => ({
     scene: (
       <>
@@ -66,17 +88,7 @@ export const scifi: MapTheme = {
           <Glow id="world-scifi-lines" blur={2.5} strong={false} />
           <Glow id="world-scifi-route" blur={8} />
         </defs>
-        {/* building i major rysujemy niżej (obrysy z neonem, ulica trasy), więc każdy kształt tylko raz. */}
-        <MapBackground layers={{ ...layers, building: layers.buildings ? undefined : layers.building, major: undefined }} style={STYLE} />
-        {/* Jedna poświata na krawężnik i obrysy; asfalt po niej, więc z krawężnika zostają dwie linie. */}
-        <g filter={LINES} strokeLinejoin="round" strokeLinecap="round">
-          {layers.major && <path d={layers.major} fill="none" stroke={CURB} strokeWidth={34} opacity={0.7} />}
-          {/* W 3D Postcard zdejmuje building z podłogi (bryły stoją same), więc i bez płaskich obrysów. */}
-          {[...outlines(layers.building ? layers.buildings : undefined)].map(([color, d]) => (
-            <path key={color} d={d} stroke={color} strokeWidth={1.5} fill={mix(color, STYLE.colors.building, 0.88)} />
-          ))}
-        </g>
-        {layers.major && <path d={layers.major} fill="none" stroke={ROAD} strokeWidth={28} strokeLinejoin="round" strokeLinecap="round" />}
+        {floor(layers)}
       </>
     ),
     overlay: (

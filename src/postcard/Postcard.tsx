@@ -22,7 +22,7 @@ import { liveValue } from './liveValue';
 import { ALONG_ROUTE, DATA, chartFor, defaultLayout, fitted, type LayoutItem } from './slots';
 import { THEMES, type MapTheme, type ThemeId } from './themes';
 import { Props } from '../world/Props';
-import type { Prop } from '../world/generate';
+import type { Prop } from '../world/decorate';
 
 // Obraz terenu (data URL) i jego prostokąt: płasko w jednostkach płótna mapy, w 3D w jednostkach pocztówki przed kamerą.
 export type TerrainImage = { href: string; rect: Rect };
@@ -68,7 +68,7 @@ export function Postcard({
   gradient?: GradientId;
   map?: MapLayers;
   photo?: { href: string; dim: number };
-  theme?: ThemeId | MapTheme; // obiekt: motyw spoza THEMES (świat World, ADR 0012), bez podpisu OSM
+  theme?: ThemeId | MapTheme; // obiekt: motyw spoza THEMES (świat World, ADR 0013)
   accent?: string;
   streams?: RunStreams | null;
   view?: 'flat' | '3d';
@@ -139,11 +139,15 @@ export function Postcard({
             </clipPath>
           </defs>
           <g clipPath="url(#refined-clip)">
-            <MapBackground layers={floor(refined.layers)} style={style} rect={refined.rect} />
+            {themeDef.floor ? (
+              themeDef.floor(floor(refined.layers), refined.rect)
+            ) : (
+              <MapBackground layers={floor(refined.layers)} style={style} rect={refined.rect} />
+            )}
           </g>
         </>
       ),
-    [out, refined, style, hasIso],
+    [out, refined, style, hasIso, themeDef],
   );
 
   const behind = background === 'photo' && !!photo && !!person;
@@ -346,7 +350,7 @@ export function Postcard({
       </g>
       <StravaMark x={60} y={1820} variant={out?.mark} />
       {legend && <RouteLegend legend={legend} color={text.color} />}
-      {out && typeof theme === 'string' && (
+      {out && (
         <text
           transform={`translate(${ATTRIBUTION_AT.join(' ')}) rotate(-90)`}
           fontSize={18}

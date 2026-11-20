@@ -10,7 +10,8 @@ import { GRID_H, GRID_W } from '../lib/cutout';
 import type { Rect } from '../lib/mapTiles';
 import { SlotNumber } from './SlotNumber';
 import { fitRoute } from '../lib/routePath';
-import { generateWorld } from '../world/generate';
+import { decorateWorld, worldProps } from '../world/decorate';
+import type { MapLayers } from '../lib/vectorMap';
 import { GENRES } from '../world/genres';
 
 const LAYERS = { water: 'M0 0L50 0L50 50Z', major: 'M0 100L500 100' };
@@ -372,13 +373,32 @@ describe('Postcard poświata i przyciemnienie mapy', () => {
 
 describe('Postcard World', () => {
   const points = fitRoute(hills.map.summary_polyline, ROUTE_BOX)!.points;
-  const world = generateWorld(points, [-162, -288, 1242, 2208], 1, 'scifi');
-  const base = { activity: hills, background: 'map' as const, map: world.layers, theme: GENRES.scifi.theme, props: world.props, streams };
+  // Ręczna mapa: siatka brył i ulic na płótnie, dekorowana jak w PostcardScreen.
+  const buildings = Array.from({ length: 40 }, (_, k) => {
+    const [x, y] = [60 + (k % 8) * 125, 100 + Math.floor(k / 8) * 380];
+    return { ring: [[x, y], [x + 50, y], [x + 50, y + 40], [x, y + 40]] as [number, number][], h: 20 + ((k * 7) % 40), min: 0 };
+  });
+  const layers: MapLayers = {
+    minor: Array.from({ length: 9 }, (_, k) => `M${k * 125 + 30} 0L${k * 125 + 30} 1920`).join(''),
+    mid: 'M0 500L1080 500',
+    major: 'M0 1300L1080 1300',
+    building: buildings.map((b) => `M${b.ring.join('L')}Z`).join(''),
+    buildings,
+  };
+  const decorated = decorateWorld(layers, points, 1, 'scifi');
+  const base = {
+    activity: hills,
+    background: 'map' as const,
+    map: decorated,
+    theme: GENRES.scifi.theme,
+    props: worldProps(layers, points, 1, 'scifi'),
+    streams,
+  };
 
-  it('2D i 3D: bez podpisu OSM, lokalne i unikalne id, bez NaN, pojazdy nad mapą i pod trasą', () => {
+  it('2D i 3D: z podpisem OSM, lokalne i unikalne id, bez NaN, pojazdy nad mapą i pod trasą', () => {
     for (const view of ['flat', '3d'] as const) {
       const svg = renderToStaticMarkup(<Postcard {...base} view={view} />);
-      expect(svg).not.toContain(MAP_ATTRIBUTION);
+      expect(svg).toContain(MAP_ATTRIBUTION);
       for (const [, ref] of svg.matchAll(/url\(#([\w-]+)\)/g)) expect(svg, `${view}: #${ref}`).toContain(`id="${ref}"`);
       const ids = [...svg.matchAll(/id="([^"]+)"/g)].map(([, id]) => id);
       expect(new Set(ids).size).toBe(ids.length);
@@ -389,7 +409,7 @@ describe('Postcard World', () => {
       expect(svg, view).toMatch(/stroke="#120a2a" stroke-width="28"/); // ulica pod trasą
       if (view === 'flat') {
         // Każda bryła narysowana raz (obrysy z neonem zamiast warstwy building).
-        const ring = world.layers.buildings![0].ring.map(([x, y]) => `${x} ${y}`).join('L');
+        const ring = decorated.buildings![0].ring.map(([x, y]) => `${x} ${y}`).join('L');
         expect(svg.split(ring)).toHaveLength(2);
       }
       if (view === '3d') {
@@ -399,5 +419,12 @@ describe('Postcard World', () => {
         expect(accents.length).toBeGreaterThanOrEqual(3);
       }
     }
+  });
+
+  it('fragment refined w stylu świata: ulica trasy w refined-clip', () => {
+    const rect: Rect = [-500, -500, 1580, 2420];
+    const svg = renderToStaticMarkup(<Postcard {...base} refined={{ rect, layers: decorated }} />);
+    // Po scenie bazowej: bez floor fragment miałby tylko cienką linię major z MapBackground.
+    expect(svg.slice(svg.indexOf('clip-path="url(#refined-clip)"'))).toMatch(/stroke="#120a2a" stroke-width="28"/);
   });
 });

@@ -1,5 +1,5 @@
 import type { IsoRoute } from '../lib/isoRoute';
-import type { Prop } from './generate';
+import type { Prop } from './decorate';
 
 const SHIP_LIFT = 60; // statki w 3D wiszą nad podłożem (px pocztówki)
 const GLOW = 'world-scifi-props-glow';
