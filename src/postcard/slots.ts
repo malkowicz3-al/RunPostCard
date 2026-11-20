@@ -203,6 +203,11 @@ export const CHARTS: Record<
 
 export const slotMenu = (s: Slot) => (s.form === 'number' ? DATA[s.data].menu : CHARTS[s.form].menu);
 
+// Wykresy wzdłuż dystansu: w animacji odsłaniają się z trasą. Reszta (km, strefy, histogramy) stoi gotowa.
+export const ALONG_ROUTE: ReadonlySet<ChartForm> = new Set<ChartForm>([
+  'area', 'line', 'speed', 'cadence', 'gain', 'spark', 'paceline', 'paceelev', 'skyline', 'ecg', 'pacestrip', 'pacing',
+]);
+
 // Wykres do narysowania w slocie albo null (wtedy liczba tych samych danych).
 export function chartFor(item: LayoutItem, streams: RunStreams | null | undefined) {
   const { form } = item.slot;

@@ -18,8 +18,6 @@ import { DATA, type SlotData } from './slots';
 
 // Średnie z pierwszych metrów skaczą; do 200 m pokazujemy wartość z pierwszych 200 m (stała, bez migotania).
 const HOLD_M = 200;
-// Tekst pisze się do 40% animacji.
-const TYPE_END = 0.4;
 const TEXT: SlotData[] = ['date', 'start', 'name', 'weekday', 'runtype'];
 
 // Ułamek > 0, żeby formatery z warunkiem „> 0” dawały 0 zamiast myślnika w pierwszej klatce.
@@ -56,10 +54,7 @@ export function liveValue(data: SlotData, a: Activity, streams: RunStreams | nul
   const final = DATA[data].value(a);
   if (p >= 1 || final === EMPTY) return final;
   p = Math.max(0, p);
-  if (TEXT.includes(data)) {
-    const chars = Array.from(final);
-    return chars.slice(0, Math.ceil(chars.length * Math.min(1, p / TYPE_END))).join('');
-  }
+  if (TEXT.includes(data)) return final; // data, nazwa itd. bez animacji (decyzja właściciela)
 
   const d = streams?.distance ?? [];
   const total = d[d.length - 1];

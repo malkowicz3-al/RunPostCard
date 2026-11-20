@@ -308,6 +308,8 @@ describe('Postcard progress (animacja rysowania)', () => {
     const full = renderToStaticMarkup(<Postcard {...base} layout={layout} progress={1} />);
     expect(full).not.toContain('slot-clip');
     expect(full).toBe(renderToStaticMarkup(<Postcard {...base} layout={layout} />));
+    // Tempo na km (słupki) nie ma danych cząstkowych wzdłuż trasy: stoi gotowe.
+    expect(renderToStaticMarkup(<Postcard {...base} layout={resolveLayout('splits')} progress={0.5} />)).not.toContain('slot-clip');
   });
 
   it('płasko: przycięta ścieżka ma mniej punktów niż pełna', () => {

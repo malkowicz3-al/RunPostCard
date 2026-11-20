@@ -72,11 +72,8 @@ describe('liveValue', () => {
     expect(num(liveValue('heartrate', a, s, 0))).toBeGreaterThan(0);
   });
 
-  it('tekst pisze się do 40% animacji', () => {
-    const name = DATA.name.value(hills);
-    expect(liveValue('name', hills, streams, 0)).toBe('');
-    expect(liveValue('name', hills, streams, 0.2)).toBe(Array.from(name).slice(0, Math.ceil(name.length / 2)).join(''));
-    expect(liveValue('name', hills, streams, 0.4)).toBe(name);
-    expect(liveValue('name', { ...hills, name: ' ' }, streams, 0.1)).toBe('–');
+  it('tekst (nazwa, data…) bez animacji: od pierwszej klatki gotowy', () => {
+    for (const d of ['name', 'date', 'start', 'weekday', 'runtype'] as const)
+      expect(liveValue(d, hills, streams, 0)).toBe(DATA[d].value(hills));
   });
 });

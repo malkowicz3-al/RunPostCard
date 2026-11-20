@@ -19,7 +19,7 @@ import { RouteLegend } from './RouteLegend';
 import { StravaMark } from './StravaMark';
 import { SlotNumber, type TextStyle } from './SlotNumber';
 import { liveValue } from './liveValue';
-import { DATA, chartFor, defaultLayout, fitted, type LayoutItem } from './slots';
+import { ALONG_ROUTE, DATA, chartFor, defaultLayout, fitted, type LayoutItem } from './slots';
 import { THEMES, type ThemeId } from './themes';
 
 // Obraz terenu (data URL) i jego prostokąt: płasko w jednostkach płótna mapy, w 3D w jednostkach pocztówki przed kamerą.
@@ -195,7 +195,7 @@ export function Postcard({
           scale={scale}
         />
       );
-      if (progress >= 1) return node;
+      if (progress >= 1 || item.slot.form === 'number' || !ALONG_ROUTE.has(item.slot.form)) return node;
       // Wykres odsłania się od lewej razem z trasą; zapas, bo podpisy wychodzą trochę poza box.
       const { x0, y0, x1, y1 } = item.box!;
       const id = `slot-clip-${item.slot.id}`;
