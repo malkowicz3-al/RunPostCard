@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { geoMercator } from 'd3-geo';
 import type { RunStreams } from '../strava/api';
-import { CLEAR_M, buildingsData, cameraAt, cameraPath, extrude, localFrame, project, ribbon, toLocal, track } from './data';
+import { CLEAR_M, MIN_BUILDING_M, buildingsData, povBuildingColor, cameraAt, cameraPath, extrude, localFrame, project, ribbon, toLocal, track } from './data';
 
 // Prosto na wschód ~3 km (Kraków), wysokość rośnie o 30 m.
 const n = 200;
@@ -43,8 +43,8 @@ describe('pov data', () => {
     }
     const flat = cameraPath(t, () => 0);
     const mid = cameraAt(flat, 0.5);
-    expect(mid.runner[0] - mid.eye[0]).toBeCloseTo(150, 0);
-    expect(mid.eye[1] - mid.runner[1]).toBeCloseTo(80, 0);
+    expect(mid.runner[0] - mid.eye[0]).toBeCloseTo(120, 0);
+    expect(mid.eye[1] - mid.runner[1]).toBeCloseTo(55, 0);
   });
 
   it('wstęga: 2 wierzchołki na próbkę, kolory bez NaN', () => {
@@ -65,7 +65,14 @@ describe('pov data', () => {
     expect(Math.min(...ys)).toBe(2);
     expect(Math.max(...ys)).toBe(12);
     const f = { cx: 0, cy: 0, m: 1 };
-    expect(buildingsData([{ ring: square, h: 10, min: 0 }], f, () => 5).filter((_, i) => i % 3 === 1).every((y) => y >= 5)).toBe(true);
+    const low = buildingsData([{ ring: square, h: 10, min: 0 }], f, () => 5).filter((_, i) => i % 3 === 1);
+    expect(Math.min(...low)).toBe(5);
+    expect(Math.max(...low)).toBe(5 + MIN_BUILDING_M);
+  });
+
+  it('kolor brył: na ciemnym tle jaśniejszy, na jasnym ciemniejszy', () => {
+    expect(povBuildingColor('#202020', '#101010')).toBe('#797979');
+    expect(povBuildingColor('#e0e0e0', '#f5f5f5')).toBe('#868686');
   });
   it('2 identyczne punkty: bez NaN w trasie, kamerze i wstędze', () => {
     const one: RunStreams = { latlng: [[50.06, 19.9], [50.06, 19.9]], distance: [0, 0], altitude: [200, 200] };

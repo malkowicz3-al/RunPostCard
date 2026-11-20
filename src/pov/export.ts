@@ -7,7 +7,7 @@ import { encodeMp4 } from '../lib/encodeVideo';
 import type { Banner } from '../postcard/Postcard';
 import { THEMES, type ThemeId } from '../postcard/themes';
 import { offscreenFrames } from '../ui/ExportControls';
-import { FOV, cameraAt, project, type V3 } from './data';
+import { FOV, cameraAt, povBuildingColor, project, type V3 } from './data';
 import { mapImage } from './mapImage';
 import { momentsOf } from './moments';
 import { createPov, createRenderer, type Pov } from './scene';
@@ -49,7 +49,7 @@ export async function encodePovMp4(
       buildings: input.layers?.buildings ?? [],
       floor,
       background: style.background,
-      building: style.colors.building,
+      building: povBuildingColor(style.colors.building, style.background),
       color: input.color ?? (() => themeColor),
       route: input.route,
     });
@@ -63,7 +63,7 @@ export async function encodePovMp4(
       return [x, y + BANNER_LIFT_M, z];
     };
     const bannerAt = (p: number): Banner | undefined => {
-      const b = bannerAlpha(p, moments);
+      const b = bannerAlpha(p, moments, path.track.total);
       const at = b && project(path, p, anchor(p, b.m.f), SIZE[0] / SIZE[1], FOV);
       if (!b || !at || at[0] < 0 || at[0] > 1 || at[1] < 0 || at[1] > 1) return undefined;
       return { x: at[0] * SIZE[0], y: at[1] * SIZE[1], text: b.m.label, alpha: b.alpha };
@@ -71,7 +71,7 @@ export async function encodePovMp4(
     const { frameAt, unmount } = offscreenFrames((p) => input.overlay(p, bannerAt(p)));
     const paint = pov.paint;
     try {
-      return await encodeMp4(frameAt, { onProgress, signal, progresses: povFrameProgress(moments, 30), under: (c, p) => paint(c, p) });
+      return await encodeMp4(frameAt, { onProgress, signal, progresses: povFrameProgress(moments, 30, path.track.total), under: (c, p) => paint(c, p) });
     } finally {
       unmount();
     }

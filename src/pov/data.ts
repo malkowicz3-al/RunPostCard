@@ -4,6 +4,7 @@ import type { RunStreams } from '../strava/api';
 import type { Building } from '../lib/vectorMap';
 import { demAt, type Dem } from '../lib/dem';
 import { smoothByDistance } from '../lib/isoRoute';
+import { mix } from '../lib/color';
 
 // Dane sceny POV bez obiektów Three.js (testowalne w node). Układ jak w Three.js:
 // x = wschód, y = wysokość, z = południe, w metrach od środka trasy na płótnie pocztówki.
@@ -20,13 +21,15 @@ const ALT_HALF_M = 100;
 const TERRAIN_EXAGGERATION = 1.5;
 const FLAT_TARGET_M = 150; // bez terenu: rozpiętość wysokości podbita do ok. 150 m, najwyżej ×3 (jak widok 3D)
 export const LIFT_M = 3; // trasa nad podłożem
-const BACK_M = 150;
-const UP_M = 80;
+const BACK_M = 120;
+const UP_M = 55; // nisko, żeby budynki czytały się jako bryły
 const AHEAD_M = 250;
+const LOOK_DOWN_M = 155; // cel kamery pod trasą
 const HEADING_HALF_M = 120; // kierunek z różnicy punktów ±120 m
-const HEADING_SMOOTH_M = 150; // wytłumienie skrętów kamery
+const HEADING_SMOOTH_M = 200; // wytłumienie skrętów kamery
 export const CLEAR_M = 20; // kamera co najmniej tyle nad terenem
 export const MAX_BUILDINGS = 3000;
+export const MIN_BUILDING_M = 12; // domyślne 10 m z mapy z góry ginie w podłodze
 export const FOV = 55; // pionowy kąt kamery w stopniach (PerspectiveCamera w scene.ts)
 
 export function localFrame(projection: GeoProjection, points: [number, number][]): Frame {
@@ -135,8 +138,8 @@ export function cameraPath(t: Track, ground: Ground): CameraPath {
     HEADING_SMOOTH_M,
   );
   eye.forEach((e, i) => (e[1] = Math.max(ys[i], ground(e[0], e[2]) + CLEAR_M)));
-  // Cel o 2·UP_M niżej niż trasa: kamera pochylona ok. 44°, biegacz nad środkiem kadru (nie pod statystykami).
-  const look = t.pos.map(([x, y, z], i): V3 => [x + heading[i][0] * AHEAD_M, y - 2 * UP_M, z + heading[i][1] * AHEAD_M]);
+  // Cel LOOK_DOWN_M pod trasą: kamera pochylona ok. 30°, biegacz ok. 5° nad środkiem kadru (nie pod statystykami).
+  const look = t.pos.map(([x, y, z], i): V3 => [x + heading[i][0] * AHEAD_M, y - LOOK_DOWN_M, z + heading[i][1] * AHEAD_M]);
   return { track: t, ground, eye, look };
 }
 
@@ -189,6 +192,13 @@ export function hexRgb(hex: string): [number, number, number] {
   return [(v >> 16) / 255, ((v >> 8) & 255) / 255, (v & 255) / 255];
 }
 
+// Kolor brył POV: kolor budynku motywu wyraźnie ku jasnemu na ciemnym tle i ku ciemnemu na jasnym (inaczej giną w podłodze).
+export function povBuildingColor(building: string, background: string): string {
+  if (!/^#[0-9a-f]{6}$/i.test(building)) return building;
+  const [r, g, b] = hexRgb(background);
+  return mix(building, 0.2126 * r + 0.7152 * g + 0.0722 * b < 0.5 ? '#ffffff' : '#000000', 0.4);
+}
+
 // Wstęga trasy: 2 wierzchołki na próbkę. Bez bottom pozioma (szerokość width), z bottom pionowa kurtyna do podłoża.
 export function ribbon(t: Track, width: number, color: (t: number) => string, bottom?: Ground): Mesh {
   const n = t.pos.length;
@@ -239,7 +249,7 @@ export function buildingsData(buildings: Building[], f: Frame, ground: Ground, c
     const cx = local.reduce((s, [x]) => s + x, 0) / local.length;
     const cz = local.reduce((s, [, z]) => s + z, 0) / local.length;
     const g = ground(cx, cz);
-    for (const v of extrude(local, g + min, g + h)) out.push(v);
+    for (const v of extrude(local, g + min, g + Math.max(h, MIN_BUILDING_M))) out.push(v);
   }
   return new Float32Array(out);
 }

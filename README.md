@@ -30,7 +30,7 @@ The manual steps the script does for you are described below, if you prefer to d
 - **Run list**: totals and your runs as race bibs whose look follows the run type you set in Strava (training, long run, workout, race, trail), **Refresh**, **Load more**, **Select** several runs.
 - **Postcard (9:16)**: the route on a map (by default **Dark** or **Light**, following your system's theme), 43 map styles, 6 gradients, transparent or your own photo (with editing and the runner cut out in front of the route).
 - **Views**: **2D** or **3D** with elevation, buildings and terrain, each **Still** or **Animated**.
-- **POV video**: in **Download**, an MP4 camera flight behind the runner in your chosen look; the stats count along, and it slows down at key moments (max heart rate, fastest pace, highest point) with a banner over the route.
+- **POV video**: in **Download**, an MP4 camera flight behind the runner in your chosen look; the stats count along, and it slows down at key moments (max heart rate, fastest pace, highest point) and at each km split (every 5 km from a half marathon) with a banner over the route; 3D buildings are always there.
 - **Route**: line by theme color, rainbow, fire, ice, pace, heart rate, effort, elevation, grade or cadence (with a small legend on the postcard), **Glow** to make it stand out and **Map dim** to calm the map.
 - **Stats**: many layouts; click any stat to change what it shows and how (numbers or charts from your run's streams). 20 fonts, plus **Bold**, **Italic**, **Outline** and **Shadow** for the stats.
 - **Download**: PNG or SVG for a still postcard; MP4 video or animated GIF for an animated one (the route draws itself while the numbers count up), and **Share** on phones.
