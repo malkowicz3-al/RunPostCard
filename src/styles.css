@@ -1057,6 +1057,43 @@ button.text-button {
   color: var(--text-secondary);
 }
 
+/* Budowa świata World w 3D (ADR 0012): nakładka nad podglądem, poza eksportem. */
+.world-building {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: var(--surface);
+  font-size: 15px;
+  pointer-events: none;
+}
+
+.world-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: world-spin 0.8s linear infinite;
+}
+
+@keyframes world-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .world-spinner {
+    animation: none;
+  }
+}
+
 /* Stałe, ciemne tony w obu motywach: treść pocztówki jest biała i na jasnej szachownicy znika. */
 .postcard-frame.checkerboard {
   background: conic-gradient(#3a3a3f 25%, #2c2c30 0 50%, #3a3a3f 0 75%, #2c2c30 0) 0 0 / 32px 32px;

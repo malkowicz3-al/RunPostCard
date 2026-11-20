@@ -20,7 +20,9 @@ import { StravaMark } from './StravaMark';
 import { SlotNumber, type TextStyle } from './SlotNumber';
 import { liveValue } from './liveValue';
 import { ALONG_ROUTE, DATA, chartFor, defaultLayout, fitted, type LayoutItem } from './slots';
-import { THEMES, type ThemeId } from './themes';
+import { THEMES, type MapTheme, type ThemeId } from './themes';
+import { Props } from '../world/Props';
+import type { Prop } from '../world/generate';
 
 // Obraz terenu (data URL) i jego prostokąt: płasko w jednostkach płótna mapy, w 3D w jednostkach pocztówki przed kamerą.
 export type TerrainImage = { href: string; rect: Rect };
@@ -57,6 +59,7 @@ export function Postcard({
   progress = 1,
   glow = 0,
   mapDim = 0,
+  props,
 }: {
   activity: Activity;
   fontCss?: string;
@@ -65,7 +68,7 @@ export function Postcard({
   gradient?: GradientId;
   map?: MapLayers;
   photo?: { href: string; dim: number };
-  theme?: ThemeId;
+  theme?: ThemeId | MapTheme; // obiekt: motyw spoza THEMES (świat World, ADR 0012), bez podpisu OSM
   accent?: string;
   streams?: RunStreams | null;
   view?: 'flat' | '3d';
@@ -81,6 +84,7 @@ export function Postcard({
   progress?: number; // animacja rysowania (0..1): trasa do tego ułamka, statystyki liczą się w górę (liveValue), wykresy odsłaniają się od lewej; 1 = gotowa pocztówka
   glow?: number; // poświata trasy 0..100; 0 = bez filtra
   mapDim?: number; // przyciemnienie mapy pod trasą 0..100; 0 = bez prostokąta
+  props?: Prop[]; // pojazdy świata World: nad mapą i bryłami, pod trasą
 }) {
   // Jedna projekcja dla mapy i trasy („scena”).
   const polyline = activity.map.summary_polyline;
@@ -94,8 +98,9 @@ export function Postcard({
   // W 3D z bryłami podłoga bez płaskich budynków.
   const floor = (l: MapLayers): MapLayers => (hasIso && l.buildings ? { ...l, building: undefined } : l);
   // Mapa i jej fragment w useMemo: w klatkach animacji zmienia się tylko trasa i liczby, ciężka mapa zostaje tym samym elementem.
-  const out = useMemo(() => (showMap ? THEMES[theme].render(floor(map!), { accent }) : null), [showMap, theme, map, hasIso, accent]);
-  const style = useMemo(() => THEMES[theme].style({ accent }), [theme, accent]);
+  const themeDef = typeof theme === 'string' ? THEMES[theme] : theme;
+  const out = useMemo(() => (showMap ? themeDef.render(floor(map!), { accent }) : null), [showMap, themeDef, map, hasIso, accent]);
+  const style = useMemo(() => themeDef.style({ accent }), [themeDef, accent]);
   const relief = out ? terrain : undefined;
   // Bryły ze środkiem w ostrzejszym fragmencie biorą obrysy z niego, pozostałe z mapy bazowej.
   const buildings = useMemo((): Building[] | null => {
@@ -286,6 +291,7 @@ export function Postcard({
                 {refinedMap}
               </g>
             )}
+            {out && !relief && props && <Props props={props} matrix={iso.matrix} layer="ground" />}
             {out && !relief && buildings && (
               <Buildings3D
                 buildings={buildings}
@@ -298,6 +304,7 @@ export function Postcard({
                 accent={style.colors.mid}
               />
             )}
+            {out && !relief && props && <Props props={props} matrix={iso.matrix} layer="sky" />}
           </g>
           {/* Faktura papieru w przestrzeni płótna (jak w widoku płaskim), nie na pochylonej i powiększanej podłodze. */}
           {out?.overlay}
@@ -312,6 +319,7 @@ export function Postcard({
             {out?.scene}
             {refinedMap}
             {relief && terrainImage(relief)}
+            {out && props && <Props props={props} />}
           </g>
           {out?.overlay}
           {out && mapDim > 0 && <rect width={1080} height={1920} fill="#000" opacity={mapDim / 100} />}
@@ -338,7 +346,7 @@ export function Postcard({
       </g>
       <StravaMark x={60} y={1820} variant={out?.mark} />
       {legend && <RouteLegend legend={legend} color={text.color} />}
-      {out && (
+      {out && typeof theme === 'string' && (
         <text
           transform={`translate(${ATTRIBUTION_AT.join(' ')}) rotate(-90)`}
           fontSize={18}

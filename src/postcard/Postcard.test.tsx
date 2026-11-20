@@ -9,6 +9,9 @@ import { CHARTS, DATA, defaultLayout, resolveLayout } from './slots';
 import { GRID_H, GRID_W } from '../lib/cutout';
 import type { Rect } from '../lib/mapTiles';
 import { SlotNumber } from './SlotNumber';
+import { fitRoute } from '../lib/routePath';
+import { generateWorld } from '../world/generate';
+import { GENRES } from '../world/genres';
 
 const LAYERS = { water: 'M0 0L50 0L50 50Z', major: 'M0 100L500 100' };
 const hills = mockActivities().find((r) => r.name === 'Hill repeats')!;
@@ -364,5 +367,29 @@ describe('Postcard poświata i przyciemnienie mapy', () => {
     const behind = renderToStaticMarkup(<Postcard {...base} background="photo" photo={photo} person={person} glow={60} />);
     expect(behind.split('filter="url(#route-glow)"')).toHaveLength(3);
     expect(renderToStaticMarkup(<Postcard {...base} route={false} glow={60} />)).not.toContain('route-glow');
+  });
+});
+
+describe('Postcard World', () => {
+  const points = fitRoute(hills.map.summary_polyline, ROUTE_BOX)!.points;
+  const world = generateWorld(points, [-162, -288, 1242, 2208], 1, 'scifi');
+  const base = { activity: hills, background: 'map' as const, map: world.layers, theme: GENRES.scifi.theme, props: world.props, streams };
+
+  it('2D i 3D: bez podpisu OSM, lokalne i unikalne id, bez NaN, pojazdy nad mapą i pod trasą', () => {
+    for (const view of ['flat', '3d'] as const) {
+      const svg = renderToStaticMarkup(<Postcard {...base} view={view} />);
+      expect(svg).not.toContain(MAP_ATTRIBUTION);
+      for (const [, ref] of svg.matchAll(/url\(#([\w-]+)\)/g)) expect(svg, `${view}: #${ref}`).toContain(`id="${ref}"`);
+      const ids = [...svg.matchAll(/id="([^"]+)"/g)].map(([, id]) => id);
+      expect(new Set(ids).size).toBe(ids.length);
+      expect(svg).not.toMatch(/NaN|Infinity/);
+      const props = svg.indexOf('class="world-props"');
+      expect(props).toBeGreaterThan(svg.indexOf('id="world-scifi-lines"'));
+      expect(props).toBeLessThan(svg.indexOf('filter="url(#world-scifi-route)"'));
+      if (view === '3d') {
+        expect(svg).toContain('transform="matrix(');
+        expect(svg.split('class="world-props"')).toHaveLength(3); // auta pod bryłami, statki nad nimi
+      }
+    }
   });
 });

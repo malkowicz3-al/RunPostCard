@@ -10,8 +10,10 @@ import { IsoRoute } from '../postcard/IsoRoute';
 import { MapBackground } from '../postcard/MapBackground';
 import { terrainImage, type TerrainImage } from '../postcard/Postcard';
 import { Route } from '../postcard/Route';
-import { THEMES, type ThemeId } from '../postcard/themes';
+import { THEMES, type MapTheme, type ThemeId } from '../postcard/themes';
+import type { GenreId } from '../world/genres';
 import { useRegionLayers } from './useRegionLayers';
+import { useWorld } from './useWorld';
 
 // Stała referencja dla useRegionLayers; fragment tła to zawsze poziom pocztówki (k = 1), resztę wybiera loadAreaLayers.
 const loadArea = (projection: GeoProjection, size: [number, number], profile: MapProfile, region: Region, signal?: AbortSignal) =>
@@ -33,11 +35,12 @@ export function MapBackdrop({
   terrain,
   points,
   color,
+  world,
 }: {
   frameRef: RefObject<HTMLElement | null>;
   projection: GeoProjection;
   route: string; // ścieżka trasy (fit.d)
-  theme: ThemeId;
+  theme: ThemeId | MapTheme;
   accent?: string;
   profile: MapProfile;
   camera: Camera;
@@ -46,6 +49,7 @@ export function MapBackdrop({
   terrain?: TerrainImage; // ten sam obraz terenu co na pocztówce (3D: zamiast podłogi i brył)
   points?: [number, number][]; // punkty trasy (fit.points) do linii w odcinkach
   color?: (t: number) => string; // styl linii jak na pocztówce
+  world?: { points: [number, number][]; seed: number; genre: GenreId }; // tło World: warstwy z generatora zamiast kafelków, bez pojazdów
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [viewBox, setViewBox] = useState<Rect | null>(null);
@@ -81,15 +85,24 @@ export function MapBackdrop({
     return area.current;
   }, [viewBox, settled, iso]);
   // 3D z terenem: podłogi wektorowej nie ma, więc nie pobieramy jej.
-  const { refined } = useRegionLayers(projection, region, profile, !(iso && terrain), loadArea);
+  const { refined: tiles } = useRegionLayers(projection, region, profile, !(iso && terrain) && !world, loadArea);
+  const w = useWorld(world?.points ?? null, world ? (region?.rect ?? null) : null, world?.seed ?? 0, world?.genre ?? 'scifi');
+  const generated = useMemo(() => (w.world && w.rect ? { rect: w.rect, layers: w.world.layers } : undefined), [w.world, w.rect]);
+  const refined = world ? generated : tiles;
 
   const { style, routeStyle } = useMemo(() => {
-    const { filters: _f, fill: _fill, fills: _fills, ...style } = THEMES[theme].style({ accent });
-    return { style, routeStyle: THEMES[theme].render({}, { accent }).route };
+    const def = typeof theme === 'string' ? THEMES[theme] : theme;
+    const { filters: _f, fill: _fill, fills: _fills, ...style } = def.style({ accent });
+    return { style, routeStyle: def.render({}, { accent }).route };
   }, [theme, accent]);
 
   // Tło ekranu obejmuje większy obszar niż pocztówka: mniejszy limit brył (obrysy są już od największych).
-  const buildings = useMemo(() => (iso ? refined?.layers.buildings?.slice(0, MAX_BACKDROP_BUILDINGS) : undefined), [iso, refined]);
+  // World: w tle płaska podłoga bez brył (drugie pełne 3D na każdą zmianę obszaru byłoby za drogie).
+  const flatWorld = !!world;
+  const buildings = useMemo(
+    () => (iso && !flatWorld ? refined?.layers.buildings?.slice(0, MAX_BACKDROP_BUILDINGS) : undefined),
+    [iso, refined, flatWorld],
+  );
   const [x0, y0, x1, y1] = viewBox ?? [0, 0, 1080, 1920];
   return (
     <svg

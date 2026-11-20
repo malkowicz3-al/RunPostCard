@@ -9,7 +9,9 @@ import { fitRoute } from '../lib/routePath';
 import type { MapLayers } from '../lib/vectorMap';
 import { encodePolyline } from '../dev/mockActivities';
 import { ROUTE_BOX } from '../postcard/Route';
-import { FOREST_X, NORTH_ROW, SOUTH_ROW, demoMap, edges, gridAt, isPark, nodePos, warp, type Pt } from './demoMap';
+import { FOREST_X, NORTH_ROW, SOUTH_ROW, demoMap, edges, gridAt, isPark, nodePos, type Pt } from './demoMap';
+import { warp } from '../world/grid';
+import { mulberry32 as prng } from '../world/rng';
 
 export type DemoRun = { activity: Activity; streams: RunStreams; map: MapLayers };
 
@@ -19,16 +21,6 @@ const BASE = geoMercator()
   .scale(6371000 / Math.cos((LAT0 * Math.PI) / 180))
   .translate([0, 0]);
 const POINTS = 600;
-
-// mulberry32: mały deterministyczny PRNG.
-function prng(seed: number) {
-  return () => {
-    seed = (seed + 0x6d2b79f5) | 0;
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 const dist = (a: Pt, b: Pt) => Math.hypot(b[0] - a[0], b[1] - a[1]);
 const length = (pts: Pt[]) => pts.reduce((s, p, i) => (i ? s + dist(pts[i - 1], p) : 0), 0);

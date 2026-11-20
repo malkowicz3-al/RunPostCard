@@ -29,6 +29,8 @@ import { POSTCARD_DETAILED } from '../lib/vectorMap';
 import { DATA, resolveLayout, slotBox, slotMenu, swapSlot, type LayoutId, type Overrides, type SlotPick } from '../postcard/slots';
 import { THEMES, type ThemeId } from '../postcard/themes';
 import { DEFAULT_ACCENT } from '../postcard/themes/neon';
+import { GENRES, type GenreId } from '../world/genres';
+import { hashSeed } from '../world/rng';
 import { DataModal } from './DataModal';
 import { PhotoEditor } from './PhotoEditor';
 import { ExportControls } from './ExportControls';
@@ -45,6 +47,7 @@ import { useRegionLayers } from './useRegionLayers';
 import { usePersonCutout } from './usePersonCutout';
 import { usePreviewProgress } from './usePreviewProgress';
 import { useRunStreams } from './useRunStreams';
+import { useWorld } from './useWorld';
 import { toDataUrl, useTerrain } from './useTerrain';
 import { toggleView, type View } from './viewState';
 
@@ -72,9 +75,15 @@ export function shouldOpenSlot({
 }
 
 // Kolory podglądu w oknie danych: to samo tło i kolor tekstu co pocztówka (bez ziarna i filtrów).
-function previewColors(look: Look, accent: string, photo: string | undefined, gradient: GradientId): { color: string; bg: CSSProperties } {
-  if (look in THEMES) {
-    const theme = THEMES[look as ThemeId];
+function previewColors(
+  look: Look,
+  accent: string,
+  photo: string | undefined,
+  gradient: GradientId,
+  genre: GenreId,
+): { color: string; bg: CSSProperties } {
+  if (look in THEMES || look === 'world') {
+    const theme = look === 'world' ? GENRES[genre].theme : THEMES[look as ThemeId];
     return { color: theme.render({}, { accent }).text.color, bg: { background: theme.style({ accent }).background } };
   }
   if (look === 'photo' && photo) {
@@ -149,6 +158,9 @@ export function PostcardScreen({
   const [routeColor, setRouteColor] = useState<RouteColor>('theme');
   const [glow, setGlow] = useState(0);
   const [mapDim, setMapDim] = useState(0);
+  // Świat World (ADR 0012): ziarno z biegu, „New world” losuje inne (tylko w pamięci).
+  const [worldSeed, setWorldSeed] = useState(() => hashSeed(activity.id));
+  const [worldGenre, setWorldGenre] = useState<GenreId>('scifi');
   const [terrainPick, setTerrainPick] = useState<boolean | null>(null); // null = automatycznie z przewyższenia
   const [layoutId, setLayoutId] = useState<LayoutId>('classic');
   const [overrides, setOverrides] = useState<Partial<Record<LayoutId, Overrides>>>({});
@@ -258,11 +270,21 @@ export function PostcardScreen({
   }, [iso, terrainOn, terrain.loading, dem, isMap, settled]);
   const zoomed = useRegionLayers(fit?.projection ?? null, region, profile, isMap);
   const terrainLoading = terrainOn && terrain.loading;
+  // World: ten sam prostokąt co fragment tła (odwrotność ustalonej kamery i w 3D macierzy izometrii, margines 15%).
+  const isWorld = look === 'world' && fit !== null;
+  const worldArea = useRef<LoadedArea | null>(null);
+  const worldRect = useMemo(
+    () => (isWorld ? (worldArea.current = nextBackdropArea(worldArea.current, CANVAS, settled, iso?.matrix ?? IDENTITY)).rect : null),
+    [isWorld, settled, iso],
+  );
+  const world = useWorld(isWorld ? fit.points : null, worldRect, worldSeed, worldGenre);
+  const worldMissing = isWorld && !world.world;
+  const worldLoading = isWorld && world.loading;
   // Punkt należy do zdjęcia, przy którym go kliknięto: po zmianie zdjęcia nie liczymy go na nowym ani przez jeden render.
   const cutout = usePersonCutout(photo, behind && look === 'photo', pickAt?.href === photo ? pickAt : null);
-  const loading = mapLoading || zoomed.loading || terrainLoading || cutout.loading;
+  const loading = mapLoading || zoomed.loading || terrainLoading || cutout.loading || worldLoading;
   // Bez zoomed.loading: przesunięcie mapy nie restartuje animacji.
-  const playPreview = animated && !exporting && !mapLoading && !terrainLoading && !cutout.loading;
+  const playPreview = animated && !exporting && !mapLoading && !terrainLoading && !cutout.loading && !worldLoading;
 
   useEffect(() => {
     let cancelled = false;
@@ -298,6 +320,7 @@ export function PostcardScreen({
   useEffect(() => {
     setEditing(null);
     setTerrainPick(null);
+    setWorldSeed(hashSeed(activity.id));
   }, [activity]);
 
   useEffect(() => {
@@ -371,7 +394,7 @@ export function PostcardScreen({
   };
   const scale = FONTS[font].scale;
   // Bez wczytanej mapy pocztówka ma gradient, więc podgląd też.
-  const preview = previewColors(mapMissing ? 'gradient' : look, accent, photo, gradient);
+  const preview = previewColors(mapMissing || worldMissing ? 'gradient' : look, accent, photo, gradient, worldGenre);
 
   // Przy błędzie mapy wracamy do gradientu.
   useEffect(() => {
@@ -388,17 +411,18 @@ export function PostcardScreen({
     activity,
     fontCss: fontCss?.css,
     font,
-    background: isMap && !mapMissing ? 'map' : look === 'photo' && photo ? 'photo' : look === 'transparent' ? 'transparent' : 'gradient',
+    background: (isMap && !mapMissing) || (isWorld && !worldMissing) ? 'map' : look === 'photo' && photo ? 'photo' : look === 'transparent' ? 'transparent' : 'gradient',
     gradient,
-    map: map.layers,
+    map: isWorld ? world.world?.layers : map.layers,
     photo: photo ? { href: photo, dim: dim / 100 } : undefined,
-    theme: isMap ? (look as ThemeId) : undefined,
+    theme: isWorld ? GENRES[worldGenre].theme : isMap ? (look as ThemeId) : undefined,
+    props: isWorld ? world.world?.props : undefined,
     accent,
     streams,
     view: is3d ? '3d' : 'flat',
     camera,
     iso,
-    refined: zoomed.refined,
+    refined: isWorld ? undefined : zoomed.refined,
     terrain: terrainImage,
     layout: items,
     route: showRoute,
@@ -407,7 +431,7 @@ export function PostcardScreen({
     person,
     glow,
     mapDim,
-  }), [glow, mapDim, textStyle, activity, fontCss?.css, font, isMap, mapMissing, look, gradient, photo, map.layers, dim, accent, streams, is3d, camera, iso, zoomed.refined, terrainImage, items, showRoute, routeColor, person]);
+  }), [glow, mapDim, textStyle, activity, fontCss?.css, font, isMap, mapMissing, isWorld, worldMissing, world.world, worldGenre, look, gradient, photo, map.layers, dim, accent, streams, is3d, camera, iso, zoomed.refined, terrainImage, items, showRoute, routeColor, person]);
   const previewCard = <PreviewCard props={postcardProps} playing={playPreview} />;
 
   const currentSvg = () => previewRef.current?.querySelector('svg') ?? null;
@@ -421,6 +445,12 @@ export function PostcardScreen({
     setMapFailed(false);
     setLook(value);
     if (value in THEMES) setFont(THEMES[value as ThemeId].font);
+    if (value === 'world') setFont(GENRES[worldGenre].theme.font);
+  };
+
+  const chooseWorldGenre = (id: GenreId) => {
+    setWorldGenre(id);
+    setFont(GENRES[id].theme.font);
   };
 
   // Przy błędzie zostaje poprzednie zdjęcie i wygląd.
@@ -490,8 +520,8 @@ export function PostcardScreen({
     () => colorScale(routeColor, streams, activity.max_heartrate) ?? undefined,
     [routeColor, streams, activity.max_heartrate],
   );
-  // Tło ekranu tylko przy motywie mapy i po wczytaniu mapy pocztówki, płasko i w 3D (ADR 0007).
-  const backdrop = isMap && !mapMissing && fit !== null;
+  // Tło ekranu tylko przy motywie mapy (lub świecie World) i po wczytaniu mapy pocztówki, płasko i w 3D (ADR 0007).
+  const backdrop = ((isMap && !mapMissing) || (isWorld && !worldMissing)) && fit !== null;
 
   return (
     <div className={`screen postcard-screen${backdrop ? ' has-backdrop' : ''}`}>
@@ -500,7 +530,7 @@ export function PostcardScreen({
           frameRef={previewRef}
           projection={fit.projection}
           route={fit.d}
-          theme={look as ThemeId}
+          theme={isWorld ? GENRES[worldGenre].theme : (look as ThemeId)}
           accent={accent}
           profile={profile}
           camera={camera}
@@ -509,6 +539,7 @@ export function PostcardScreen({
           terrain={terrainImage}
           points={fit.points}
           color={lineColor}
+          world={isWorld ? { points: fit.points, seed: worldSeed, genre: worldGenre } : undefined}
         />
       )}
       <div className="top-bar">
@@ -548,6 +579,13 @@ export function PostcardScreen({
           }}
         >
           {previewCard}
+          {/* W 3D budowa świata bywa dłuższa niż klatka; nakładka w HTML, poza eksportem. Przy doliczaniu po ruchu kamery zostaje stary świat, bez nakładki. */}
+          {is3d && worldMissing && (
+            <div className="world-building">
+              <span className="world-spinner" aria-hidden="true" />
+              Building world…
+            </div>
+          )}
           {/* Nakładka w HTML obok <svg>, żeby nie trafiła do eksportu. */}
           {items.map((item) => {
             const b = slotBox(item, DATA[item.slot.data].value(activity), scale);
@@ -587,6 +625,9 @@ export function PostcardScreen({
               ownPhotoHref={ownPhoto.current?.url}
               onOwnPhoto={restoreOwnPhoto}
               photoBusy={photoBusy}
+              worldGenre={worldGenre}
+              onWorldGenre={chooseWorldGenre}
+              onNewWorld={() => setWorldSeed(Math.floor(Math.random() * 2 ** 32))}
             />
           </div>
           {photoError && <p className="error">Could not read this image. Try a JPEG or PNG.</p>}
@@ -704,7 +745,7 @@ export function PostcardScreen({
                       Glow
                       <input type="range" min={0} max={100} step={10} value={glow} onChange={(e) => setGlow(Number(e.target.value))} />
                     </label>
-                    {isMap && (
+                    {(isMap || isWorld) && (
                       <label className="zoom-control">
                         Map dim
                         <input type="range" min={0} max={70} step={5} value={mapDim} onChange={(e) => setMapDim(Number(e.target.value))} />
@@ -731,7 +772,7 @@ export function PostcardScreen({
           />
           {loading && (
             <p className="hint" role="status">
-              {cutout.loading ? 'Finding runner…' : terrainLoading ? 'Loading terrain…' : 'Loading map…'}
+              {cutout.loading ? 'Finding runner…' : terrainLoading ? 'Loading terrain…' : worldLoading ? 'Building world…' : 'Loading map…'}
             </p>
           )}
           {terrainImage && (

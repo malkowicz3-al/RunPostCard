@@ -33,4 +33,7 @@ describe('initialLook', () => {
     vi.stubGlobal('matchMedia', undefined);
     expect(initialLook(run)).toBe('dark');
   });
+  it('nigdy World (świat tylko z wyboru)', () => {
+    expect(initialLook(run)).not.toBe('world');
+  });
 });

@@ -1,9 +1,10 @@
 import type { MapLayers } from '../lib/vectorMap';
+import { densify, warp, type Pt } from '../world/grid';
 
 // Wymyślone miasto dla kolażu na ekranie logowania (bez sieci). Jednostka „świata” = 1 m, y rośnie na południe.
 // Ulice to graf (skrzyżowania i odcinki), po którym chodzą trasy z demoRuns.ts; mapę rysujemy z tego samego grafu,
 // więc trasa po rzutowaniu leży na narysowanych ulicach.
-export type Pt = [number, number];
+export type { Pt };
 
 const BLOCK_X = 130;
 const BLOCK_Y = 150;
@@ -19,22 +20,6 @@ const hash = (i: number) => (Math.sin(i * 12.9898) * 43758.5453) % 1;
 // Szerokie zakola z dwóch długich fal (okresy ~6 i ~14 km), bez drobnego falowania; pas 830–970.
 const riverY = (x: number) => 900 + 45 * Math.sin(x / 950) + 25 * Math.sin(x / 2300 + 1);
 const validRow = (j: number) => j <= NORTH_ROW || j >= SOUTH_ROW;
-
-// Graf jest kratką, a miasto nie: gładkie wygięcie płaszczyzny (do ~180 m, nachylenie < 0,2, więc bez zawinięć).
-// Tylko długie fale (okres ~7–8 km): dzielnice obrócone o różne kąty, ulice na pocztówce prawie proste, bez marszczenia.
-// Mapa i trasy przechodzą przez nie przy wyjściu.
-export const warp = ([x, y]: Pt): Pt => [x + 180 * Math.sin(y / 1300 + 0.4), y + 180 * Math.sin(x / 1100 + 1.3)];
-
-// Odcinki dłuższe niż 40 m dzielimy, żeby po wygięciu były łukiem, a nie cięciwą.
-export function densify(pts: Pt[]): Pt[] {
-  const out: Pt[] = [pts[0]];
-  for (let i = 1; i < pts.length; i++) {
-    const [a, b] = [pts[i - 1], pts[i]];
-    const n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 40);
-    for (let s = 1; s <= n; s++) out.push([a[0] + ((b[0] - a[0]) * s) / n, a[1] + ((b[1] - a[1]) * s) / n]);
-  }
-  return out;
-}
 
 export const gridAt = (k: number, j: number): Pt => [
   k * BLOCK_X + 10 * hash(k * 31 + j * 7),

@@ -1,17 +1,19 @@
 import { useRef } from 'react';
 import { THEMES, type ThemeId } from '../postcard/themes';
 import { NEON_ACCENTS } from '../postcard/themes/neon';
+import { GENRES, GENRE_IDS, type GenreId } from '../world/genres';
 import { GRADIENTS, GRADIENT_IDS, gradientCss, type GradientId } from '../postcard/Background';
 import { RouteThumb } from './RouteThumb';
 import { SCENERY, sceneryThumb, type SceneryId } from './scenery';
 import { Select } from './Select';
 
-export type Look = 'gradient' | 'transparent' | 'photo' | ThemeId;
-type Background = 'gradient' | 'scenery' | 'transparent' | 'photo' | 'map';
+export type Look = 'gradient' | 'transparent' | 'photo' | 'world' | ThemeId;
+type Background = 'gradient' | 'scenery' | 'transparent' | 'photo' | 'map' | 'world';
 
 const THEME_IDS = Object.keys(THEMES) as ThemeId[];
 const THEME_OPTIONS = THEME_IDS.map((id) => ({ id, label: THEMES[id].label }));
 const SCENERY_OPTIONS = SCENERY.map(({ id, label, group }) => ({ id, label, group }));
+const GENRE_OPTIONS = GENRE_IDS.map((id) => ({ id, label: GENRES[id].label }));
 const GRADIENT_OPTIONS = GRADIENT_IDS.map((id) => ({ id, label: GRADIENTS[id].label }));
 const isTheme = (look: Look): look is ThemeId => look in THEMES;
 
@@ -30,6 +32,9 @@ export function LookPicker({
   onScenery,
   ownPhotoHref,
   onOwnPhoto,
+  worldGenre,
+  onWorldGenre,
+  onNewWorld,
 }: {
   polyline: string;
   hasRoute: boolean;
@@ -45,6 +50,9 @@ export function LookPicker({
   onScenery: (id: SceneryId) => void;
   ownPhotoHref?: string; // własne zdjęcie (zostaje, gdy w tle jest Scenery)
   onOwnPhoto: () => void;
+  worldGenre: GenreId;
+  onWorldGenre: (id: GenreId) => void;
+  onNewWorld: () => void; // nowe ziarno świata
 }) {
   const fileInput = useRef<HTMLInputElement>(null);
   // „Map” wraca do ostatnio wybranego motywu.
@@ -63,13 +71,20 @@ export function LookPicker({
     />
   );
 
+  // Miniatura bez generowania świata: tło i kolor trasy gatunku.
+  const worldThumb = (id: GenreId) => (
+    <span className="look-preview" style={{ background: GENRES[id].theme.style().background }}>
+      <RouteThumb polyline={polyline} style={null} route={GENRES[id].theme.render({}).route.stroke} />
+    </span>
+  );
+
   const backgrounds: { id: Background; label: string }[] = [
     { id: 'gradient', label: 'Gradient' },
     { id: 'scenery', label: 'Scenery' },
     { id: 'transparent', label: 'Transparent' },
     { id: 'photo', label: photoBusy ? 'Loading…' : 'Photo' },
     // Bez trasy nie ma projekcji, więc nie ma też mapy.
-    ...(hasRoute ? [{ id: 'map' as const, label: 'Map' }] : []),
+    ...(hasRoute ? [{ id: 'map' as const, label: 'Map' }, { id: 'world' as const, label: 'World' }] : []),
   ];
 
   const sceneryPreview = (id: SceneryId) => (
@@ -79,6 +94,7 @@ export function LookPicker({
   const backgroundPreview = (id: Background) => {
     if (id === 'map') return themeThumb(lastTheme.current);
     if (id === 'scenery') return sceneryPreview(scenery ?? SCENERY[0].id);
+    if (id === 'world') return worldThumb(worldGenre);
     if (id === 'photo')
       return ownPhoto ? (
         <span className="look-preview look-photo" style={{ backgroundImage: `url(${ownPhotoHref})` }} />
@@ -97,6 +113,7 @@ export function LookPicker({
 
   const chooseBackground = (id: Background) => {
     if (id === 'map') onLook(lastTheme.current);
+    else if (id === 'world') onLook('world');
     else if (id === 'scenery') onScenery(scenery ?? SCENERY[0].id);
     // Bez wgranego własnego zdjęcia wybór „Photo” od razu otwiera wybór pliku.
     else if (id === 'photo' && !ownPhoto) fileInput.current?.click();
@@ -159,6 +176,24 @@ export function LookPicker({
             onChange={onGradient}
             preview={(id) => <span className="look-preview" style={{ background: gradientCss(id) }} />}
           />
+        </section>
+      )}
+      {look === 'world' && (
+        <section className="panel-section">
+          <h3 className="panel-heading">World</h3>
+          <Select
+            label="World style"
+            className="look-select"
+            value={worldGenre}
+            options={GENRE_OPTIONS}
+            onChange={onWorldGenre}
+            preview={worldThumb}
+          />
+          <div className="toggle-row">
+            <button className="toggle" onClick={onNewWorld}>
+              New world
+            </button>
+          </div>
         </section>
       )}
       {isTheme(look) && (
