@@ -1701,28 +1701,6 @@ button.swatch,
     padding: 8px 16px;
   }
 
-  /* Wysoki telefon: 9:16 nie wypełnia ekranu. Pocztówka na środku, mapa wokół prawie bez przygaszenia (bez czarnych pasów), cienka linia pokazuje, co trafi do pliku. */
-  .postcard-screen {
-    flex: 1;
-  }
-
-  .postcard-screen .postcard-layout {
-    flex: 1;
-    justify-content: center;
-  }
-
-  .postcard-screen:has(.style-panel[data-open='true']) .postcard-layout {
-    justify-content: flex-start;
-  }
-
-  .postcard-screen .backdrop-dim {
-    opacity: 0.12;
-  }
-
-  .has-backdrop .postcard-frame {
-    outline-width: 1px;
-  }
-
   .postcard-screen .top-bar .run-title {
     margin-right: 96px; /* miejsce na przycisk Style w pasku */
   }

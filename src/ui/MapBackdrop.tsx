@@ -137,7 +137,7 @@ export function MapBackdrop({
           </>
         )}
       </g>
-      <rect x={x0} y={y0} width={x1 - x0} height={y1 - y0} className="backdrop-dim" fill="#000000" opacity={0.5} />
+      <rect x={x0} y={y0} width={x1 - x0} height={y1 - y0} fill="#000000" opacity={0.5} />
     </svg>
   );
 }
