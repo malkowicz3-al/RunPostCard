@@ -421,28 +421,6 @@ describe('Postcard World', () => {
     }
   });
 
-  it('progress 1 bez zmian (bez drona i sterowca); w animacji dron, sterowiec i ruch pojazdów, deterministycznie', () => {
-    for (const view of ['flat', '3d'] as const) {
-      const still = renderToStaticMarkup(<Postcard {...base} view={view} />);
-      expect(renderToStaticMarkup(<Postcard {...base} view={view} progress={1} />)).toBe(still);
-      expect(still).not.toContain('world-scifi-beam');
-      expect(still).not.toContain('rx="110"'); // kadłub sterowca
-      for (const progress of [0.3, 0.5]) {
-        const svg = renderToStaticMarkup(<Postcard {...base} view={view} progress={progress} />);
-        expect(renderToStaticMarkup(<Postcard {...base} view={view} progress={progress} />)).toBe(svg);
-        expect(svg, `${view} ${progress}`).toContain('fill="url(#world-scifi-beam)"');
-        expect(svg).toContain('rx="110"');
-        expect(svg).not.toMatch(/NaN|Infinity/);
-        for (const [, ref] of svg.matchAll(/url\(#([\w-]+)\)/g)) expect(svg, `${view}: #${ref}`).toContain(`id="${ref}"`);
-        const ids = [...svg.matchAll(/id="([^"]+)"/g)].map(([, id]) => id);
-        expect(new Set(ids).size).toBe(ids.length);
-        // Pojazdy (auta i statki) gdzie indziej niż w gotowej pocztówce.
-        const moved = (m: string) => [...m.matchAll(/transform="translate\(([^)]+)\) rotate/g)].map(([, t]) => t);
-        expect(moved(svg).filter((t) => moved(still).includes(t)).length).toBeLessThan(moved(still).length / 4);
-      }
-    }
-  });
-
   it('fragment refined w stylu świata: ulica trasy w refined-clip', () => {
     const rect: Rect = [-500, -500, 1580, 2420];
     const svg = renderToStaticMarkup(<Postcard {...base} refined={{ rect, layers: decorated }} />);

@@ -166,7 +166,7 @@ There are 48 map themes. Classic and stylized: **Dark** (the outline above), **L
 
 ## World
 
-**World** (a background option, shown for runs with a route) is the real map around your run (the same streets, buildings, parks and water) in a neon **Sci-fi** style: glowing building outlines, signs on taller buildings (in the 3D view), the route as a street with neon curbs, haze, cars on the real streets and a few ships. It loads the same map tiles as the Map background and shows the OpenStreetMap credit. The same run always gets the same look; **New world** changes the colors, signs and vehicles (the map itself stays). **World style** picks the genre (for now **Sci-fi**, which also sets its font). It works in the flat and the 3D view (no terrain) and in still and animated downloads. In **Animated** the cars drive along their streets, the ships fly, a camera drone follows the runner and an airship with a neon billboard crosses the sky; the still postcard stays as it is.
+**World** (a background option, shown for runs with a route) is the real map around your run (the same streets, buildings, parks and water) in a neon **Sci-fi** style: glowing building outlines, signs on taller buildings (in the 3D view), the route as a street with neon curbs, haze, cars on the real streets and a few ships. It loads the same map tiles as the Map background and shows the OpenStreetMap credit. The same run always gets the same look; **New world** changes the colors, signs and vehicles (the map itself stays). **World style** picks the genre (for now **Sci-fi**, which also sets its font). It works in the flat and the 3D view (no terrain) and in still and animated downloads.
 
 ## 3D view
 

@@ -5,7 +5,6 @@ import type { Building, MapLayers } from '../lib/vectorMap';
 import { ROUTE_BOX } from '../postcard/Route';
 import { decorateWorld, parseLines, worldProps } from './decorate';
 import { GENRES } from './genres';
-import { carAt } from './Props';
 
 const points = fitRoute(mockActivities()[0].map.summary_polyline, ROUTE_BOX)!.points;
 const rect = (x: number, y: number, w: number, h: number): [number, number][] => [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
@@ -104,31 +103,5 @@ describe('worldProps', () => {
       expect(s.y).toBeGreaterThanOrEqual(288);
       expect(s.y).toBeLessThanOrEqual(1632);
     }
-  });
-  it('jeden sterowiec poza płótnem, zależny od ziarna; auta w animacji na swoim odcinku, przy 1 w miejscu statycznym', () => {
-    const props = worldProps(LAYERS, points, 5, 'scifi');
-    const airships = props.filter((p) => p.kind === 'airship');
-    expect(airships).toHaveLength(1);
-    expect([-140, 1220]).toContain(airships[0].x);
-    expect(worldProps(LAYERS, points, 6, 'scifi').find((p) => p.kind === 'airship')).not.toEqual(airships[0]);
-    let moving = 0;
-    for (const c of props.filter((p) => p.kind === 'car')) {
-      expect(carAt(c, 1)).toEqual([c.x, c.y]);
-      let last = -Infinity;
-      for (const progress of [0, 0.25, 0.5, 0.75, 0.999]) {
-        const [x, y] = carAt(c, progress);
-        expect(Number.isFinite(x) && Number.isFinite(y)).toBe(true);
-        const s = (x - c.x0!) * c.dir![0] + (y - c.y0!) * c.dir![1];
-        expect(s).toBeGreaterThanOrEqual(0);
-        expect(s).toBeLessThanOrEqual(c.len!);
-        expect(s).toBeGreaterThanOrEqual(last); // bez skoków wstecz (zawijania)
-        expect(Math.abs((x - c.x0!) * c.dir![1] - (y - c.y0!) * c.dir![0])).toBeLessThan(1e-6); // na prostej odcinka
-        last = s;
-      }
-      const [x, y] = carAt(c, 0.999);
-      expect(Math.hypot(x - c.x, y - c.y)).toBeLessThan(1); // dojeżdża do miejsca statycznego
-      if (Math.hypot(...carAt(c, 0).map((v, i) => v - [c.x, c.y][i]) as [number, number]) > 1) moving++;
-    }
-    expect(moving).toBeGreaterThan(0);
   });
 });

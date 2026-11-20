@@ -3,9 +3,8 @@ import { GENRES, type GenreId } from './genres';
 import type { Pt } from './grid';
 import { hashSeed, mulberry32 } from './rng';
 
-// Pojazd w px płótna, kąt w stopniach. Auto: x0, y0 początek odcinka ulicy, len jego długość, dir wektor jednostkowy (do animacji).
-// Sterowiec: x, y wlot przy krawędzi poza płótnem, angle 0 albo 180 (kierunek przelotu).
-export type Prop = { kind: 'car' | 'ship' | 'airship'; x: number; y: number; angle: number; x0?: number; y0?: number; len?: number; dir?: [number, number] };
+// Pojazd w px płótna, kąt w stopniach.
+export type Prop = { kind: 'car' | 'ship'; x: number; y: number; angle: number };
 
 const BUCKET = 64;
 const HALF_STREET = 17; // pół szerokości ulicy trasy (asfalt 28 px + krawężnik)
@@ -13,7 +12,6 @@ const CAR_CORRIDOR = 34; // auta poza całą ulicą trasy
 const MIN_SIGN_H = 25; // szyld tylko na wyższych budynkach (m)
 const MIN_SEG = 20; // najkrótszy odcinek ulicy z autem (px)
 const SHIP_MARGIN = 0.15;
-const AIRSHIP_OUT = 140; // wlot i wylot sterowca tuż za krawędzią płótna (kadłub ze statecznikiem ma ±135 px)
 
 const fmt = (p: Pt) => `${Math.round(p[0])} ${Math.round(p[1])}`;
 
@@ -94,16 +92,14 @@ export function worldProps(layers: MapLayers, points: Pt[], seed: number, genre:
   for (const line of [...parseLines(layers.minor), ...parseLines(layers.mid)])
     for (let k = 1; k < line.length; k++) {
       const [a, b] = [line[k - 1], line[k]];
-      const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
-      if (!(len >= MIN_SEG)) continue;
+      if (!(Math.hypot(b[0] - a[0], b[1] - a[1]) >= MIN_SEG)) continue;
       const key = hashSeed(seed, genre, Math.round((a[0] + b[0]) / 2), Math.round((a[1] + b[1]) / 2));
       const t = mulberry32(key)();
       const [x, y] = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
       // Sprawdzamy samo auto, nie środek odcinka: długa prosta ulica może przecinać trasę.
       if (nearRoute(x, y)) continue;
       const angle = Math.round((Math.atan2(b[1] - a[1], b[0] - a[0]) * 180) / Math.PI);
-      const dir: [number, number] = [(b[0] - a[0]) / len, (b[1] - a[1]) / len];
-      candidates.push({ car: { kind: 'car', x: Math.round(x), y: Math.round(y), angle, x0: a[0], y0: a[1], len, dir }, key });
+      candidates.push({ car: { kind: 'car', x: Math.round(x), y: Math.round(y), angle }, key });
     }
   const cars = candidates
     .sort((p, q) => p.key - q.key)
@@ -117,13 +113,5 @@ export function worldProps(layers: MapLayers, points: Pt[], seed: number, genre:
     y: Math.round(1920 * (SHIP_MARGIN + span * r())),
     angle: Math.round(r() * 360),
   }));
-  const ra = mulberry32(hashSeed(seed, genre, 'airship'));
-  const left = ra() < 0.5;
-  const airship: Prop = {
-    kind: 'airship',
-    x: left ? -AIRSHIP_OUT : 1080 + AIRSHIP_OUT,
-    y: Math.round(1920 * (SHIP_MARGIN + 0.4 * ra())),
-    angle: left ? 0 : 180,
-  };
-  return [...cars, ...ships, airship];
+  return [...cars, ...ships];
 }
