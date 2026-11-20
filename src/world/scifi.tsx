@@ -3,10 +3,11 @@ import type { MapStyle } from '../postcard/mapStyle';
 import { mix } from '../lib/color';
 import type { ReactNode } from 'react';
 import type { Rect } from '../lib/mapTiles';
-import type { Building, MapLayers } from '../lib/vectorMap';
+import type { MapLayers } from '../lib/vectorMap';
 import type { MapTheme } from '../postcard/themes';
 import { Glow } from '../postcard/themes/neon';
 import { Overlay } from '../postcard/themes/texture';
+import { outlines } from './outlines';
 
 const LINES = 'url(#world-scifi-lines)';
 const ROAD = '#120a2a';
@@ -41,14 +42,6 @@ const STYLE: MapStyle = {
   buildings3d: 'tower',
 };
 
-// Bryły świata w widoku płaskim: jedna ścieżka na kolor neonu (bez neonu: kolor budynków), zamiast warstwy building.
-function outlines(buildings: Building[] = []): Map<string, string> {
-  const out = new Map<string, string>();
-  for (const { ring, accent = STYLE.colors.building } of buildings)
-    out.set(accent, (out.get(accent) ?? '') + `M${ring.map(([x, y]) => `${x} ${y}`).join('L')}Z`);
-  return out;
-}
-
 // Scena bez <defs> (id są w render().scene); refined w Postcard rysuje ją we własnym prostokącie.
 function floor(layers: MapLayers, rect?: Rect): ReactNode {
   return (
@@ -59,7 +52,7 @@ function floor(layers: MapLayers, rect?: Rect): ReactNode {
       <g filter={LINES} strokeLinejoin="round" strokeLinecap="round">
         {layers.major && <path d={layers.major} fill="none" stroke={CURB} strokeWidth={34} opacity={0.7} />}
         {/* W 3D Postcard zdejmuje building z podłogi (bryły stoją same), więc i bez płaskich obrysów. */}
-        {[...outlines(layers.building ? layers.buildings : undefined)].map(([color, d]) => (
+        {[...outlines(layers.building ? layers.buildings : undefined, STYLE.colors.building)].map(([color, d]) => (
           <path key={color} d={d} stroke={color} strokeWidth={1.5} fill={mix(color, STYLE.colors.building, 0.88)} />
         ))}
       </g>

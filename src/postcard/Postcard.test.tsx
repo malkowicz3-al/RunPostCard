@@ -12,7 +12,7 @@ import { SlotNumber } from './SlotNumber';
 import { fitRoute } from '../lib/routePath';
 import { decorateWorld, worldProps } from '../world/decorate';
 import type { MapLayers } from '../lib/vectorMap';
-import { GENRES } from '../world/genres';
+import { GENRES, GENRE_IDS } from '../world/genres';
 
 const LAYERS = { water: 'M0 0L50 0L50 50Z', major: 'M0 100L500 100' };
 const hills = mockActivities().find((r) => r.name === 'Hill repeats')!;
@@ -371,7 +371,7 @@ describe('Postcard poświata i przyciemnienie mapy', () => {
   });
 });
 
-describe('Postcard World', () => {
+describe.each(GENRE_IDS)('Postcard World %s', (genre) => {
   const points = fitRoute(hills.map.summary_polyline, ROUTE_BOX)!.points;
   // Ręczna mapa: siatka brył i ulic na płótnie, dekorowana jak w PostcardScreen.
   const buildings = Array.from({ length: 40 }, (_, k) => {
@@ -385,15 +385,18 @@ describe('Postcard World', () => {
     building: buildings.map((b) => `M${b.ring.join('L')}Z`).join(''),
     buildings,
   };
-  const decorated = decorateWorld(layers, points, 1, 'scifi');
+  const decorated = decorateWorld(layers, points, 1, genre);
+  const { theme, accents } = GENRES[genre];
   const base = {
     activity: hills,
     background: 'map' as const,
     map: decorated,
-    theme: GENRES.scifi.theme,
-    props: worldProps(layers, points, 1, 'scifi'),
+    theme,
+    props: worldProps(layers, points, 1, genre),
     streams,
   };
+  // Ulica trasy: asfalt (Sci-fi, Post-apo) albo ubita droga (Fantasy), 28 px pod trasą.
+  const road = new RegExp(`stroke="${theme.style().colors.major}" stroke-width="28"`);
 
   it('2D i 3D: z podpisem OSM, lokalne i unikalne id, bez NaN, pojazdy nad mapą i pod trasą', () => {
     for (const view of ['flat', '3d'] as const) {
@@ -403,20 +406,26 @@ describe('Postcard World', () => {
       const ids = [...svg.matchAll(/id="([^"]+)"/g)].map(([, id]) => id);
       expect(new Set(ids).size).toBe(ids.length);
       expect(svg).not.toMatch(/NaN|Infinity/);
-      const props = svg.indexOf('class="world-props"');
-      expect(props).toBeGreaterThan(svg.indexOf('id="world-scifi-lines"'));
-      expect(props).toBeLessThan(svg.indexOf('filter="url(#world-scifi-route)"'));
-      expect(svg, view).toMatch(/stroke="#120a2a" stroke-width="28"/); // ulica pod trasą
+      expect(svg.includes('class="world-props"')).toBe(base.props.length > 0);
+      expect(svg.includes(`world-${genre}-props-glow`)).toBe(GENRES[genre].props.look.glow && base.props.length > 0);
+      if (genre === 'scifi') {
+        const props = svg.indexOf('class="world-props"');
+        expect(props).toBeGreaterThan(svg.indexOf('id="world-scifi-lines"'));
+        expect(props).toBeLessThan(svg.indexOf('filter="url(#world-scifi-route)"'));
+      }
+      expect(svg, view).toMatch(road); // ulica pod trasą
       if (view === 'flat') {
-        // Każda bryła narysowana raz (obrysy z neonem zamiast warstwy building).
+        // Każda bryła narysowana raz (obrysy z kolorem gatunku zamiast warstwy building).
         const ring = decorated.buildings![0].ring.map(([x, y]) => `${x} ${y}`).join('L');
         expect(svg.split(ring)).toHaveLength(2);
       }
       if (view === '3d') {
         expect(svg).toContain('transform="matrix(');
-        expect(svg.split('class="world-props"')).toHaveLength(3); // auta pod bryłami, statki nad nimi
-        const accents = GENRES.scifi.accents.filter((c) => svg.includes(`stroke="${c}"`));
-        expect(accents.length).toBeGreaterThanOrEqual(3);
+        // Auta pod bryłami, statki nad nimi (dwie grupy, gdy są pojazdy).
+        if (base.props.length) expect(svg.split('class="world-props"')).toHaveLength(3);
+        // Sci-fi: neon okien i krawędzi; Fantasy i Post-apo: dachy w kolorach gatunku.
+        const attr = genre === 'scifi' ? 'stroke' : 'fill';
+        expect(accents.filter((c) => svg.includes(`${attr}="${c}"`)).length).toBeGreaterThanOrEqual(3);
       }
     }
   });
@@ -425,6 +434,6 @@ describe('Postcard World', () => {
     const rect: Rect = [-500, -500, 1580, 2420];
     const svg = renderToStaticMarkup(<Postcard {...base} refined={{ rect, layers: decorated }} />);
     // Po scenie bazowej: bez floor fragment miałby tylko cienką linię major z MapBackground.
-    expect(svg.slice(svg.indexOf('clip-path="url(#refined-clip)"'))).toMatch(/stroke="#120a2a" stroke-width="28"/);
+    expect(svg.slice(svg.indexOf('clip-path="url(#refined-clip)"'))).toMatch(road);
   });
 });

@@ -4,7 +4,7 @@ import type { Pt } from './grid';
 import { hashSeed, mulberry32 } from './rng';
 
 // Pojazd w px płótna, kąt w stopniach.
-export type Prop = { kind: 'car' | 'ship'; x: number; y: number; angle: number };
+export type Prop = { kind: 'car' | 'ship'; x: number; y: number; angle: number; genre: GenreId };
 
 const BUCKET = 64;
 const HALF_STREET = 17; // pół szerokości ulicy trasy (asfalt 28 px + krawężnik)
@@ -12,6 +12,8 @@ const CAR_CORRIDOR = 34; // auta poza całą ulicą trasy
 const MIN_SIGN_H = 25; // szyld tylko na wyższych budynkach (m)
 const MIN_SEG = 20; // najkrótszy odcinek ulicy z autem (px)
 const SHIP_MARGIN = 0.15;
+const LARGE_H = 18; // duże bryły (m albo dłuższy bok obrysu w px) zostają przy rzadszej zabudowie
+const LARGE_SPAN = 60;
 
 const fmt = (p: Pt) => `${Math.round(p[0])} ${Math.round(p[1])}`;
 
@@ -49,7 +51,7 @@ function routeIndex(points: Pt[], corridor: number): (x: number, y: number) => b
 // Świat na prawdziwej mapie (ADR 0013): ulica trasy zamiast dróg major (te idą do mid), bez brył na ulicy trasy,
 // neon i szyldy ze skrótu środka bryły (ten sam budynek w bazie, refined i tle dostaje ten sam kolor). Czysta funkcja.
 export function decorateWorld(layers: MapLayers, points: Pt[], seed: number, genre: GenreId): MapLayers {
-  const { accents } = GENRES[genre];
+  const { accents, signs, keep, ruin } = GENRES[genre];
   const major = points.length > 1 ? `M${points.map(fmt).join('L')}` : undefined;
   const mid = [layers.mid, layers.major].filter(Boolean).join('') || undefined;
   if (!layers.buildings) return { ...layers, major, mid };
@@ -65,12 +67,24 @@ export function decorateWorld(layers: MapLayers, points: Pt[], seed: number, gen
     });
   const buildings: Building[] = layers.buildings
     .filter((b) => !blocked(b.ring))
-    .map((b) => {
+    .flatMap((b) => {
       const cx = b.ring.reduce((s, p) => s + p[0], 0) / b.ring.length;
       const cy = b.ring.reduce((s, p) => s + p[1], 0) / b.ring.length;
       const r = mulberry32(hashSeed(seed, genre, Math.round(cx / 4), Math.round(cy / 4)));
       const accent = accents[Math.floor(r() * accents.length)];
-      return { ...b, accent, sign: r() < 0.3 && b.h >= MIN_SIGN_H };
+      const s = r() < 0.3;
+      // Gęstość i ruiny z grubszej siatki 16 px: ten sam budynek z kafelków refined i tła ma nieco inne wierzchołki,
+      // a zniknięcie albo zmiana wysokości po doczytaniu mapy rzucałyby się w oczy bardziej niż inny kolor.
+      const rk = mulberry32(hashSeed(seed, genre, 'keep', Math.round(cx / 16), Math.round(cy / 16)));
+      const keepR = rk();
+      const ruinR = rk();
+      if (keepR >= keep && b.h < LARGE_H) {
+        const xs = b.ring.map((p) => p[0]);
+        const ys = b.ring.map((p) => p[1]);
+        if (Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) < LARGE_SPAN) return [];
+      }
+      const h = ruinR < ruin ? Math.min(b.h, Math.max(b.min + 3, b.min + (b.h - b.min) * (0.35 + 0.5 * rk()))) : b.h;
+      return [{ ...b, h, accent, sign: signs && s && h >= MIN_SIGN_H }];
     });
   const building = buildings.map((b) => `M${b.ring.map(([x, y]) => `${x} ${y}`).join('L')}Z`).join('') || undefined;
   return { ...layers, major, mid, buildings, building };
@@ -87,6 +101,7 @@ export function parseLines(d = ''): Pt[][] {
 // Pojazdy (ADR 0013): auta na prawdziwych ulicach minor i mid poza ulicą trasy, statki w płótnie. Czysta funkcja.
 export function worldProps(layers: MapLayers, points: Pt[], seed: number, genre: GenreId): Prop[] {
   const { props } = GENRES[genre];
+  if (!props.cars && !props.ships) return [];
   const nearRoute = routeIndex(points, CAR_CORRIDOR);
   const candidates: { car: Prop; key: number }[] = [];
   for (const line of [...parseLines(layers.minor), ...parseLines(layers.mid)])
@@ -99,7 +114,7 @@ export function worldProps(layers: MapLayers, points: Pt[], seed: number, genre:
       // Sprawdzamy samo auto, nie środek odcinka: długa prosta ulica może przecinać trasę.
       if (nearRoute(x, y)) continue;
       const angle = Math.round((Math.atan2(b[1] - a[1], b[0] - a[0]) * 180) / Math.PI);
-      candidates.push({ car: { kind: 'car', x: Math.round(x), y: Math.round(y), angle }, key });
+      candidates.push({ car: { kind: 'car', x: Math.round(x), y: Math.round(y), angle, genre }, key });
     }
   const cars = candidates
     .sort((p, q) => p.key - q.key)
@@ -112,6 +127,7 @@ export function worldProps(layers: MapLayers, points: Pt[], seed: number, genre:
     x: Math.round(1080 * (SHIP_MARGIN + span * r())),
     y: Math.round(1920 * (SHIP_MARGIN + span * r())),
     angle: Math.round(r() * 360),
+    genre,
   }));
   return [...cars, ...ships];
 }

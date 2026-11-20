@@ -82,3 +82,10 @@ Bryły w 3D to prawdziwe wysokości z `render_height` i istniejące przewyższen
   - jedna funkcja `{ layers, props }` liczona trzy razy;
   - akcenty po indeksie bryły, bo indeks jest inny w bazie, `refined` i tle;
   - pojazdy z warstwy `path`, bo to ścieżki piesze.
+
+## Gatunki Fantasy i Post-apo
+- `Genre` dostał pola `signs` (szyldy tylko w Sci-fi), `keep` (odsetek zostawionych brył), `ruin` (odsetek brył z obciętą wysokością, co najmniej `min + 3` m) i `props.look` (kolory aut i statków, smuga, poświata).
+- Gęstość i ruiny losujemy z osobnego skrótu środka bryły na grubszej siatce 16 px (kolor i szyld zostają na siatce 4 px), więc ten sam budynek w bazie, `refined` i tle wygląda tak samo z dokładnością do drobnych różnic wierzchołków. Duże bryły (od 18 m albo dłuższy bok od 60 px) zostają zawsze. Strumień koloru i szyldu jest nietknięty, więc Sci-fi się nie zmienia.
+- `Buildings3D`: `accent` bryły jest kolorem dachu we wszystkich wariantach poza `tower` (tam to nadal neon okien i krawędzi). Motywy bez `accent` bez zmian.
+- Fantasy: bryły `castle`, bez pojazdów. Post-apo: bryły `voxel`, wraki aut bez smugi i poświaty.
+- Bez animacji: ruch pojazdów był zrobiony i usunięty, bo za bardzo spadała liczba klatek.

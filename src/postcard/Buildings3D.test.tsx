@@ -83,4 +83,18 @@ describe('Buildings3D', () => {
     expect(tower({ ...tall, sign: true })).toBe(tower(tall)); // szyld tylko z własnym neonem
     expect(tower(big)).toContain('stroke="#00ffff"');
   });
+
+  it('gabled, castle i voxel: własny kolor bryły jako dach; bez niego bez zmian', () => {
+    const one = (shape: BuildingShape, bld: typeof big & { accent?: string }) =>
+      renderToStaticMarkup(
+        <svg>
+          <Buildings3D buildings={[bld]} matrix={MATRIX} pxPerM={1} color="#808080" shape={shape} />
+        </svg>,
+      );
+    for (const shape of ['gabled', 'castle', 'voxel'] as const) {
+      const own = one(shape, { ...big, accent: '#b5442f' });
+      expect(own, shape).toContain('fill="#b5442f"');
+      expect(own.replaceAll('#b5442f', '#808080'), shape).toBe(one(shape, big));
+    }
+  });
 });

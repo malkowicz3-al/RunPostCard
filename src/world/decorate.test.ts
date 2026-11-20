@@ -80,7 +80,62 @@ describe('decorateWorld', () => {
   });
 });
 
+describe('gęstość i ruiny', () => {
+  // Niskie małe domki (poniżej progów dużej bryły): tylko one mogą zniknąć przy keep < 1.
+  const houses: Building[] = Array.from({ length: 300 }, (_, k) => ({ ring: rect(20 + (k % 20) * 52, 30 + Math.floor(k / 20) * 125, 20, 20), h: 10, min: 0 }));
+  const big: Building[] = [
+    { ring: rect(300, 300, 20, 20), h: 30, min: 0 },
+    { ring: rect(600, 300, 80, 20), h: 10, min: 0 },
+  ];
+
+  it('Fantasy: ok. 75% małych brył, deterministycznie, duże zawsze zostają, bez szyldów', () => {
+    const all = decorateWorld({ buildings: houses }, points, 4, 'scifi').buildings!.length;
+    const kept = decorateWorld({ buildings: houses }, points, 4, 'fantasy').buildings!;
+    expect(kept.length / all).toBeGreaterThan(0.6);
+    expect(kept.length / all).toBeLessThan(0.9);
+    expect(decorateWorld({ buildings: houses }, points, 4, 'fantasy').buildings).toEqual(kept);
+    for (const seed of [1, 2, 3, 4, 5, 6]) {
+      const d = decorateWorld({ buildings: big }, [[0, 0], [1, 0]], seed, 'fantasy').buildings!;
+      expect(d.map((b) => b.ring)).toEqual(big.map((b) => b.ring));
+    }
+    for (const id of ['fantasy', 'postapo'] as const)
+      expect(decorateWorld(LAYERS, points, 2, id).buildings!.some((b) => b.sign)).toBe(false);
+    expect(decorateWorld(LAYERS, points, 2, 'scifi').buildings!.some((b) => b.sign)).toBe(true);
+  });
+
+  it('bryła przesunięta o 2 px (te same komórki 16 px) zachowuje gęstość i ruinę', () => {
+    // Środki w 36 + 16k (z przesunięciem 38 + 16k), daleko od granic komórek w 8 + 16k (zaokrąglenie cx / 16).
+    const at = (dx: number) => Array.from({ length: 60 }, (_, k): Building => ({ ring: rect(26 + (k % 10) * 96 + dx, 26 + Math.floor(k / 10) * 160 + dx, 20, 20), h: 15, min: 0 }));
+    for (const id of ['fantasy', 'postapo'] as const) {
+      const outcome = (dx: number) => decorateWorld({ buildings: at(dx) }, [[0, 0], [1, 0]], 9, id).buildings!.map((b) => `${b.ring[0][0] - dx}:${b.h}`);
+      expect(outcome(2), id).toEqual(outcome(0));
+      expect(new Set(outcome(0).map((o) => o.split(':')[1])).size + 60 - outcome(0).length, id).toBeGreaterThan(1); // los coś zmienia
+    }
+  });
+
+  it('Post-apo: część brył obcięta, ale co najmniej min + 3 m; ten sam budynek w dwóch tablicach tak samo', () => {
+    const d = decorateWorld(LAYERS, points, 3, 'postapo').buildings!;
+    const src = new Map(buildings.map((b) => [b.ring, b]));
+    const cut = d.filter((b) => b.h < src.get(b.ring)!.h);
+    expect(cut.length).toBeGreaterThan(d.length * 0.25);
+    expect(cut.length).toBeLessThan(d.length * 0.75);
+    for (const b of d) expect(b.h).toBeGreaterThanOrEqual(b.min + 3);
+    expect(d.length).toBe(decorateWorld(LAYERS, points, 3, 'scifi').buildings!.length); // keep 1
+    const one = buildings[7];
+    const other = decorateWorld({ buildings: [buildings[2], one] }, points, 3, 'postapo').buildings!.find((b) => b.ring === one.ring)!;
+    expect(other).toEqual(d.find((b) => b.ring === one.ring));
+  });
+});
+
 describe('worldProps', () => {
+  it('Fantasy bez pojazdów; Post-apo same auta z gatunkiem', () => {
+    expect(worldProps(LAYERS, points, 5, 'fantasy')).toEqual([]);
+    const wrecks = worldProps(LAYERS, points, 5, 'postapo');
+    expect(wrecks.length).toBeGreaterThan(0);
+    expect(wrecks.length).toBeLessThanOrEqual(GENRES.postapo.props.cars);
+    expect(wrecks.every((p) => p.kind === 'car' && p.genre === 'postapo')).toBe(true);
+  });
+
   it('parser linii: liczby ujemne i ułamkowe', () => {
     expect(parseLines('M-3.5 2L10 -4.25M1 1L2 2')).toEqual([[[-3.5, 2], [10, -4.25]], [[1, 1], [2, 2]]]);
   });

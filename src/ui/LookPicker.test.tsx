@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { mockActivities } from '../dev/mockActivities';
+import type { GenreId } from '../world/genres';
 import { LookPicker, type Look } from './LookPicker';
 
 const noop = () => {};
-const picker = (look: Look) =>
+const picker = (look: Look, genre: GenreId = 'scifi') =>
   renderToStaticMarkup(
     <LookPicker
       polyline={mockActivities()[0].map.summary_polyline}
@@ -18,7 +19,7 @@ const picker = (look: Look) =>
       onPhotoFile={noop}
       onScenery={noop}
       onOwnPhoto={noop}
-      worldGenre="scifi"
+      worldGenre={genre}
       onWorldGenre={noop}
       onNewWorld={noop}
     />,
@@ -30,6 +31,8 @@ describe('LookPicker World', () => {
     expect(svg).toContain('World style');
     expect(svg).toContain('New world');
     expect(svg).toContain('Sci-fi');
+    expect(picker('world', 'fantasy')).toContain('Fantasy'); // zamknięta lista pokazuje tylko wybrany styl
+    expect(picker('world', 'postapo')).toContain('Post-apo');
     expect(picker('dark')).not.toContain('New world');
   });
 });

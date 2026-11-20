@@ -21,14 +21,18 @@ function contrast(a: string, b: string): number {
 }
 
 describe('GENRES', () => {
-  it('pełna paleta, font z listy, bryły tower', () => {
+  it('pełna paleta, font z listy, bryły gatunku, kolory brył i gęstość', () => {
+    const shapes = { scifi: 'tower', fantasy: 'castle', postapo: 'voxel' };
     for (const id of GENRE_IDS) {
       const { theme } = GENRES[id];
       const style = theme.style();
       for (const key of MAP_KEYS) expect(style.colors[key], `${id}: ${key}`).toMatch(/^#[0-9a-f]{6}$/);
       for (const key of LINE_KEYS) expect(style.widths[key], `${id}: ${key}`).toBeGreaterThan(0);
       expect(FONTS[theme.font]).toBeDefined();
-      expect(style.buildings3d).toBe('tower');
+      expect(style.buildings3d).toBe(shapes[id]);
+      for (const c of GENRES[id].accents) expect(c).toMatch(/^#[0-9a-f]{6}$/);
+      expect(GENRES[id].keep).toBeGreaterThan(0);
+      expect(GENRES[id].keep).toBeLessThanOrEqual(1);
     }
   });
 

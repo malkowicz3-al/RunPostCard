@@ -171,9 +171,11 @@ export const Buildings3D = memo(function Buildings3D({
       const detail = x1 - x0 >= DETAIL_PX && (h - min) * s >= DETAIL_WALL_PX;
       // Klucz: najniższy punkt rzutu na podłoże + wysokość dołu, więc część na podium idzie po podium.
       const solid: Solid = { y: maxY + min * s, parts: [] };
+      // Kolor gatunku World jako dach (poza tower, gdzie accent to neon okien i krawędzi).
+      const roof = shape === 'tower' ? roofFill : (own ?? roofFill);
       const box = (top = h) => {
         const pts = ring.map(([x, y]): [number, number, number] => [x, y, top]);
-        solid.parts.push(...prism(pts, min), { d: poly(pts), fill: roofFill });
+        solid.parts.push(...prism(pts, min), { d: poly(pts), fill: roof });
         return pts;
       };
       const g = shape === 'gabled' || shape === 'castle' ? gable(ring) : null;
@@ -189,7 +191,7 @@ export const Buildings3D = memo(function Buildings3D({
         const mx = pts.reduce((sum, [x, y]) => sum + sx(x, y), 0) / pts.length;
         for (const hf of [pts.filter((_, i) => g.pts[i][2] <= 0), pts.filter((_, i) => g.pts[i][2] >= 0)]) {
           if (hf.length < 3 || area2(hf, true) * ground <= 0) continue;
-          solid.parts.push({ d: poly(hf), fill: roofFill });
+          solid.parts.push({ d: poly(hf), fill: roof });
           if (hf.reduce((sum, [x, y]) => sum + sx(x, y), 0) / hf.length < mx)
             solid.parts.push({ d: poly(hf), fill: '#000000', opacity: 0.18 });
         }
@@ -204,7 +206,7 @@ export const Buildings3D = memo(function Buildings3D({
           const zb = min + Math.round(from * n) * FLOOR_M;
           const zt = i + 1 < tiers.length ? min + Math.round(tiers[i + 1][0] * n) * FLOOR_M : top;
           const pts = ring.map(([x, y]): [number, number, number] => [cx + (x - cx) * k, cy + (y - cy) * k, zt]);
-          solid.parts.push(...prism(pts, zb), { d: poly(pts), fill: roofFill });
+          solid.parts.push(...prism(pts, zb), { d: poly(pts), fill: roof });
           if (detail) solid.parts.push(lines(pts, floors(zb, zt), mix(color, '#000000', 0.7), 0.5));
         });
       } else {
