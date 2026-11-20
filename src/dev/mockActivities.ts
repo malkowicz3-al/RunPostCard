@@ -56,15 +56,17 @@ const RUNS: {
   cad?: number;
   date: string;
   center?: [number, number];
+  type?: number; // workout_type: 1 zawody, 2 długi, 3 trening jakościowy
+  sport?: string;
 }[] = [
-  { name: 'Morning loop', shape: 'loop', km: 5.0, minutes: 27, hr: 152, elev: 32, cad: 86, date: '2026-11-10T07:12:00Z' },
-  { name: 'Intervals at the park', shape: 'zigzag', km: 8.2, minutes: 40, hr: 168, elev: 18, cad: 89, date: '2026-11-12T17:30:00Z' },
-  { name: 'Long run by the river', shape: 'line', km: 20.1, minutes: 120, hr: 141, elev: 64, cad: 84, date: '2026-11-14T09:00:00Z' },
+  { name: 'Morning loop', shape: 'loop', km: 5.0, minutes: 27, hr: 152, elev: 32, cad: 86, date: '2026-11-10T07:12:00Z', type: 1 },
+  { name: 'Intervals at the park', shape: 'zigzag', km: 8.2, minutes: 40, hr: 168, elev: 18, cad: 89, date: '2026-11-12T17:30:00Z', type: 3 },
+  { name: 'Long run by the river', shape: 'line', km: 20.1, minutes: 120, hr: 141, elev: 64, cad: 84, date: '2026-11-14T09:00:00Z', type: 2 },
   { name: 'Lunch 🏃🏻‍♀️ figure eight', shape: 'eight', km: 3.1, minutes: 19, elev: 7, date: '2026-11-15T12:45:00Z' },
   { name: 'Hill repeats', shape: 'zigzag', km: 6.4, minutes: 38, hr: 161, elev: 240, cad: 85, date: '2026-11-16T18:05:00Z' },
   // W Tatrach (prawdziwe góry pod kafelkami terenu): rozpiętość wysokości ≥ 300 m włącza teren automatycznie.
-  { name: 'Mountain loop', shape: 'loop', km: 9.4, minutes: 75, hr: 150, elev: 820, cad: 80, date: '2026-11-16T08:00:00Z', center: [49.232, 19.982] },
-  { name: 'A very long title to check how the tile wraps onto two lines', shape: 'loop', km: 12.0, minutes: 66, hr: 135, elev: 41, cad: 87, date: '2026-11-17T06:50:00Z' },
+  { name: 'Mountain loop', shape: 'loop', km: 9.4, minutes: 75, hr: 150, elev: 820, cad: 80, date: '2026-11-16T08:00:00Z', center: [49.232, 19.982], sport: 'TrailRun', type: 1 },
+  { name: 'A very long title to check how the tile wraps onto two lines', shape: 'loop', km: 21.1, minutes: 115, hr: 158, elev: 41, cad: 87, date: '2026-11-17T06:50:00Z', type: 1 },
 ];
 
 // Dodatkowe biegi do stronicowania i zaznaczania wielu (deterministyczne, starsze od powyższych, wokół Krakowa).
@@ -81,6 +83,8 @@ const EXTRA: typeof RUNS = Array.from({ length: 33 }, (_, i) => {
     elev: 10 + ((i * 29) % 90),
     cad: i % 5 === 4 ? undefined : 82 + (i % 8),
     date: new Date(Date.UTC(2026, 10, 9, 7) - (i + 1) * 2 * 86400000).toISOString().replace('.000', ''),
+    // Tempo run = trening jakościowy; jeden bieg 10 km jako zawody (widać wariant 10K).
+    type: i % NAMES.length === 1 ? 3 : i === 10 ? 1 : undefined,
     center: [CENTER[0] + (((i * 13) % 11) - 5) * 0.006, CENTER[1] + (((i * 17) % 11) - 5) * 0.009],
   };
 });
@@ -91,7 +95,8 @@ export function mockActivities(): Activity[] {
     return {
       id: 1000000001 + i,
       name: r.name,
-      sport_type: 'Run',
+      sport_type: r.sport ?? 'Run',
+      workout_type: r.type ?? 0,
       distance: r.km * 1000,
       moving_time: r.minutes * 60,
       elapsed_time: r.minutes * 60 + 90,

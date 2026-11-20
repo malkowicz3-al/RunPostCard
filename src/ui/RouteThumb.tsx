@@ -20,7 +20,7 @@ export function RouteThumb({
   polyline: string;
   style?: MapStyle | null;
   route?: string;
-  height?: number; // np. 75 = kadr 4:3 (okładki na liście)
+  height?: number; // np. 75 = kadr 4:3 (numery startowe na liście)
 }) {
   const fit = useMemo(
     () =>

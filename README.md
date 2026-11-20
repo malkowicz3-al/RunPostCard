@@ -2,7 +2,7 @@
 
 Turn one of your Strava runs into a postcard: a modern graphic with the route on a real map and your stats, ready for Stories, chats or to place over your own photo. Everything runs on your own computer; there is no account, no database and nothing is uploaded.
 
-![Your runs as covers: Newspaper, Comic and Race bib](docs/media/covers.gif)
+![Your runs as race bibs: plain for training, colorful for races](docs/media/bibs.gif)
 
 ![One run in different map styles](docs/media/themes.gif)
 
@@ -27,7 +27,7 @@ The manual steps the script does for you are described below, if you prefer to d
 
 ## What you can do
 
-- **Run list**: totals and your runs as covers in three styles (**Newspaper**, **Comic**, **Race bib**; the small menu in the top bar, remembered in your browser), **Refresh**, **Load more**, **Select** several runs.
+- **Run list**: totals and your runs as race bibs whose look follows the run type you set in Strava (training, long run, workout, race, trail), **Refresh**, **Load more**, **Select** several runs.
 - **Postcard (9:16)**: the route on a map (by default **Dark** or **Light**, following your system's theme), 38 map styles, 6 gradients, transparent or your own photo (with editing and the runner cut out in front of the route).
 - **Views**: flat, **3D** with elevation, buildings and terrain, and **POV**, a camera flight behind the runner.
 - **Route line**: theme color, rainbow, pace, heart rate or elevation, with a small legend on the postcard.
@@ -103,7 +103,7 @@ Restart `npm run dev` after changing `.env`. Vite reads it only at startup.
 2. Strava asks you to log in (if you are not logged in) and to allow access to your activities.
 3. You are sent back to the app, and your recent runs appear in the list.
 
-The run list starts with totals for the loaded runs (count, distance, moving time, elevation gain). Each tile is a cover; pick the style in the small menu in the top bar (remembered in this browser). **Newspaper**: the date on top, the run name as the headline, the route on a light map outline as the photo, and the distance, pace, moving time, elevation gain and average heart rate (if recorded) in columns; the longest run gets a **Longest** stamp. **Comic**: a red title band, the map in a thick black panel and the data on both sides (under the map on a phone). **Race bib**: a start number sheet with the distance as the big number. Hovering or focusing a tile draws its route. Animations are off when your system asks for reduced motion.
+The run list starts with totals for the loaded runs (count, distance, moving time, elevation gain). Each run is a race bib: a band with the run name and a tag, the route on a light map as the main part, then distance, moving time and pace, and a small line with the date, average heart rate (if recorded) and elevation gain. The look follows the run type you set in Strava: a plain bib for an ordinary run (**TRAINING**, black band), a navy band for a **LONG RUN**, a red one for a **WORKOUT**, an olive one for a **TRAIL** run, and a colorful event bib for a **RACE**, colored by distance (gold marathon, red half marathon, blue 10K, green 5K, violet for other distances). The longest run gets a **Longest** stamp. Hovering or focusing a tile draws its route. Animations are off when your system asks for reduced motion.
 
 The list loads 50 activities at a time; **Load more** at the bottom fetches the next page, up to 200 runs. **Refresh** in the top bar loads the list again from Strava (for a run you just finished).
 

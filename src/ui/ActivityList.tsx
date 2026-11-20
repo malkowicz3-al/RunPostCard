@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
+import { useEffect, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
 import type { Activity } from '../strava/api';
 import {
   formatDate,
@@ -9,7 +9,6 @@ import {
   formatPace,
 } from '../lib/format';
 import { RouteThumb } from './RouteThumb';
-import { Select } from './Select';
 
 // Sumy dla nagłówka listy; longestId tylko przy co najmniej 2 biegach (przy jednym odznaka nic nie mówi).
 export function summarize(runs: Activity[]) {
@@ -38,44 +37,42 @@ export function mergePage(base: Activity[], more: Activity[], done: boolean, max
   return { runs, hasMore: !done && runs.length < max };
 }
 
-// Styl okładek na liście; wybór zapamiętany w przeglądarce (tylko wygoda, bez wpływu na dane).
-export type Cover = 'newspaper' | 'comic' | 'bib';
-const COVERS: { id: Cover; label: string; masthead: string }[] = [
-  { id: 'newspaper', label: 'Newspaper', masthead: 'The Daily Run' },
-  { id: 'comic', label: 'Comic', masthead: 'Run Tales' },
-  { id: 'bib', label: 'Race bib', masthead: 'Finisher' },
+// Wygląd numeru startowego wg typu biegu ze Stravy (workout_type: 1 zawody, 2 długi, 3 trening jakościowy).
+export type BibKind = 'training' | 'long' | 'workout' | 'race';
+export type BibTier = 'marathon' | 'half' | '10k' | '5k' | 'race';
+const KINDS: Record<number, BibKind> = { 1: 'race', 2: 'long', 3: 'workout' };
+const TAGS = { training: 'TRAINING', long: 'LONG RUN', workout: 'WORKOUT' };
+// Tolerancja w metrach: zegarki mierzą zawody trochę dłużej lub krócej niż oficjalny dystans.
+// Krótkie etykiety, bo na telefonie pasek ma ok. 125 px; kolor paska i tak mówi, że to zawody.
+const TIERS: [BibTier, number, number, string][] = [
+  ['marathon', 40500, 43500, 'MARATHON'],
+  ['half', 20500, 22000, 'HALF'],
+  ['10k', 9500, 10600, '10K'],
+  ['5k', 4800, 5300, '5K'],
 ];
-const COVER_KEY = 'runpostcard.cover';
+const ULTRA_M = 43500;
 
-function readCover(): Cover {
-  try {
-    const v = localStorage.getItem(COVER_KEY);
-    return COVERS.some((c) => c.id === v) ? (v as Cover) : 'newspaper';
-  } catch {
-    return 'newspaper';
-  }
+export function bibStyle(a: Pick<Activity, 'workout_type' | 'sport_type' | 'distance'>) {
+  const kind = KINDS[a.workout_type ?? 0] ?? 'training';
+  const trail = a.sport_type === 'TrailRun';
+  // Zwykły bieg po szlaku: etykieta mówi więcej niż „TRAINING”.
+  if (kind !== 'race') return { kind, trail, tier: undefined, tag: trail && kind === 'training' ? 'TRAIL' : TAGS[kind] };
+  const t = TIERS.find(([, min, max]) => a.distance >= min && a.distance <= max);
+  return { kind, trail, tier: t?.[0] ?? 'race', tag: t ? `RACE · ${t[3]}` : a.distance > ULTRA_M ? 'RACE · ULTRA' : 'RACE' };
 }
 
-function saveCover(c: Cover) {
-  try {
-    localStorage.setItem(COVER_KEY, c);
-  } catch {
-    // prywatne okno: wybór tylko do zamknięcia karty
-  }
-}
-
-function Skeleton({ cover }: { cover: Cover }) {
+function Skeleton() {
   return (
     <div className="loading" role="status">
       <span className="sr-only">Loading runs</span>
       <ul className="runs skeleton" aria-hidden="true">
         {Array.from({ length: 6 }, (_, i) => (
           <li key={i}>
-            <div className={`run-tile cover-${cover}`}>
-              <div className="skeleton-bar short" />
+            <div className="run-tile bib-training">
               <div className="skeleton-bar" />
               <div className="route-thumb" />
               <div className="skeleton-bar" />
+              <div className="skeleton-bar short" />
             </div>
           </li>
         ))}
@@ -111,13 +108,11 @@ function Runs({
   onSelect,
   selection,
   onToggle,
-  cover,
 }: {
   runs: Activity[];
   onSelect: (activity: Activity) => void;
   selection: number[] | null;
   onToggle: (id: number) => void;
-  cover: Cover;
 }) {
   if (runs.length === 0)
     return (
@@ -127,27 +122,27 @@ function Runs({
       </div>
     );
   const s = summarize(runs);
-  const masthead = COVERS.find((c) => c.id === cover)!.masthead;
   return (
     <>
       <Summary s={s} />
       <ul className="runs">
         {runs.map((a, i) => {
           const checked = selection?.includes(a.id) ?? false;
+          const b = bibStyle(a);
           return (
             <li key={a.id} style={{ '--i': i } as CSSProperties}>
               <button
-                className={`run-tile cover-${cover}`}
+                className={`run-tile bib-${b.kind}${b.trail ? ' bib-trail' : ''}`}
+                data-tier={b.tier}
                 role={selection ? 'checkbox' : undefined}
                 aria-checked={selection ? checked : undefined}
                 onClick={() => (selection ? onToggle(a.id) : onSelect(a))}
               >
-                {/* Okładka: winieta z datą, nagłówek = nazwa biegu, mapa jako zdjęcie, dane; układ i wygląd wg stylu w CSS. */}
-                <span className="run-masthead">
-                  <span aria-hidden="true">{masthead}</span>
-                  <span>{formatDate(a.start_date_local)}</span>
+                {/* Numer startowy: pasek z nazwą i typem, mapa z trasą, dane; kolory wariantu w CSS. */}
+                <span className="bib-band">
+                  <span className="run-name">{a.name}</span>
+                  <span className="bib-tag">{b.tag}</span>
                 </span>
-                <span className="run-name">{a.name}</span>
                 <span className="run-thumb">
                   <RouteThumb polyline={a.map.summary_polyline} height={75} />
                   {a.id === s.longestId && <span className="run-badge">Longest</span>}
@@ -157,15 +152,19 @@ function Runs({
                     </span>
                   )}
                 </span>
-                <span className="run-stats">
-                  <span className="run-distance">
-                    {formatDistanceKm(a.distance)}
-                    <span className="unit"> km</span>
-                  </span>
-                  <span className="run-pace">{formatPace(a.distance, a.moving_time)} /km</span>
-                  <span className="run-time">{formatDuration(a.moving_time)}</span>
-                  <span className="run-elev">{formatElevation(a.total_elevation_gain)} m up</span>
-                  {a.average_heartrate ? <span className="run-hr">{formatHeartRate(a.average_heartrate)} bpm</span> : null}
+                <span className="bib-data">
+                  <span>{formatDistanceKm(a.distance)} km</span>
+                  <span>{formatDuration(a.moving_time)}</span>
+                  <span>{formatPace(a.distance, a.moving_time)} /km</span>
+                </span>
+                <span className="bib-meta">
+                  {[
+                    formatDate(a.start_date_local),
+                    a.average_heartrate ? `${formatHeartRate(a.average_heartrate)} bpm` : null,
+                    `${formatElevation(a.total_elevation_gain)} m up`,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
                 </span>
               </button>
             </li>
@@ -202,7 +201,6 @@ export function ActivityList({
   onTogether: (all?: boolean) => void; // all = wszystkie wczytane biegi, kolory Heat
 }) {
   const selecting = selection !== null;
-  const [cover, setCover] = useState(readCover);
   useEffect(() => {
     if (!selecting) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onSelection(null);
@@ -225,16 +223,6 @@ export function ActivityList({
               All together
             </button>
           )}
-          <Select
-            label="Cover style"
-            className="cover-select"
-            value={cover}
-            options={COVERS}
-            onChange={(c) => {
-              setCover(c);
-              saveCover(c);
-            }}
-          />
           <button className="text-button" disabled={loading} onClick={onRefresh}>
             Refresh
           </button>
@@ -244,9 +232,9 @@ export function ActivityList({
         </div>
       </div>
       {loading ? (
-        <Skeleton cover={cover} />
+        <Skeleton />
       ) : (
-        <Runs runs={runs} onSelect={onSelect} selection={selection} onToggle={(id) => onSelection((s) => toggleId(s ?? [], id))} cover={cover} />
+        <Runs runs={runs} onSelect={onSelect} selection={selection} onToggle={(id) => onSelection((s) => toggleId(s ?? [], id))} />
       )}
       {!loading && hasMore && (
         <button className="load-more" disabled={loadingMore} onClick={onLoadMore}>

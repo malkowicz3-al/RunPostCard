@@ -4,6 +4,7 @@ export type Activity = {
   id: number;
   name: string;
   sport_type: string;
+  workout_type?: number | null; // bieg: 0/null zwykły, 1 zawody, 2 długi, 3 trening jakościowy
   distance: number;
   moving_time: number;
   elapsed_time?: number;
