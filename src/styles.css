@@ -756,14 +756,22 @@ button.text-button {
   }
 }
 
-.bib-medal {
+/* Naklejka zawodów: jak „Longest”, ale większa, wypełniona kolorem paska, z białym brzegiem i cieniem. */
+.bib-sticker {
   position: absolute;
   right: 8px;
-  bottom: 6px;
-  width: 64px;
-  height: 85px;
-  transform: rotate(8deg);
-  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.5));
+  bottom: 10px;
+  padding: 3px 10px;
+  border: 3px solid #ffffff;
+  border-radius: 3px;
+  background: var(--band);
+  color: var(--band-ink);
+  font-family: 'Anton', 'Arial Narrow', sans-serif;
+  font-size: 17px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transform: rotate(-7deg);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.45);
 }
 
 .run-tile .route-line {
