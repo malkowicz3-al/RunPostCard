@@ -6,6 +6,12 @@ export const HOLD_S = 1.5;
 
 export const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2);
 
+// Podgląd na ekranie w pętli: DRAW_S rysowania z wygładzeniem, potem HOLD_S gotowej karty.
+export function previewProgress(elapsedMs: number): number {
+  const t = (elapsedMs / 1000) % (DRAW_S + HOLD_S);
+  return t < DRAW_S ? easeInOutCubic(t / DRAW_S) : 1;
+}
+
 // Postęp w każdej klatce: rysowanie z wygładzeniem (ostatnia klatka = 1), potem pauza na gotowej pocztówce.
 export function frameProgress(fps: number, seconds: number, holdSeconds: number): number[] {
   const draw = Math.max(1, Math.round(fps * seconds));

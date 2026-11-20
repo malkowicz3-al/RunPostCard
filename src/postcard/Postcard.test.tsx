@@ -320,3 +320,37 @@ describe('Postcard styl tekstu', () => {
     expect(svg).toContain('font-style="italic"');
   });
 });
+
+describe('Postcard poświata i przyciemnienie mapy', () => {
+  const base = { activity: hills, background: 'map' as const, map: LAYERS, theme: 'dark' as const, streams };
+  const photo = { href: 'data:image/jpeg;base64,AAAA', dim: 0.35 };
+  const person = { href: 'data:image/png;base64,BBBB', rect: [100, 200, 700, 800] as Rect, grid: new Uint8Array(GRID_W * GRID_H) };
+  const dimRect = /<rect width="1080" height="1920" fill="#000" opacity="0.4"/;
+
+  it('zera nic nie zmieniają (2D, 3D, Behind)', () => {
+    for (const view of ['flat', '3d'] as const) {
+      for (const extra of [{}, { background: 'photo' as const, photo, person }]) {
+        const props = { ...base, view, ...extra };
+        expect(renderToStaticMarkup(<Postcard {...props} glow={0} mapDim={0} />)).toBe(renderToStaticMarkup(<Postcard {...props} />));
+      }
+    }
+  });
+
+  it('mapDim: czarny prostokąt tylko z mapą', () => {
+    for (const view of ['flat', '3d'] as const) expect(renderToStaticMarkup(<Postcard {...base} view={view} mapDim={40} />)).toMatch(dimRect);
+    expect(renderToStaticMarkup(<Postcard {...base} background="gradient" mapDim={40} />)).not.toMatch(dimRect);
+  });
+
+  it('glow: filtr #route-glow na trasie (w Behind na obu częściach); bez trasy brak', () => {
+    for (const view of ['flat', '3d'] as const) {
+      const svg = renderToStaticMarkup(<Postcard {...base} view={view} glow={60} />);
+      expect(svg).toContain('id="route-glow"');
+      expect(svg.split('filter="url(#route-glow)"')).toHaveLength(2);
+      const ids = [...svg.matchAll(/id="([^"]+)"/g)].map(([, id]) => id);
+      expect(new Set(ids).size).toBe(ids.length);
+    }
+    const behind = renderToStaticMarkup(<Postcard {...base} background="photo" photo={photo} person={person} glow={60} />);
+    expect(behind.split('filter="url(#route-glow)"')).toHaveLength(3);
+    expect(renderToStaticMarkup(<Postcard {...base} route={false} glow={60} />)).not.toContain('route-glow');
+  });
+});

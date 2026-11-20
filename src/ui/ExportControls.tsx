@@ -29,7 +29,7 @@ export function ExportControls({
   disabled,
   under,
   onBusy,
-  videoOnly,
+  mode,
 }: {
   name: string; // nazwa pliku bez rozszerzenia
   svg: () => SVGSVGElement | null;
@@ -38,7 +38,7 @@ export function ExportControls({
   disabled: boolean;
   under?: (canvas: HTMLCanvasElement, p?: number) => void;
   onBusy?: (busy: boolean) => void; // MP4/GIF w trakcie
-  videoOnly?: boolean; // bez PNG i SVG
+  mode: 'still' | 'animation'; // still: PNG i SVG; animation: MP4 i GIF
 }) {
   const [exportFailed, setExportFailed] = useState<string | null>(null); // format, którego nie udało się zrobić
   const [encoding, setEncoding] = useState<{ format: 'mp4' | 'gif'; pct: number } | null>(null); // null = nie trwa
@@ -131,7 +131,7 @@ export function ExportControls({
         onGif={() => downloadAnimation('gif')}
         mp4Supported={mp4Ok}
         svgNote={under ? 'not in POV' : undefined}
-        videoOnly={videoOnly}
+        mode={mode}
       />
       {encoding !== null && (
         <div className="encoding">

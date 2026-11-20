@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { DRAW_S, HOLD_S, easeInOutCubic } from '../lib/animate';
 import type { Activity } from '../strava/api';
 import { loadFontCss } from '../lib/fonts';
 import { POSTCARD_DETAILED } from '../lib/vectorMap';
@@ -10,6 +9,7 @@ import { ExportControls } from './ExportControls';
 import { RouteThumb } from './RouteThumb';
 import { Select } from './Select';
 import { useMapLayers } from './useMapLayers';
+import { usePreviewProgress } from './usePreviewProgress';
 
 const SIZE: [number, number] = [1080, 1920];
 const THEME_OPTIONS = (Object.keys(THEMES) as ThemeId[]).map((id) => ({ id, label: THEMES[id].label }));
@@ -113,7 +113,7 @@ export function TogetherScreen({ runs, heat = false, onBack }: { runs: Activity[
             frame={(p) => <TogetherCard {...cardProps} progress={p} />}
             resetKey={cardProps}
             disabled={loading || !fontReady}
-            videoOnly
+            mode="animation"
           />
           {map.failed && <p className="error">Could not load the map.</p>}
         </div>
@@ -122,22 +122,3 @@ export function TogetherScreen({ runs, heat = false, onBack }: { runs: Activity[
   );
 }
 
-// Podgląd animacji na ekranie (bez pliku): ten sam przebieg co eksport, DRAW_S rysowania + HOLD_S pauzy, w pętli.
-// Ok. 30 kl./s wystarcza; zatrzymany = gotowa karta (progress pominięty).
-function usePreviewProgress(playing: boolean): number | undefined {
-  const [p, setP] = useState<number>();
-  useEffect(() => {
-    if (!playing) return setP(undefined);
-    const start = performance.now();
-    let last = 0;
-    let raf = requestAnimationFrame(function loop(now) {
-      raf = requestAnimationFrame(loop);
-      if (now - last < 33) return;
-      last = now;
-      const t = ((now - start) / 1000) % (DRAW_S + HOLD_S);
-      setP(t < DRAW_S ? easeInOutCubic(t / DRAW_S) : 1);
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [playing]);
-  return p;
-}

@@ -11,7 +11,7 @@ export function DownloadMenu({
   onGif,
   mp4Supported,
   svgNote,
-  videoOnly,
+  mode,
 }: {
   disabled: boolean;
   onPng: () => void;
@@ -20,7 +20,7 @@ export function DownloadMenu({
   onGif: () => void;
   mp4Supported: boolean; // WebCodecs H.264; bez niego pozycja MP4 nieaktywna
   svgNote?: string; // powód braku SVG (pozycja nieaktywna)
-  videoOnly?: boolean; // tylko MP4 i GIF (widok „Together”)
+  mode: 'still' | 'animation'; // still: PNG i SVG; animation: MP4 i GIF
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -82,24 +82,47 @@ export function DownloadMenu({
       </button>
       {open && (
         <div className="download-menu" role="menu" aria-label="Download format" onKeyDown={onMenuKey}>
-          {!videoOnly && (
-            <>
-              <button role="menuitem" tabIndex={-1} onClick={() => choose(onPng)}>
-                PNG image
-              </button>
-              <button role="menuitem" tabIndex={-1} disabled={!!svgNote} onClick={() => choose(onSvg)}>
-                SVG (vector){svgNote && ` (${svgNote})`}
-              </button>
-            </>
-          )}
-          <button role="menuitem" tabIndex={-1} disabled={!mp4Supported} onClick={() => choose(onMp4)}>
-            Video (MP4){!mp4Supported && ' (not supported in this browser)'}
-          </button>
-          <button role="menuitem" tabIndex={-1} onClick={() => choose(onGif)}>
-            GIF (animated)
-          </button>
+          <DownloadItems
+            mode={mode}
+            mp4Supported={mp4Supported}
+            svgNote={svgNote}
+            onPick={(f) => choose({ png: onPng, svg: onSvg, mp4: onMp4, gif: onGif }[f])}
+          />
         </div>
       )}
     </div>
+  );
+}
+
+// Pozycje menu: zdjęcie (PNG, SVG) albo animacja (MP4, GIF), wg trybu podglądu.
+export function DownloadItems({
+  mode,
+  mp4Supported,
+  svgNote,
+  onPick,
+}: {
+  mode: 'still' | 'animation';
+  mp4Supported: boolean;
+  svgNote?: string;
+  onPick: (format: 'png' | 'svg' | 'mp4' | 'gif') => void;
+}) {
+  return mode === 'still' ? (
+    <>
+      <button role="menuitem" tabIndex={-1} onClick={() => onPick('png')}>
+        PNG image
+      </button>
+      <button role="menuitem" tabIndex={-1} disabled={!!svgNote} onClick={() => onPick('svg')}>
+        SVG (vector){svgNote && ` (${svgNote})`}
+      </button>
+    </>
+  ) : (
+    <>
+      <button role="menuitem" tabIndex={-1} disabled={!mp4Supported} onClick={() => onPick('mp4')}>
+        Video (MP4){!mp4Supported && ' (not supported in this browser)'}
+      </button>
+      <button role="menuitem" tabIndex={-1} onClick={() => onPick('gif')}>
+        GIF (animated)
+      </button>
+    </>
   );
 }

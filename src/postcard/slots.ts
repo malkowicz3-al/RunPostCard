@@ -1,18 +1,36 @@
 import type { ComponentType } from 'react';
 import type { Activity, RunStreams } from '../strava/api';
-import { bestSplits, cadenceBins, climbRates, halfSplits, hrBins, kmGrades, kmSplits, series, speedHr } from '../lib/chartData';
+import {
+  bestSplits,
+  cadenceBins,
+  climbRates,
+  halfHr,
+  halfSplits,
+  hrBins,
+  kmGrades,
+  kmSplits,
+  paceBins,
+  pacingSeries,
+  series,
+  speedHr,
+} from '../lib/chartData';
 import {
   formatCadence,
   formatDate,
   formatDistanceKm,
   formatDuration,
   formatElapsed,
+  formatElevPerKm,
   formatElevation,
   formatHeartRate,
   formatName,
   formatPace,
+  formatRunType,
   formatSpeedKmh,
+  formatSteps,
+  formatStopped,
   formatTime,
+  formatWeekday,
 } from '../lib/format';
 import {
   AreaChart,
@@ -45,6 +63,7 @@ import {
   TrioChart,
   ZoneBarChart,
 } from './SlotCharts2';
+import { HrDriftChart, PaceBinsChart, PacingChart, PaceStripChart, SplitDeltaChart } from './SlotCharts3';
 import { labelAboveY, type LabelPos, type SlotAnchor } from './SlotNumber';
 
 // Slot = co pokazać (data) + jak narysować (form). Nowe dane/formy dopisujemy tylko do rejestrów.
@@ -61,7 +80,12 @@ export type SlotData =
   | 'cadence'
   | 'date'
   | 'start'
-  | 'name';
+  | 'name'
+  | 'stopped'
+  | 'elevkm'
+  | 'steps'
+  | 'weekday'
+  | 'runtype';
 export type ChartForm =
   | 'area'
   | 'line'
@@ -88,7 +112,12 @@ export type ChartForm =
   | 'ecg'
   | 'halves'
   | 'climbrate'
-  | 'trio';
+  | 'trio'
+  | 'pacebins'
+  | 'hrdrift'
+  | 'splitdelta'
+  | 'pacestrip'
+  | 'pacing';
 export type SlotForm = 'number' | ChartForm;
 
 // id to klucz pozycji w układzie ('main', 'a', 'b'…), nie rodzaj danych.
@@ -121,6 +150,11 @@ export const DATA: Record<SlotData, { label: string; menu: string; value: (a: Ac
   date: { label: 'DATE', menu: 'Date', value: (a) => formatDate(a.start_date_local) },
   start: { label: 'START', menu: 'Start time', value: (a) => formatTime(a.start_date_local) },
   name: { label: 'RUN', menu: 'Run name', value: (a) => formatName(a.name) },
+  stopped: { label: 'STOPPED', menu: 'Stopped time', value: (a) => formatStopped(a.moving_time, a.elapsed_time) },
+  elevkm: { label: 'ELEV / KM', menu: 'Elevation per km', value: (a) => formatElevPerKm(a.total_elevation_gain, a.distance) },
+  steps: { label: 'STEPS', menu: 'Steps', value: (a) => formatSteps(a.average_cadence, a.moving_time) },
+  weekday: { label: 'DAY', menu: 'Weekday', value: (a) => formatWeekday(a.start_date_local) },
+  runtype: { label: 'RUN TYPE', menu: 'Run type', value: (a) => formatRunType(a.workout_type) },
 };
 
 // Wykres = forma dla jednych danych; bez strumieni (has = false) slot pokazuje liczbę tych danych.
@@ -160,6 +194,11 @@ export const CHARTS: Record<
   halves: { data: 'pace', menu: 'Half splits', label: 'HALVES', has: (s) => halfSplits(s) !== null, Component: HalvesChart },
   climbrate: { data: 'elevation', menu: 'Climb rate', label: 'CLIMB RATE', has: (s) => climbRates(s).length > 0, Component: ClimbRateChart },
   trio: { data: 'elapsed', menu: 'Highlights', label: 'HIGHLIGHTS', has: (s) => s.distance.length > 1, Component: TrioChart },
+  pacebins: { data: 'pace', menu: 'Pace histogram', label: 'PACE SPREAD', has: (s) => paceBins(s).length > 0, Component: PaceBinsChart },
+  hrdrift: { data: 'heartrate', menu: 'Heart rate drift', label: 'HR DRIFT', has: (s) => halfHr(s) !== null, Component: HrDriftChart },
+  splitdelta: { data: 'pace', menu: 'Splits vs average', label: 'VS AVERAGE', has: (s) => kmSplits(s).length > 1, Component: SplitDeltaChart },
+  pacestrip: { data: 'pace', menu: 'Pace strip', label: 'PACE MAP', has: (s) => series(s, 'velocity', 2).length > 0, Component: PaceStripChart },
+  pacing: { data: 'time', menu: 'Even pace', label: 'EVEN PACE', has: (s) => pacingSeries(s, 2).length > 0, Component: PacingChart },
 };
 
 export const slotMenu = (s: Slot) => (s.form === 'number' ? DATA[s.data].menu : CHARTS[s.form].menu);

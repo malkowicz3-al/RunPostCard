@@ -39,7 +39,7 @@ function contrast(a: string, b: string): number {
 }
 
 describe('THEMES', () => {
-  it('motywy w kolejności Dark, Light, Neon, Ocean, Forest, Sunset, Mint, Mono, Blueprint, Pencil, Watercolor, Vintage, Riso, Chalk, Halftone, Synthwave, Terminal, Ink i motywy popkultury oraz gier', () => {
+  it('motywy w kolejności Dark, Light, Neon, Ocean, Forest, Sunset, Mint, Mono, Slate, Sand, Plum, Rose, Coal, Blueprint, Pencil, Watercolor, Vintage, Riso, Chalk, Halftone, Synthwave, Terminal, Ink i motywy popkultury oraz gier', () => {
     expect(Object.values(THEMES).map((t) => t.label)).toEqual([
       'Dark',
       'Light',
@@ -49,6 +49,11 @@ describe('THEMES', () => {
       'Sunset',
       'Mint',
       'Mono',
+      'Slate',
+      'Sand',
+      'Plum',
+      'Rose',
+      'Coal',
       'Blueprint',
       'Pencil',
       'Watercolor',

@@ -1,3 +1,5 @@
+import { RUN_TAGS, runKind } from './runType';
+
 const pad = (n: number) => String(n).padStart(2, '0');
 
 export const EMPTY = '–';
@@ -74,3 +76,26 @@ export function formatName(name: string): string {
   if (chars.length === 0) return EMPTY;
   return chars.length > NAME_MAX ? chars.slice(0, NAME_MAX - 1).join('').trimEnd() + '…' : chars.join('');
 }
+
+// Postoje: czas całkowity minus czas w ruchu; bez czasu całkowitego myślnik.
+export function formatStopped(moving: number, elapsed: number | undefined): string {
+  return ok(elapsed) && elapsed > 0 ? formatDuration(Math.max(0, elapsed - moving)) : EMPTY;
+}
+
+// Przewyższenie na km (m/km).
+export function formatElevPerKm(gain: number | undefined, meters: number): string {
+  return ok(gain) && gain >= 0 && meters > 0 ? (gain / (meters / 1000)).toFixed(1) : EMPTY;
+}
+
+// Kroki obu nóg w czasie ruchu z kadencji jednej nogi (jak formatCadence: ×2); przybliżenie ze średniej.
+export function formatSteps(cadence: number | undefined, moving: number): string {
+  return ok(cadence) && cadence > 0 && moving > 0 ? Math.round((cadence * 2 * moving) / 60).toLocaleString('en-US') : EMPTY;
+}
+
+// Dzień tygodnia z start_date_local, bez przeliczania strefy (jak formatDate).
+export function formatWeekday(iso: string): string {
+  if (Number.isNaN(Date.parse(iso))) return EMPTY;
+  return new Date(iso).toLocaleDateString('en-GB', { timeZone: 'UTC', weekday: 'long' });
+}
+
+export const formatRunType = (workoutType: number | null | undefined) => RUN_TAGS[runKind(workoutType)];

@@ -4,6 +4,11 @@ import {
   formatCadence,
   formatElapsed,
   formatElevation,
+  formatElevPerKm,
+  formatRunType,
+  formatSteps,
+  formatStopped,
+  formatWeekday,
   formatName,
   formatSpeedKmh,
   formatTime,
@@ -84,5 +89,24 @@ describe('nowe dane slotów', () => {
     expect(Array.from(long).length).toBeLessThanOrEqual(28);
     expect(long.endsWith('…')).toBe(true);
     expect(formatName('   ')).toBe(EMPTY);
+  });
+});
+
+describe('dane z Activity bez strumieni', () => {
+  it('postoje, przewyższenie na km, kroki, dzień tygodnia, typ biegu', () => {
+    expect(formatStopped(1500, 1625)).toBe('2:05');
+    expect(formatStopped(1500, 1400)).toBe('0:00');
+    expect(formatStopped(1500, undefined)).toBe(EMPTY);
+    expect(formatElevPerKm(123, 10000)).toBe('12.3');
+    expect(formatElevPerKm(undefined, 10000)).toBe(EMPTY);
+    expect(formatElevPerKm(50, 0)).toBe(EMPTY);
+    // 85 kroków jednej nogi na minutę przez 20 min = 170 × 20 obu nóg.
+    expect(formatSteps(85, 1200)).toBe('3,400');
+    expect(formatSteps(undefined, 1200)).toBe(EMPTY);
+    expect(formatWeekday('2026-11-15T23:30:00Z')).toBe('Sunday'); // bez przesunięcia na poniedziałek
+    expect(formatWeekday('nope')).toBe(EMPTY);
+    expect([0, null, undefined, 1, 2, 3, 9].map(formatRunType)).toEqual([
+      'TRAINING', 'TRAINING', 'TRAINING', 'RACE', 'LONG RUN', 'WORKOUT', 'TRAINING',
+    ]);
   });
 });

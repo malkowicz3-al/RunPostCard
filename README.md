@@ -28,11 +28,11 @@ The manual steps the script does for you are described below, if you prefer to d
 ## What you can do
 
 - **Run list**: totals and your runs as race bibs whose look follows the run type you set in Strava (training, long run, workout, race, trail), **Refresh**, **Load more**, **Select** several runs.
-- **Postcard (9:16)**: the route on a map (by default **Dark** or **Light**, following your system's theme), 38 map styles, 6 gradients, transparent or your own photo (with editing and the runner cut out in front of the route).
-- **Views**: flat, **3D** with elevation, buildings and terrain, and **POV**, a camera flight behind the runner.
-- **Route line**: theme color, rainbow, pace, heart rate or elevation, with a small legend on the postcard.
+- **Postcard (9:16)**: the route on a map (by default **Dark** or **Light**, following your system's theme), 43 map styles, 6 gradients, transparent or your own photo (with editing and the runner cut out in front of the route).
+- **Views**: flat, **3D** with elevation, buildings and terrain, and **POV**, a camera flight behind the runner; each **Still** or **Animated**.
+- **Route**: line by theme color, rainbow, fire, ice, pace, heart rate, effort, elevation, grade or cadence (with a small legend on the postcard), **Glow** to make it stand out and **Map dim** to calm the map.
 - **Stats**: many layouts; click any stat to change what it shows and how (numbers or charts from your run's streams). 20 fonts, plus **Bold**, **Italic**, **Outline** and **Shadow** for the stats.
-- **Download**: PNG, SVG, MP4 video and animated GIF (the route draws itself while the numbers count up), and **Share** on phones.
+- **Download**: PNG or SVG for a still postcard; MP4 video or animated GIF for an animated one (the route draws itself while the numbers count up), and **Share** on phones.
 - **Together**: all selected runs on one map, colored per run or as a heat map, animated.
 
 ## Strava app registration (required)

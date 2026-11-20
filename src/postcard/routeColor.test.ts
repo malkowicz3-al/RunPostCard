@@ -2,7 +2,21 @@ import { describe, expect, it } from 'vitest';
 import type { RunStreams } from '../strava/api';
 import { zoneOf } from '../lib/chartData';
 import { ZONE_COLORS } from './SlotChart';
-import { PACE_RAMP, ELEVATION_RAMP, available, colorScale, ramp, routeLegend, segments, trimAt, type RouteColor } from './routeColor';
+import {
+  EFFORT_RAMP,
+  FIRE_RAMP,
+  GRADE_RAMP,
+  ICE_RAMP,
+  PACE_RAMP,
+  ELEVATION_RAMP,
+  available,
+  colorScale,
+  ramp,
+  routeLegend,
+  segments,
+  trimAt,
+  type RouteColor,
+} from './routeColor';
 
 const colorAt = (mode: RouteColor, t: number, s?: RunStreams | null, fallback = '#ffffff') => colorScale(mode, s)?.(t) ?? fallback;
 const rgb = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
@@ -115,5 +129,48 @@ describe('trimAt', () => {
     const elev = routeLegend('elevation', streams)!;
     expect([elev.from, elev.to]).toEqual(['100 M', '200 M']);
     expect(routeLegend('heartrate', streams)?.steps).toBe(true);
+  });
+});
+
+describe('nowe style linii', () => {
+  const withCad = { ...streams, cadence: distance.map((_, i) => 80 + i * 0.1) };
+
+  it('dostępność: fire i ice zawsze, reszta wg strumieni', () => {
+    for (const mode of ['fire', 'ice'] as const) expect(available(mode, null)).toBe(true);
+    expect(available('cadence', streams)).toBe(false);
+    expect(available('cadence', withCad)).toBe(true);
+    expect(available('grade', streams)).toBe(true);
+    expect(available('grade', { latlng, distance })).toBe(false);
+    expect(available('effort', streams)).toBe(true);
+    expect(available('effort', { latlng, distance })).toBe(false);
+  });
+
+  it('fire i ice: rampa wg t, przycięta; legenda START/FINISH', () => {
+    expect(colorAt('fire', 0)).toBe(FIRE_RAMP[0]);
+    expect(colorAt('fire', 5)).toBe(FIRE_RAMP[FIRE_RAMP.length - 1]);
+    expect(colorAt('ice', 1)).toBe(ICE_RAMP[ICE_RAMP.length - 1]);
+    expect(routeLegend('ice', null)).toMatchObject({ from: 'START', to: 'FINISH', stops: ICE_RAMP });
+  });
+
+  it('stała wartość: jeden kolor i bez legendy', () => {
+    const flat = { ...withCad, cadence: distance.map(() => 85), altitude: distance.map(() => 100), heartrate: distance.map(() => 150) };
+    for (const mode of ['cadence', 'grade', 'effort'] as const) {
+      expect(new Set([0, 0.4, 1].map((t) => colorAt(mode, t, flat))).size).toBe(1);
+      expect(routeLegend(mode, flat)).toBeNull();
+    }
+    expect(colorAt('grade', 0.5, flat)).toBe(GRADE_RAMP[1]); // płasko = szary środek
+  });
+
+  it('effort ciągły od min do max; kadencja w legendzie obu nóg; nachylenie symetrycznie', () => {
+    expect(colorAt('effort', 0, streams)).toBe(EFFORT_RAMP[0]);
+    expect(colorAt('effort', 1, streams)).toBe(EFFORT_RAMP[EFFORT_RAMP.length - 1]);
+    expect(routeLegend('effort', streams)).toMatchObject({ from: '100 BPM', to: '190 BPM' });
+    expect(routeLegend('cadence', withCad)).toMatchObject({ from: '160', to: '180' });
+    // Pierwsza połowa 10% w górę, druga 10% w dół.
+    const hill = { ...streams, altitude: distance.map((d) => (d <= 2500 ? d / 10 : 500 - d / 10)) };
+    const g = routeLegend('grade', hill)!;
+    expect([g.from, g.to]).toEqual(['−10%', '+10%']);
+    expect(colorAt('grade', 0.2, hill)).toBe(GRADE_RAMP[2]);
+    expect(colorAt('grade', 0.8, hill)).toBe(GRADE_RAMP[0]);
   });
 });

@@ -8,6 +8,7 @@ import {
   formatHeartRate,
   formatPace,
 } from '../lib/format';
+import { RUN_TAGS, runKind, type RunKind } from '../lib/runType';
 import { RouteThumb } from './RouteThumb';
 
 // Sumy dla nagłówka listy; longestId tylko przy co najmniej 2 biegach (przy jednym odznaka nic nie mówi).
@@ -38,10 +39,8 @@ export function mergePage(base: Activity[], more: Activity[], done: boolean, max
 }
 
 // Wygląd numeru startowego wg typu biegu ze Stravy (workout_type: 1 zawody, 2 długi, 3 trening jakościowy).
-export type BibKind = 'training' | 'long' | 'workout' | 'race';
+export type BibKind = RunKind;
 export type BibTier = 'marathon' | 'half' | '10k' | '5k' | 'race';
-const KINDS: Record<number, BibKind> = { 1: 'race', 2: 'long', 3: 'workout' };
-const TAGS = { training: 'TRAINING', long: 'LONG RUN', workout: 'WORKOUT' };
 // Tolerancja w metrach: zegarki mierzą zawody trochę dłużej lub krócej niż oficjalny dystans.
 // Krótkie etykiety, bo na telefonie pasek ma ok. 125 px; kolor paska i tak mówi, że to zawody.
 const TIERS: [BibTier, number, number, string][] = [
@@ -53,10 +52,10 @@ const TIERS: [BibTier, number, number, string][] = [
 const ULTRA_M = 43500;
 
 export function bibStyle(a: Pick<Activity, 'workout_type' | 'sport_type' | 'distance'>) {
-  const kind = KINDS[a.workout_type ?? 0] ?? 'training';
+  const kind = runKind(a.workout_type);
   const trail = a.sport_type === 'TrailRun';
   // Zwykły bieg po szlaku: etykieta mówi więcej niż „TRAINING”.
-  if (kind !== 'race') return { kind, trail, tier: undefined, tag: trail && kind === 'training' ? 'TRAIL' : TAGS[kind] };
+  if (kind !== 'race') return { kind, trail, tier: undefined, tag: trail && kind === 'training' ? 'TRAIL' : RUN_TAGS[kind] };
   const t = TIERS.find(([, min, max]) => a.distance >= min && a.distance <= max);
   return { kind, trail, tier: t?.[0] ?? 'race', tag: t ? `RACE · ${t[3]}` : a.distance > ULTRA_M ? 'RACE · ULTRA' : 'RACE' };
 }

@@ -117,16 +117,24 @@ export function gainSeries(s: RunStreams, n = 200): number[] {
 export const hrBins = (s: RunStreams, width = 5) => shareBins(s, 'heartrate', width);
 // Kadencja jednej nogi (jak w Stravie), więc 2 spm tu to 4 kroki obu nóg.
 export const cadenceBins = (s: RunStreams, width = 2) => shareBins(s, 'cadence', width);
+// Tempo (s/km) co width s; wolniej niż ok. 20:50/km (marsz, postój) pomijamy, żeby nie rozciągało osi.
+export const paceBins = (s: RunStreams, width = 10) => shareBins(s, 'velocity', width, (v) => (v >= 0.8 ? 1000 / v : NaN));
 
-function shareBins(s: RunStreams, key: 'heartrate' | 'cadence', width: number): { lo: number; share: number }[] {
-  const hr = s[key];
-  if (!hr) return [];
+function shareBins(
+  s: RunStreams,
+  key: 'heartrate' | 'cadence' | 'velocity',
+  width: number,
+  map = (x: number) => x,
+): { lo: number; share: number }[] {
+  const raw = s[key];
+  if (!raw) return [];
   const sums = new Map<number, number>();
   let total = 0;
-  for (let i = 1; i < hr.length; i++) {
-    if (!(hr[i] > 0)) continue;
+  for (let i = 1; i < raw.length; i++) {
+    const x = raw[i] > 0 ? map(raw[i]) : NaN;
+    if (!(x > 0 && Number.isFinite(x))) continue;
     const w = s.time ? gap(s.time, i) : 1;
-    const lo = Math.floor(hr[i] / width) * width;
+    const lo = Math.floor(x / width) * width;
     sums.set(lo, (sums.get(lo) ?? 0) + w);
     total += w;
   }
@@ -169,6 +177,57 @@ export function halfSplits(s: RunStreams): [number, number] | null {
   const km = total / 2000;
   const out: [number, number] = [half / km, (moving[moving.length - 1] - half) / km];
   return out.every((p) => Number.isFinite(p) && p > 0) ? out : null;
+}
+
+// Średnie tętno pierwszej i drugiej połowy dystansu (ważone czasem jak zoneShare); null bez tętna w którejś połowie.
+export function halfHr(s: RunStreams): [number, number] | null {
+  const { distance: d, heartrate: hr } = s;
+  const total = d[d.length - 1];
+  if (!hr || !(total > 0)) return null;
+  const sum = [0, 0];
+  const weight = [0, 0];
+  for (let i = 1; i < hr.length; i++) {
+    if (!(hr[i] > 0)) continue;
+    const w = s.time ? gap(s.time, i) : 1;
+    const h = d[i] <= total / 2 ? 0 : 1;
+    sum[h] += hr[i] * w;
+    weight[h] += w;
+  }
+  return weight[0] > 0 && weight[1] > 0 ? [sum[0] / weight[0], sum[1] / weight[1]] : null;
+}
+
+// Różnica tempa (s/km, dodatnia = wolniej) każdego odcinka kmSplits od średniego tempa tych odcinków.
+export function splitDeltas(s: RunStreams): number[] {
+  const splits = kmSplits(s);
+  const km = splits.reduce((a, x) => a + x.km, 0);
+  const avg = splits.reduce((a, x) => a + x.pace * x.km, 0) / km;
+  return splits.map((x) => x.pace - avg);
+}
+
+// Zapas (s, dodatni = przed) nad równym tempem całego biegu w n punktach dystansu, z czasu w ruchu.
+export function pacingSeries(s: RunStreams, n = 120): number[] {
+  const { distance: d, time: t } = s;
+  const total = d[d.length - 1];
+  if (!t || d.length < 2 || !(total > 0) || n < 2) return [];
+  const moving = movingTime(t);
+  const end = moving[moving.length - 1];
+  if (!(end > 0)) return [];
+  return Array.from({ length: n }, (_, k) => {
+    const x = (total * k) / (n - 1);
+    return (x / total) * end - lerpAt(d, moving, x);
+  });
+}
+
+// Nachylenie (%) w n punktach dystansu: różnica wysokości próbek series na krańcach okna ±3 próbek
+// (lekkie wygładzenie szumu GPS); [] bez wysokości.
+export function gradeSeries(s: RunStreams, n = 200): number[] {
+  const alt = series(s, 'altitude', n);
+  if (alt.length < 2) return [];
+  const step = s.distance[s.distance.length - 1] / (n - 1);
+  return alt.map((_, i) => {
+    const [a, b] = [Math.max(0, i - 3), Math.min(n - 1, i + 3)];
+    return ((alt[b] - alt[a]) / ((b - a) * step)) * 100;
+  });
 }
 
 // Prędkość pionowa (m/h, ujemna w dół) w n równych odcinkach dystansu, z czasu w ruchu.

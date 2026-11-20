@@ -55,6 +55,8 @@ export function Postcard({
   textStyle,
   progress = 1,
   bare = false,
+  glow = 0,
+  mapDim = 0,
 }: {
   activity: Activity;
   fontCss?: string;
@@ -78,6 +80,8 @@ export function Postcard({
   routeColor?: RouteColor; // styl linii trasy; 'theme' lub brak danych: kolor motywu (3D: nachylenie)
   progress?: number; // animacja rysowania (0..1): trasa do tego ułamka, dystans i czas rosną; 1 = gotowa pocztówka
   bare?: boolean; // nakładka POV (ADR 0010): bez tła, mapy i trasy; statystyki, znak i podpis w kolorach motywu
+  glow?: number; // poświata trasy 0..100; 0 = bez filtra
+  mapDim?: number; // przyciemnienie mapy pod trasą 0..100; 0 = bez prostokąta
 }) {
   // Jedna projekcja dla mapy i trasy („scena”).
   const polyline = activity.map.summary_polyline;
@@ -86,10 +90,12 @@ export function Postcard({
     () => (view === '3d' && streams && fit ? (givenIso ?? isoRoute(streams, ROUTE_BOX, fit.projection)) : null),
     [view, streams, fit, givenIso],
   );
-  const showMap = background === 'map' && fit && map;
+  const showMap = background === 'map' && !!fit && !!map;
+  const hasIso = !!iso;
   // W 3D z bryłami podłoga bez płaskich budynków.
-  const floor = (l: MapLayers): MapLayers => (iso && l.buildings ? { ...l, building: undefined } : l);
-  const out = showMap ? THEMES[theme].render(floor(map), { accent }) : null;
+  const floor = (l: MapLayers): MapLayers => (hasIso && l.buildings ? { ...l, building: undefined } : l);
+  // Mapa i jej fragment w useMemo: w klatkach animacji zmienia się tylko trasa i liczby, ciężka mapa zostaje tym samym elementem.
+  const out = useMemo(() => (showMap ? THEMES[theme].render(floor(map!), { accent }) : null), [showMap, theme, map, hasIso, accent]);
   const style = useMemo(() => THEMES[theme].style({ accent }), [theme, accent]);
   const relief = out ? terrain : undefined;
   // Bryły ze środkiem w ostrzejszym fragmencie biorą obrysy z niego, pozostałe z mapy bazowej.
@@ -113,22 +119,27 @@ export function Postcard({
   const text = out?.text ?? { color: '#ffffff' };
   const { weight, scale } = FONTS[font];
   // Własne tło warstwy zakrywa mapę podstawową w prostokącie; defs motywu (filtry, wzory) są już w scene.
-  const refinedMap = out && refined && (
-    <>
-      <defs>
-        <clipPath id="refined-clip">
-          <rect
-            x={refined.rect[0]}
-            y={refined.rect[1]}
-            width={refined.rect[2] - refined.rect[0]}
-            height={refined.rect[3] - refined.rect[1]}
-          />
-        </clipPath>
-      </defs>
-      <g clipPath="url(#refined-clip)">
-        <MapBackground layers={floor(refined.layers)} style={style} rect={refined.rect} />
-      </g>
-    </>
+  const refinedMap = useMemo(
+    () =>
+      out &&
+      refined && (
+        <>
+          <defs>
+            <clipPath id="refined-clip">
+              <rect
+                x={refined.rect[0]}
+                y={refined.rect[1]}
+                width={refined.rect[2] - refined.rect[0]}
+                height={refined.rect[3] - refined.rect[1]}
+              />
+            </clipPath>
+          </defs>
+          <g clipPath="url(#refined-clip)">
+            <MapBackground layers={floor(refined.layers)} style={style} rect={refined.rect} />
+          </g>
+        </>
+      ),
+    [out, refined, style, hasIso],
   );
 
   const behind = background === 'photo' && !!photo && !!person;
@@ -142,7 +153,7 @@ export function Postcard({
   const splitRoute = route && behind;
   const clipped = (part: 'behind' | 'front' | undefined, node: ReactNode) =>
     part ? <g clipPath={`url(#route-${part})`}>{node}</g> : node;
-  const routeLayer = (part?: 'behind' | 'front') =>
+  const routeInner = (part?: 'behind' | 'front') =>
     iso
       ? route && (
           <g transform={cameraTransform(camera)}>
@@ -166,6 +177,10 @@ export function Postcard({
         route && (
           <g transform={cameraTransform(camera)}>{clipped(part, <Route {...out?.route} d={fit.d} zoom={camera.zoom} points={fit.points} color={lineColor} progress={progress} />)}</g>
         );
+  const routeLayer = (part?: 'behind' | 'front') => {
+    const node = routeInner(part);
+    return glow > 0 && node ? <g filter="url(#route-glow)">{node}</g> : node;
+  };
   const slotNode = (item: LayoutItem) => {
     const value = DATA[item.slot.data].value(activity);
     const chart = chartFor(item, streams); // sprawdza box i streams
@@ -237,6 +252,19 @@ export function Postcard({
           </filter>
         </defs>
       )}
+      {glow > 0 && route && (
+        <defs>
+          {/* Jak Glow z motywu Neon; obszar = płótno, bo procent obrysu ucina albo chowa prostą trasę (zerowa wysokość). */}
+          <filter id="route-glow" filterUnits="userSpaceOnUse" x={0} y={0} width={1080} height={1920}>
+            <feGaussianBlur in="SourceGraphic" stdDeviation={4 + glow * 0.14} result="glow" />
+            <feMerge>
+              <feMergeNode in="glow" />
+              {glow > 50 && <feMergeNode in="glow" />}
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+      )}
       {background === 'gradient' && <Background gradient={gradient} />}
       {bare ? null : iso ? (
         <g>
@@ -265,6 +293,7 @@ export function Postcard({
           </g>
           {/* Faktura papieru w przestrzeni płótna (jak w widoku płaskim), nie na pochylonej i powiększanej podłodze. */}
           {out?.overlay}
+          {out && mapDim > 0 && <rect width={1080} height={1920} fill="#000" opacity={mapDim / 100} />}
           {(!behind || splitRoute) && routeLayer(splitRoute ? 'behind' : undefined)}
         </g>
       ) : (
@@ -277,6 +306,7 @@ export function Postcard({
             {relief && terrainImage(relief)}
           </g>
           {out?.overlay}
+          {out && mapDim > 0 && <rect width={1080} height={1920} fill="#000" opacity={mapDim / 100} />}
           {(!behind || splitRoute) && routeLayer(splitRoute ? 'behind' : undefined)}
         </g>
       )}

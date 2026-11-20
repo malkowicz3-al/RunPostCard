@@ -7,12 +7,17 @@ import {
   climbRates,
   distanceGoal,
   gainSeries,
+  gradeSeries,
+  halfHr,
   halfSplits,
   hrBins,
   kmGrades,
   kmSplits,
+  paceBins,
+  pacingSeries,
   series,
   speedHr,
+  splitDeltas,
   swarm,
   zoneOf,
   zoneShare,
@@ -159,5 +164,43 @@ describe('distanceGoal i swarm', () => {
 
   it('bliskie kropki dostają kolejne poziomy, dalekie zostają na 0', () => {
     expect(swarm([0, 5, 8, 100], 10)).toEqual([0, 1, -1, 0]);
+  });
+});
+
+describe('gradeSeries, halfHr, splitDeltas, pacingSeries, paceBins', () => {
+  it('nachylenie w % z wysokości po dystansie; bez wysokości pusto', () => {
+    // run(): wysokość = dystans / 10, czyli stałe 10%.
+    for (const g of gradeSeries(run(2000), 50)) expect(g).toBeCloseTo(10);
+    expect(gradeSeries({ ...run(2000), altitude: undefined })).toEqual([]);
+  });
+
+  it('średnie tętno połówek ważone czasem; bez tętna null', () => {
+    const s = run(4000);
+    const hr = s.distance.map((m) => (m <= 2000 ? 140 : 150));
+    expect(halfHr({ ...s, heartrate: hr })!.map(Math.round)).toEqual([140, 150]);
+    expect(halfHr(s)).toBeNull();
+    expect(halfHr({ ...s, heartrate: hr.map((h, i) => (s.distance[i] > 2000 ? 0 : h)) })).toBeNull();
+  });
+
+  it('odchyłka km od średniej: km 2 szybszy, suma ważona zero', () => {
+    // run(3000): 300, 200, 300 s/km, średnia 266,7.
+    expect(splitDeltas(run(3000)).map(Math.round)).toEqual([33, -67, 33]);
+    expect(splitDeltas({ ...run(3000), time: undefined })).toEqual([]);
+  });
+
+  it('zapas nad równym tempem: 0 na starcie i mecie, za po wolnym km 1', () => {
+    const v = pacingSeries(run(3000), 4); // punkty co 1 km, równe tempo 800 s / 3 km
+    expect(v.map(Math.round)).toEqual([0, Math.round(800 / 3 - 300), Math.round(1600 / 3 - 500), 0]);
+    expect(pacingSeries({ ...run(3000), time: undefined })).toEqual([]);
+  });
+
+  it('tempo w przedziałach co 10 s/km, marsz pominięty', () => {
+    const v = [0, 4, 4, 4, 1000 / 245, 0.5];
+    const s: RunStreams = { latlng: [], distance: v.map((_, i) => i), time: v.map((_, i) => i), velocity: v };
+    // 4 m/s = 250 s/km, 245 s/km w przedziale 240; 0,5 m/s (marsz) i 0 pominięte.
+    expect(paceBins(s).map((b) => [b.lo, b.share])).toEqual([
+      [240, 0.25],
+      [250, 0.75],
+    ]);
   });
 });

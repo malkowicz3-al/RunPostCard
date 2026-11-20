@@ -12,6 +12,11 @@ import { forest } from './forest';
 import { sunset } from './sunset';
 import { mint } from './mint';
 import { mono } from './mono';
+import { slate } from './slate';
+import { sand } from './sand';
+import { plum } from './plum';
+import { rose } from './rose';
+import { coal } from './coal';
 import { blueprint } from './blueprint';
 import { pencil } from './pencil';
 import { watercolor } from './watercolor';
@@ -53,6 +58,11 @@ export type ThemeId =
   | 'sunset'
   | 'mint'
   | 'mono'
+  | 'slate'
+  | 'sand'
+  | 'plum'
+  | 'rose'
+  | 'coal'
   | 'blueprint'
   | 'pencil'
   | 'watercolor'
@@ -102,7 +112,7 @@ export type MapTheme = {
 };
 
 export const THEMES: Record<ThemeId, MapTheme> = {
-  dark, light, neon, ocean, forest, sunset, mint, mono, blueprint, pencil, watercolor, vintage, riso, chalk, halftone, synthwave, terminal, ink,
+  dark, light, neon, ocean, forest, sunset, mint, mono, slate, sand, plum, rose, coal, blueprint, pencil, watercolor, vintage, riso, chalk, halftone, synthwave, terminal, ink,
   digitalrain, lightgrid, galaxy, dune, redfog, spellbook, popcomic, bricks, arcademaze, dollhouse,
   handheld, vectorarcade, dungeon, spaceshooter, voxel, nightvision, kartrace, cyberhud, overworld, pinball,
 };

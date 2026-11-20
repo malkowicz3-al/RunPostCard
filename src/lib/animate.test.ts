@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { easeInOutCubic, frameProgress } from './animate';
+import { DRAW_S, HOLD_S, easeInOutCubic, frameProgress, previewProgress } from './animate';
 
 describe('animate', () => {
   it('easeInOutCubic: końce, środek, monotonicznie', () => {
@@ -17,5 +17,12 @@ describe('animate', () => {
     expect(ps.slice(180).every((p) => p === 1)).toBe(true);
     expect(ps.every((p, i) => i === 0 || p >= ps[i - 1])).toBe(true);
     expect(frameProgress(15, 6, 0)).toHaveLength(90);
+  });
+
+  it('previewProgress: rysowanie, pauza na 1, potem od nowa', () => {
+    expect(previewProgress(0)).toBe(0);
+    expect(previewProgress((DRAW_S / 2) * 1000)).toBeCloseTo(0.5);
+    expect(previewProgress((DRAW_S + HOLD_S / 2) * 1000)).toBe(1);
+    expect(previewProgress((DRAW_S + HOLD_S) * 1000)).toBe(0);
   });
 });

@@ -1,6 +1,18 @@
 import type { RunStreams } from '../strava/api';
 import { ZONE_COLORS } from '../postcard/SlotChart';
-import { ELEVATION_RAMP, PACE_RAMP, ROUTE_COLORS, available, colorScale, type RouteColor } from '../postcard/routeColor';
+import {
+  CADENCE_RAMP,
+  EFFORT_RAMP,
+  ELEVATION_RAMP,
+  FIRE_RAMP,
+  GRADE_RAMP,
+  ICE_RAMP,
+  PACE_RAMP,
+  ROUTE_COLORS,
+  available,
+  colorScale,
+  type RouteColor,
+} from '../postcard/routeColor';
 import { Select } from './Select';
 
 // Podgląd: pasek z kolorów stylu (stały, niezależny od biegu); motyw w kolorze tekstu interfejsu.
@@ -11,6 +23,11 @@ const STOPS: Record<RouteColor, string[]> = {
   pace: PACE_RAMP,
   heartrate: ZONE_COLORS,
   elevation: ELEVATION_RAMP,
+  cadence: CADENCE_RAMP,
+  grade: GRADE_RAMP,
+  effort: EFFORT_RAMP,
+  fire: FIRE_RAMP,
+  ice: ICE_RAMP,
 };
 
 export function LinePicker({
