@@ -238,7 +238,12 @@ export type LayoutId =
   | 'ticker'
   | 'halfPair'
   | 'stacked'
-  | 'compare';
+  | 'compare'
+  | 'paceHero'
+  | 'spread'
+  | 'drift'
+  | 'paceMap'
+  | 'even';
 
 const item = (
   id: string,
@@ -501,6 +506,55 @@ export const LAYOUTS: Record<LayoutId, { id: LayoutId; name: string; items: Layo
       chart('splits', 'splitlist', 560, 1530, 1020, 1800),
     ],
   },
+  paceHero: {
+    id: 'paceHero',
+    name: 'Pace hero',
+    items: [
+      item('main', 'pace', 540, 1480, 240, 'middle', 960),
+      item('a', 'distance', 300, 1700, 110, 'middle', 440),
+      item('b', 'time', 780, 1700, 110, 'middle', 440),
+    ],
+  },
+  spread: {
+    id: 'spread',
+    name: 'Pace spread',
+    items: [
+      chart('chart', 'pacebins', 60, 1200, 1020, 1500),
+      item('a', 'distance', 300, 1700, 110, 'middle', 440),
+      item('b', 'time', 780, 1700, 110, 'middle', 440),
+    ],
+  },
+  drift: {
+    id: 'drift',
+    name: 'HR drift',
+    items: [
+      item('main', 'pace', 70, 1350, 150, 'start', 440),
+      item('a', 'distance', 70, 1540, 110, 'start', 440),
+      item('b', 'time', 70, 1710, 110, 'start', 440),
+      chart('chart', 'hrdrift', 560, 1210, 1020, 1790),
+    ],
+  },
+  paceMap: {
+    id: 'paceMap',
+    name: 'Pace map',
+    items: [
+      chart('chart', 'pacestrip', 60, 40, 1020, 240),
+      item('main', 'distance', 540, 1480, 260, 'middle', 960),
+      item('a', 'time', 300, 1700, 110, 'middle', 440),
+      item('b', 'heartrate', 780, 1700, 110, 'middle', 440),
+    ],
+  },
+  even: {
+    id: 'even',
+    name: 'Even pace',
+    items: [
+      chart('chart', 'pacing', 60, 1200, 1020, 1500),
+      item('a', 'distance', 180, 1700, 80, 'middle', 210),
+      item('b', 'elapsed', 420, 1700, 80, 'middle', 210),
+      item('c', 'pace', 660, 1700, 80, 'middle', 210),
+      item('d', 'heartrate', 900, 1700, 80, 'middle', 210),
+    ],
+  },
 };
 
 export const LAYOUT_ORDER: LayoutId[] = [
@@ -528,6 +582,11 @@ export const LAYOUT_ORDER: LayoutId[] = [
   'halfPair',
   'stacked',
   'compare',
+  'paceHero',
+  'spread',
+  'drift',
+  'paceMap',
+  'even',
 ];
 
 // Zmiany w slotach jednego układu: id slotu -> dane i forma.

@@ -136,7 +136,7 @@ describe('nowe style linii', () => {
   const withCad = { ...streams, cadence: distance.map((_, i) => 80 + i * 0.1) };
 
   it('dostępność: fire i ice zawsze, reszta wg strumieni', () => {
-    for (const mode of ['fire', 'ice'] as const) expect(available(mode, null)).toBe(true);
+    for (const mode of ['fire', 'ice', 'sunset', 'ocean', 'lime', 'gold', 'candy'] as const) expect(available(mode, null)).toBe(true);
     expect(available('cadence', streams)).toBe(false);
     expect(available('cadence', withCad)).toBe(true);
     expect(available('grade', streams)).toBe(true);

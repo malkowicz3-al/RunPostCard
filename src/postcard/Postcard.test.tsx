@@ -146,7 +146,7 @@ describe('Postcard układy', () => {
   it('wykresy ze strumieni mock; bez strumieni liczby tych samych danych', () => {
     const run = mockActivities().find((r) => r.average_heartrate)!;
     const s = mockStreams(run);
-    for (const id of ['poster', 'hud', 'scoreboard', 'splits', 'pulse', 'duo', 'climb', 'strip', 'table', 'sidebar', 'ticker', 'halfPair', 'stacked', 'compare'] as const) {
+    for (const id of ['poster', 'hud', 'scoreboard', 'splits', 'pulse', 'duo', 'climb', 'strip', 'table', 'sidebar', 'ticker', 'halfPair', 'stacked', 'compare', 'spread', 'drift', 'paceMap', 'even'] as const) {
       const layout = resolveLayout(id);
       const chart = layout.find((i) => i.box)!;
       const label = `>${CHARTS[chart.slot.form as keyof typeof CHARTS].label}<`;

@@ -14,13 +14,23 @@ export type RouteColor =
   | 'grade'
   | 'effort'
   | 'fire'
-  | 'ice';
+  | 'ice'
+  | 'sunset'
+  | 'ocean'
+  | 'lime'
+  | 'gold'
+  | 'candy';
 
 export const ROUTE_COLORS: { id: RouteColor; label: string }[] = [
   { id: 'theme', label: 'Theme' },
   { id: 'rainbow', label: 'Rainbow' },
   { id: 'fire', label: 'Fire' },
   { id: 'ice', label: 'Ice' },
+  { id: 'sunset', label: 'Sunset' },
+  { id: 'ocean', label: 'Ocean' },
+  { id: 'lime', label: 'Lime' },
+  { id: 'gold', label: 'Gold' },
+  { id: 'candy', label: 'Candy' },
   { id: 'pace', label: 'Pace' },
   { id: 'heartrate', label: 'Heart rate' },
   { id: 'effort', label: 'Effort' },
@@ -38,9 +48,22 @@ export const GRADE_RAMP = ['#2f80ff', '#a0a7b4', '#ff3b3b']; // zjazd → płask
 export const EFFORT_RAMP = ['#3b9cff', '#3ccf6e', '#ffd23f', '#ff4d4d']; // tętno ciągle, od min do max
 export const FIRE_RAMP = ['#ffe36e', '#ff9a1f', '#ff4d1f', '#d4143a']; // start → meta
 export const ICE_RAMP = ['#effcff', '#8fe3ff', '#3b9cff', '#6a4dff']; // start → meta
+export const SUNSET_RAMP = ['#ffd166', '#ff7b54', '#e83f6f', '#7a2e8e']; // start → meta
+export const OCEAN_RAMP = ['#c6f8ff', '#2ec4d6', '#1a7fd1', '#173b9c']; // start → meta
+export const LIME_RAMP = ['#f4ff7a', '#b8f03c', '#3ccf6e', '#0e9f8c']; // start → meta
+export const GOLD_RAMP = ['#fff3b0', '#ffd23f', '#e0a10b', '#a86a00']; // start → meta
+export const CANDY_RAMP = ['#ff9ad5', '#c77dff', '#7bdff2', '#b2f7ef']; // start → meta
 
 // Kolor wg ułamka długości (jak rainbow), zawsze dostępne.
-const BY_LENGTH: Partial<Record<RouteColor, string[]>> = { fire: FIRE_RAMP, ice: ICE_RAMP };
+const BY_LENGTH: Partial<Record<RouteColor, string[]>> = {
+  fire: FIRE_RAMP,
+  ice: ICE_RAMP,
+  sunset: SUNSET_RAMP,
+  ocean: OCEAN_RAMP,
+  lime: LIME_RAMP,
+  gold: GOLD_RAMP,
+  candy: CANDY_RAMP,
+};
 const RAMPS: Partial<Record<RouteColor, string[]>> = {
   pace: PACE_RAMP,
   elevation: ELEVATION_RAMP,

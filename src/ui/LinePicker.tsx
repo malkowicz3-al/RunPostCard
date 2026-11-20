@@ -7,6 +7,11 @@ import {
   FIRE_RAMP,
   GRADE_RAMP,
   ICE_RAMP,
+  SUNSET_RAMP,
+  OCEAN_RAMP,
+  LIME_RAMP,
+  GOLD_RAMP,
+  CANDY_RAMP,
   PACE_RAMP,
   ROUTE_COLORS,
   available,
@@ -28,6 +33,11 @@ const STOPS: Record<RouteColor, string[]> = {
   effort: EFFORT_RAMP,
   fire: FIRE_RAMP,
   ice: ICE_RAMP,
+  sunset: SUNSET_RAMP,
+  ocean: OCEAN_RAMP,
+  lime: LIME_RAMP,
+  gold: GOLD_RAMP,
+  candy: CANDY_RAMP,
 };
 
 export function LinePicker({
