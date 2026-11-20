@@ -1109,6 +1109,20 @@ button.slot-hit[data-active='true'] {
   color: var(--muted, #a0a0a8);
 }
 
+.panel-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.panel-title-row .toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
 .panel-title {
   display: none;
   margin: 0;

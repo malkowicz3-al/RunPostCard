@@ -37,6 +37,8 @@ import { LayoutPicker } from './LayoutPicker';
 import { LinePicker } from './LinePicker';
 import { LookPicker, type Look } from './LookPicker';
 import { MapBackdrop } from './MapBackdrop';
+import { randomStyle } from './randomStyle';
+import { sceneryUrl, type SceneryId } from './scenery';
 import { TextStyleToggles } from './TextStyleToggles';
 import { useMapLayers } from './useMapLayers';
 import { useRegionLayers } from './useRegionLayers';
@@ -119,6 +121,9 @@ export function PostcardScreen({
   const [fontCss, setFontCss] = useState<{ id: FontId; css?: string }>();
   const fontReady = fontCss?.id === font;
   const [photo, setPhoto] = useState<string>();
+  const [scenery, setScenery] = useState<SceneryId>(); // zdjęcie z listy Scenery, nie własne
+  // Własne zdjęcie zostaje w pamięci, gdy tło przechodzi na Scenery (Random też go nie kasuje).
+  const ownPhoto = useRef<{ file: Blob; url: string; edit: PhotoEdit }>(undefined);
   // Oryginał zostaje, żeby kolejne edycje nie traciły jakości; edycja jest wypalana w `photo`.
   const [photoFile, setPhotoFile] = useState<Blob>();
   const [photoEdit, setPhotoEdit] = useState<PhotoEdit>(NO_EDIT);
@@ -408,26 +413,72 @@ export function PostcardScreen({
   const currentSvg = () => previewRef.current?.querySelector('svg') ?? null;
 
   const choose = (value: Look) => {
+    // Inny wygląd unieważnia trwające wczytanie zdjęcia (wolne Scenery nie nadpisze mapy ani gradientu).
+    if (value !== 'photo') {
+      photoReq.current++;
+      setPhotoBusy(false);
+    }
     setMapFailed(false);
     setLook(value);
     if (value in THEMES) setFont(THEMES[value as ThemeId].font);
   };
 
   // Przy błędzie zostaje poprzednie zdjęcie i wygląd.
-  const choosePhoto = (file: File) => {
+  // `stock`: gotowe zdjęcie z listy Scenery (wczytywane z public/backgrounds); bez = własny plik.
+  const choosePhoto = (source: Blob | Promise<Blob>, stock?: SceneryId) => {
     const n = ++photoReq.current;
     setPhotoBusy(true);
-    loadPhoto(file)
-      .then((url) => {
+    Promise.resolve(source)
+      .then(async (file) => ({ file, url: await loadPhoto(file) }))
+      .then(({ file, url }) => {
         if (n !== photoReq.current) return;
         setPhoto(url);
+        setScenery(stock);
         setPhotoFile(file);
         setPhotoEdit(NO_EDIT);
+        if (!stock) ownPhoto.current = { file, url, edit: NO_EDIT };
         choose('photo');
         setPhotoError(false);
       })
       .catch(() => n === photoReq.current && setPhotoError(true))
       .finally(() => n === photoReq.current && setPhotoBusy(false));
+  };
+
+  const chooseScenery = (id: SceneryId) => {
+    if (id === scenery && look === 'photo') return; // ta sama scena: bez ponownego wczytania i utraty edycji
+    choosePhoto(
+      fetch(sceneryUrl(id)).then((r) => {
+        if (!r.ok) throw new Error(`Scenery ${r.status}`);
+        return r.blob();
+      }),
+      id,
+    );
+  };
+
+  // Powrót z Scenery do własnego zdjęcia razem z jego edycją.
+  const restoreOwnPhoto = () => {
+    const own = ownPhoto.current;
+    if (!own) return;
+    photoReq.current++;
+    setPhotoBusy(false);
+    setPhoto(own.url);
+    setPhotoFile(own.file);
+    setPhotoEdit(own.edit);
+    setScenery(undefined);
+    choose('photo');
+  };
+
+  const randomize = () => {
+    const r = randomStyle({ hasRoute: fit !== null, streams, keepBackground: look === 'photo' && !scenery });
+    if (r.background?.kind === 'map') choose(r.background.theme);
+    else if (r.background?.kind === 'gradient') {
+      choose('gradient');
+      setGradient(r.background.gradient);
+    } else if (r.background?.kind === 'scenery') chooseScenery(r.background.id);
+    setFont(r.font);
+    setLayoutId(r.layout);
+    setRouteColor(r.routeColor);
+    setTextStyle(r.textStyle);
   };
 
   const applyPhotoEdit = (edit: PhotoEdit) => {
@@ -440,6 +491,7 @@ export function PostcardScreen({
         if (n !== photoReq.current) return;
         setPhoto(url);
         setPhotoEdit(edit);
+        if (!scenery) ownPhoto.current = { file: photoFile, url, edit };
         setPhotoError(false);
       })
       .catch(() => n === photoReq.current && setPhotoError(true))
@@ -532,7 +584,18 @@ export function PostcardScreen({
           })}
         </div>
         <div className="style-panel">
-          <h2 className="panel-title">Style</h2>
+          <div className="panel-title-row">
+            <h2 className="panel-title">Style</h2>
+            <button className="toggle" onClick={randomize} disabled={exporting} title="Random style">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="3" y="3" width="18" height="18" rx="4" />
+                <circle cx="8.5" cy="8.5" r="1.2" fill="currentColor" />
+                <circle cx="15.5" cy="15.5" r="1.2" fill="currentColor" />
+                <circle cx="12" cy="12" r="1.2" fill="currentColor" />
+              </svg>
+              Random
+            </button>
+          </div>
           <div className="panel-pair" inert={exporting}>
             <LookPicker
               polyline={activity.map.summary_polyline}
@@ -543,8 +606,11 @@ export function PostcardScreen({
               onAccent={setAccent}
               gradient={gradient}
               onGradient={setGradient}
-              photoHref={photo}
               onPhotoFile={choosePhoto}
+              scenery={scenery}
+              onScenery={chooseScenery}
+              ownPhotoHref={ownPhoto.current?.url}
+              onOwnPhoto={restoreOwnPhoto}
               photoBusy={photoBusy}
             />
           </div>

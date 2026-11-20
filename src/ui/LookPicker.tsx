@@ -3,13 +3,15 @@ import { THEMES, type ThemeId } from '../postcard/themes';
 import { NEON_ACCENTS } from '../postcard/themes/neon';
 import { GRADIENTS, GRADIENT_IDS, gradientCss, type GradientId } from '../postcard/Background';
 import { RouteThumb } from './RouteThumb';
+import { SCENERY, sceneryThumb, type SceneryId } from './scenery';
 import { Select } from './Select';
 
 export type Look = 'gradient' | 'transparent' | 'photo' | ThemeId;
-type Background = 'gradient' | 'transparent' | 'photo' | 'map';
+type Background = 'gradient' | 'scenery' | 'transparent' | 'photo' | 'map';
 
 const THEME_IDS = Object.keys(THEMES) as ThemeId[];
 const THEME_OPTIONS = THEME_IDS.map((id) => ({ id, label: THEMES[id].label }));
+const SCENERY_OPTIONS = SCENERY.map(({ id, label }) => ({ id, label }));
 const GRADIENT_OPTIONS = GRADIENT_IDS.map((id) => ({ id, label: GRADIENTS[id].label }));
 const isTheme = (look: Look): look is ThemeId => look in THEMES;
 
@@ -22,9 +24,12 @@ export function LookPicker({
   onAccent,
   gradient,
   onGradient,
-  photoHref,
   onPhotoFile,
   photoBusy,
+  scenery,
+  onScenery,
+  ownPhotoHref,
+  onOwnPhoto,
 }: {
   polyline: string;
   hasRoute: boolean;
@@ -34,15 +39,20 @@ export function LookPicker({
   onAccent: (accent: string) => void;
   gradient: GradientId;
   onGradient: (id: GradientId) => void;
-  photoHref?: string;
   onPhotoFile: (file: File) => void;
   photoBusy?: boolean;
+  scenery?: SceneryId;
+  onScenery: (id: SceneryId) => void;
+  ownPhotoHref?: string; // własne zdjęcie (zostaje, gdy w tle jest Scenery)
+  onOwnPhoto: () => void;
 }) {
   const fileInput = useRef<HTMLInputElement>(null);
   // „Map” wraca do ostatnio wybranego motywu.
   const lastTheme = useRef<ThemeId>('dark');
   if (isTheme(look)) lastTheme.current = look;
-  const background: Background = isTheme(look) ? 'map' : look;
+  // Zdjęcie z listy Scenery to też look 'photo', ale w liście tła osobna pozycja.
+  const background: Background = isTheme(look) ? 'map' : look === 'photo' && scenery ? 'scenery' : look;
+  const ownPhoto = !!ownPhotoHref;
   const custom = !NEON_ACCENTS.some(([c]) => c === accent);
 
   const themeThumb = (id: ThemeId) => (
@@ -55,17 +65,23 @@ export function LookPicker({
 
   const backgrounds: { id: Background; label: string }[] = [
     { id: 'gradient', label: 'Gradient' },
+    { id: 'scenery', label: 'Scenery' },
     { id: 'transparent', label: 'Transparent' },
     { id: 'photo', label: photoBusy ? 'Loading…' : 'Photo' },
     // Bez trasy nie ma projekcji, więc nie ma też mapy.
     ...(hasRoute ? [{ id: 'map' as const, label: 'Map' }] : []),
   ];
 
+  const sceneryPreview = (id: SceneryId) => (
+    <span className="look-preview look-photo" style={{ backgroundImage: `url(${sceneryThumb(id)})` }} />
+  );
+
   const backgroundPreview = (id: Background) => {
     if (id === 'map') return themeThumb(lastTheme.current);
+    if (id === 'scenery') return sceneryPreview(scenery ?? SCENERY[0].id);
     if (id === 'photo')
-      return photoHref ? (
-        <span className="look-preview look-photo" style={{ backgroundImage: `url(${photoHref})` }} />
+      return ownPhoto ? (
+        <span className="look-preview look-photo" style={{ backgroundImage: `url(${ownPhotoHref})` }} />
       ) : (
         <span className="look-preview font-sample">+</span>
       );
@@ -81,8 +97,10 @@ export function LookPicker({
 
   const chooseBackground = (id: Background) => {
     if (id === 'map') onLook(lastTheme.current);
-    // Bez wgranego zdjęcia wybór „Photo” od razu otwiera wybór pliku.
-    else if (id === 'photo' && !photoHref) fileInput.current?.click();
+    else if (id === 'scenery') onScenery(scenery ?? SCENERY[0].id);
+    // Bez wgranego własnego zdjęcia wybór „Photo” od razu otwiera wybór pliku.
+    else if (id === 'photo' && !ownPhoto) fileInput.current?.click();
+    else if (id === 'photo' && scenery) onOwnPhoto();
     else onLook(id);
   };
 
@@ -98,7 +116,7 @@ export function LookPicker({
           onChange={chooseBackground}
           preview={backgroundPreview}
         />
-        {look === 'photo' && (
+        {background === 'photo' && (
           <div className="toggle-row">
             <button className="toggle" onClick={() => fileInput.current?.click()}>
               Change photo
@@ -117,6 +135,19 @@ export function LookPicker({
           }}
         />
       </section>
+      {background === 'scenery' && scenery && (
+        <section className="panel-section">
+          <h3 className="panel-heading">Scenery</h3>
+          <Select
+            label="Scenery"
+            className="look-select"
+            value={scenery}
+            options={SCENERY_OPTIONS}
+            onChange={onScenery}
+            preview={sceneryPreview}
+          />
+        </section>
+      )}
       {look === 'gradient' && (
         <section className="panel-section">
           <h3 className="panel-heading">Gradient</h3>
