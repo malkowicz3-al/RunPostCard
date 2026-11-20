@@ -1,5 +1,5 @@
 // Gradient + ziarno z filtra feTurbulence. Wszystkie dość ciemne, bo tekst na gradiencie jest biały.
-export type GradientId = 'dusk' | 'deepsea' | 'berry' | 'moss' | 'ember' | 'aurora';
+export type GradientId = 'dusk' | 'deepsea' | 'berry' | 'moss' | 'ember' | 'aurora' | 'peach' | 'night' | 'lagoon' | 'volcano' | 'steel';
 
 export const GRADIENTS: Record<GradientId, { label: string; stops: string[]; diagonal?: boolean }> = {
   dusk: { label: 'Dusk', stops: ['#1e1b4b', '#f97316'] },
@@ -8,6 +8,11 @@ export const GRADIENTS: Record<GradientId, { label: string; stops: string[]; dia
   moss: { label: 'Moss', stops: ['#052e16', '#3f6212', '#a3a635'] },
   ember: { label: 'Ember', stops: ['#1c0a00', '#9a1c0b', '#f59e0b'], diagonal: true },
   aurora: { label: 'Aurora', stops: ['#020617', '#0f766e', '#7c3aed'], diagonal: true },
+  peach: { label: 'Peach', stops: ['#431407', '#9a3412', '#ea580c'] },
+  night: { label: 'Night', stops: ['#000000', '#1e1b4b', '#4338ca'] },
+  lagoon: { label: 'Lagoon', stops: ['#042f2e', '#115e59', '#0d9488'], diagonal: true },
+  volcano: { label: 'Volcano', stops: ['#0a0a0a', '#450a0a', '#dc2626'], diagonal: true },
+  steel: { label: 'Steel', stops: ['#020617', '#1e293b', '#64748b'] },
 };
 
 export const GRADIENT_IDS = Object.keys(GRADIENTS) as GradientId[];

@@ -37,7 +37,6 @@ import { LayoutPicker } from './LayoutPicker';
 import { LinePicker } from './LinePicker';
 import { LookPicker, type Look } from './LookPicker';
 import { MapBackdrop } from './MapBackdrop';
-import { randomStyle } from './randomStyle';
 import { sceneryUrl, type SceneryId } from './scenery';
 import { TextStyleToggles } from './TextStyleToggles';
 import { useMapLayers } from './useMapLayers';
@@ -122,7 +121,7 @@ export function PostcardScreen({
   const fontReady = fontCss?.id === font;
   const [photo, setPhoto] = useState<string>();
   const [scenery, setScenery] = useState<SceneryId>(); // zdjęcie z listy Scenery, nie własne
-  // Własne zdjęcie zostaje w pamięci, gdy tło przechodzi na Scenery (Random też go nie kasuje).
+  // Własne zdjęcie zostaje w pamięci, gdy tło przechodzi na Scenery.
   const ownPhoto = useRef<{ file: Blob; url: string; edit: PhotoEdit }>(undefined);
   // Oryginał zostaje, żeby kolejne edycje nie traciły jakości; edycja jest wypalana w `photo`.
   const [photoFile, setPhotoFile] = useState<Blob>();
@@ -468,19 +467,6 @@ export function PostcardScreen({
     choose('photo');
   };
 
-  const randomize = () => {
-    const r = randomStyle({ hasRoute: fit !== null, streams, keepBackground: look === 'photo' && !scenery });
-    if (r.background?.kind === 'map') choose(r.background.theme);
-    else if (r.background?.kind === 'gradient') {
-      choose('gradient');
-      setGradient(r.background.gradient);
-    } else if (r.background?.kind === 'scenery') chooseScenery(r.background.id);
-    setFont(r.font);
-    setLayoutId(r.layout);
-    setRouteColor(r.routeColor);
-    setTextStyle(r.textStyle);
-  };
-
   const applyPhotoEdit = (edit: PhotoEdit) => {
     setEditingPhoto(false);
     if (!photoFile) return;
@@ -584,18 +570,7 @@ export function PostcardScreen({
           })}
         </div>
         <div className="style-panel">
-          <div className="panel-title-row">
-            <h2 className="panel-title">Style</h2>
-            <button className="toggle" onClick={randomize} disabled={exporting} title="Random style">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <rect x="3" y="3" width="18" height="18" rx="4" />
-                <circle cx="8.5" cy="8.5" r="1.2" fill="currentColor" />
-                <circle cx="15.5" cy="15.5" r="1.2" fill="currentColor" />
-                <circle cx="12" cy="12" r="1.2" fill="currentColor" />
-              </svg>
-              Random
-            </button>
-          </div>
+          <h2 className="panel-title">Style</h2>
           <div className="panel-pair" inert={exporting}>
             <LookPicker
               polyline={activity.map.summary_polyline}

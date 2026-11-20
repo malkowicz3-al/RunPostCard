@@ -3,9 +3,9 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { MAP_KEYS } from '../../lib/vectorMap';
 import { THEMES } from './index';
 
-const NEW = ['slate', 'sand', 'plum', 'rose', 'coal'] as const;
+const NEW = ['slate', 'sand', 'plum', 'rose', 'coal', 'arctic', 'lava', 'olive', 'midnight', 'candy'] as const;
 
-describe('motywy palet Slate, Sand, Plum, Rose, Coal', () => {
+describe('motywy palet (Slate…Coal, Arctic…Candy)', () => {
   it('pełna paleta i scena z tłem oraz ulicami w kolorach motywu', () => {
     for (const id of NEW) {
       const theme = THEMES[id];

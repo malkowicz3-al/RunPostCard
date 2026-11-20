@@ -9,18 +9,23 @@ export type FontId =
   | 'archivo'
   | 'russo'
   | 'blackops'
+  | 'saira'
   | 'grotesk'
   | 'orbitron'
   | 'audiowide'
+  | 'chakra'
   | 'rubikmono'
   | 'bungee'
   | 'monoton'
   | 'righteous'
   | 'racing'
+  | 'alfa'
+  | 'bangers'
   | 'pressstart'
   | 'marker'
   | 'pacifico'
-  | 'lobster';
+  | 'lobster'
+  | 'kaushan';
 export const DEFAULT_FONT: FontId = 'barlow';
 
 type Font = {
@@ -63,6 +68,7 @@ export const FONTS: Record<FontId, Font> = {
   archivo: { label: 'Archivo', file: 'ArchivoBlack-Regular.ttf', family: 'Archivo Black', weight: 400, scale: 0.65, group: 'Sport' },
   russo: { label: 'Russo One', file: 'RussoOne-Regular.ttf', family: 'Russo One', weight: 400, scale: 0.8, group: 'Sport' },
   blackops: { label: 'Black Ops', file: 'BlackOpsOne-Regular.ttf', family: 'Black Ops One', weight: 400, scale: 0.65, group: 'Sport' },
+  saira: { label: 'Saira', file: 'SairaCondensed-Black.ttf', family: 'Saira Condensed', weight: 900, scale: 0.93, group: 'Sport' },
   grotesk: {
     label: 'Grotesk',
     file: 'SpaceGrotesk-Variable.ttf',
@@ -82,15 +88,19 @@ export const FONTS: Record<FontId, Font> = {
     group: 'Tech',
   },
   audiowide: { label: 'Audiowide', file: 'Audiowide-Regular.ttf', family: 'Audiowide', weight: 400, scale: 0.7, group: 'Tech' },
+  chakra: { label: 'Chakra', file: 'ChakraPetch-Bold.ttf', family: 'Chakra Petch', weight: 700, scale: 0.75, group: 'Tech' },
   rubikmono: { label: 'Rubik Mono', file: 'RubikMonoOne-Regular.ttf', family: 'Rubik Mono One', weight: 400, scale: 0.45, group: 'Tech' },
   bungee: { label: 'Bungee', file: 'Bungee-Regular.ttf', family: 'Bungee', weight: 400, scale: 0.65, group: 'Retro' },
   monoton: { label: 'Monoton', file: 'Monoton-Regular.ttf', family: 'Monoton', weight: 400, scale: 0.75, group: 'Retro' },
   righteous: { label: 'Righteous', file: 'Righteous-Regular.ttf', family: 'Righteous', weight: 400, scale: 0.8, group: 'Retro' },
   racing: { label: 'Racing Sans', file: 'RacingSansOne-Regular.ttf', family: 'Racing Sans One', weight: 400, scale: 0.8, group: 'Retro' },
+  alfa: { label: 'Alfa Slab', file: 'AlfaSlabOne-Regular.ttf', family: 'Alfa Slab One', weight: 400, scale: 0.64, group: 'Retro' },
+  bangers: { label: 'Bangers', file: 'Bangers-Regular.ttf', family: 'Bangers', weight: 400, scale: 0.98, group: 'Retro' },
   pressstart: { label: 'Press Start', file: 'PressStart2P-Regular.ttf', family: 'Press Start 2P', weight: 400, scale: 0.38, group: 'Retro' },
   marker: { label: 'Marker', file: 'PermanentMarker-Regular.ttf', family: 'Permanent Marker', weight: 400, scale: 0.82, group: 'Script' },
   pacifico: { label: 'Pacifico', file: 'Pacifico-Regular.ttf', family: 'Pacifico', weight: 400, scale: 0.85, group: 'Script' },
   lobster: { label: 'Lobster', file: 'Lobster-Regular.ttf', family: 'Lobster', weight: 400, scale: 0.95, group: 'Script' },
+  kaushan: { label: 'Kaushan', file: 'KaushanScript-Regular.ttf', family: 'Kaushan Script', weight: 400, scale: 0.73, group: 'Script' },
 };
 
 export const fontStack = (id: FontId) => `'${FONTS[id].family}', system-ui, sans-serif`;
