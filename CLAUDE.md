@@ -10,7 +10,7 @@ Noc 19/20 XI 2026 (prośba właściciela, do przejrzenia rano): lista jako numer
 View to dwa przełączające się przyciski: 2D/3D i Still/Animated (napis = bieżący tryb).
 Animated: animują się tylko liczby i wykresy z danymi wzdłuż trasy (`ALONG_ROUTE`); tekst (data, nazwa) i wykresy „na km”/strefy stoją (decyzja właściciela). Przycisk Random zrobiony i usunięty decyzją właściciela. Tło „Scenery”: 19 zdjęć CC0 w grupach Running i Landscape (bez widocznych logo marek) z Wikimedia Commons w `public/backgrounds` (autorzy w `LICENSE.md`, miniatury w `thumbs/`), przez ten sam tor co własne zdjęcie (Dim, edycja, Behind). Telefon (< 900 px): pocztówka na cały ekran, panel stylu jako arkusz od dołu otwierany pływającym przyciskiem Style (`StyleSheet`, też w Together).
 Stan 20 XI 2026: 48 motywów map, 11 gradientów, 25 fontów, 15 stylów linii (nowe wg długości: Sunset, Ocean, Lime, Gold, Candy), 5 nowych układów (Pace hero, Pace spread, HR drift, Pace map, Even pace).
-Na razie bez wdrożenia na Vercel: aplikacja działa tylko lokalnie (`npm run dev`).
+Wdrożone na Vercel (20 XI 2026, decyzja właściciela): projekt `runpostcard`, połączony z GitHubem (push na `main` = wdrożenie produkcyjne), `vercel.json` z presetem Vite; zmienne `VITE_STRAVA_CLIENT_ID` i `STRAVA_CLIENT_SECRET` ustawione w Vercelu przez właściciela.
 
 ## Model projektu
 - Repozytorium otwarte na GitHubie, licencja MIT. Każdy uruchamia je u siebie (lokalnie, Vercel lub inny Node).
