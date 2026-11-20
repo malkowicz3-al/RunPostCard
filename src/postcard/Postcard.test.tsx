@@ -82,19 +82,6 @@ describe('Postcard 3D', () => {
     expect(svg).toContain('transform="translate(1056 1890) rotate(-90)" font-size="18"');
     expect(renderToStaticMarkup(<Postcard activity={hills} />)).not.toContain(MAP_ATTRIBUTION);
   });
-  it('bare (nakładka POV) z neonem: każde url(#id) ma swoje id', () => {
-    const svg = renderToStaticMarkup(<Postcard activity={hills} background="map" map={LAYERS} theme="neon" streams={streams} bare />);
-    for (const [, ref] of svg.matchAll(/url\(#([\w-]+)\)/g)) expect(svg).toContain(`id="${ref}"`);
-  });
-  it('napis POV: bez banner brak, z banner tekst i krycie, tabliczka w obrębie karty', () => {
-    const props = { activity: hills, background: 'map', map: LAYERS, theme: 'dark', streams, bare: true } as const;
-    expect(renderToStaticMarkup(<Postcard {...props} />)).not.toContain('pov-banner');
-    const svg = renderToStaticMarkup(<Postcard {...props} banner={{ x: 1075, y: 900, text: 'MAX HR 182 bpm', alpha: 0.5 }} />);
-    expect(svg).toContain('class="pov-banner" opacity="0.5"');
-    expect(svg).toContain('MAX HR 182 bpm');
-    const [, x, w] = svg.match(/<rect x="([\d.]+)" y="[\d.-]+" width="([\d.]+)"[^>]*rx=/)!.map(Number);
-    expect(x + w).toBeLessThanOrEqual(1080);
-  });
 });
 
 describe('Postcard teren', () => {

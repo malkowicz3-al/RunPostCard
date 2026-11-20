@@ -1,8 +1,7 @@
-import { DRAW_S, HOLD_S, drawFrame, renderFrames, type FrameOptions, type Under } from './animate';
+import { DRAW_S, HOLD_S, drawFrame, renderFrames, type FrameOptions } from './animate';
 
 type Frame = FrameOptions['frame'];
-type Progress = { onProgress?: (done: number) => void; signal?: AbortSignal; under?: Under };
-type Mp4Options = Progress & { progresses?: number[] };
+type Progress = { onProgress?: (done: number) => void; signal?: AbortSignal };
 
 const MP4 = { width: 1080, height: 1920, fps: 30, bitrate: 8e6 };
 // 25 kl./s: płynnie jak wideo, a opóźnienie GIF-a w setnych sekundy wychodzi równe (40 ms).
@@ -28,7 +27,7 @@ export async function canEncodeMp4(): Promise<boolean> {
   }
 }
 
-export async function encodeMp4(frame: Frame, { onProgress, signal, under, progresses }: Mp4Options): Promise<Blob> {
+export async function encodeMp4(frame: Frame, { onProgress, signal }: Progress): Promise<Blob> {
   const { Output, Mp4OutputFormat, BufferTarget, CanvasSource } = await import('mediabunny');
   const canvas = canvasOf(MP4.width, MP4.height);
   const target = new BufferTarget();
@@ -38,7 +37,7 @@ export async function encodeMp4(frame: Frame, { onProgress, signal, under, progr
   output.addVideoTrack(source, { frameRate: MP4.fps });
   await output.start();
   try {
-    await renderFrames({ frame, canvas, under, fps: MP4.fps, seconds: DRAW_S, holdSeconds: HOLD_S, progresses, onProgress, signal }, (i) =>
+    await renderFrames({ frame, canvas, fps: MP4.fps, seconds: DRAW_S, holdSeconds: HOLD_S, onProgress, signal }, (i) =>
       source.add(i / MP4.fps, 1 / MP4.fps),
     );
     await output.finalize();
@@ -54,19 +53,19 @@ export async function encodeMp4(frame: Frame, { onProgress, signal, under, progr
 // Jedna paleta z gotowej pocztówki (p = 1) dla wszystkich klatek; piksele bez zmian względem poprzedniej klatki
 // idą jako przezroczysty indeks (dispose 1: zostaje poprzednia klatka), więc kolejne klatki to głównie rosnąca trasa.
 // Pauza na końcu to jedna klatka z długim opóźnieniem.
-export async function encodeGif(frame: Frame, { onProgress, signal, under }: Progress): Promise<Blob> {
+export async function encodeGif(frame: Frame, { onProgress, signal }: Progress): Promise<Blob> {
   const { GIFEncoder, quantize, applyPalette } = await import('gifenc');
   const canvas = canvasOf(GIF.width, GIF.height);
   try {
     const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
     const pixels = () => ctx.getImageData(0, 0, GIF.width, GIF.height).data;
-    await drawFrame(frame(1), canvas, under && ((c) => under(c, 1)));
+    await drawFrame(frame(1), canvas);
     const colors = quantize(pixels(), 255);
     const same = colors.length; // dodatkowy indeks „bez zmian”, poza kolorami, żeby applyPalette go nie wybrał
     const palette = [...colors, [0, 0, 0]];
     const gif = GIFEncoder();
     let prev: Uint8Array | null = null;
-    await renderFrames({ frame, canvas, under, fps: GIF.fps, seconds: DRAW_S, holdSeconds: 0, onProgress, signal }, (i, count) => {
+    await renderFrames({ frame, canvas, fps: GIF.fps, seconds: DRAW_S, holdSeconds: 0, onProgress, signal }, (i, count) => {
       const index = applyPalette(pixels(), colors);
       const out = prev ? index.map((v, k) => (v === prev![k] ? same : v)) : index;
       prev = index;

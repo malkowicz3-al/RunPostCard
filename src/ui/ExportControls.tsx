@@ -19,10 +19,9 @@ export function offscreenFrames(render: (p: number) => ReactElement) {
 // Download (PNG, SVG, MP4, GIF) z paskiem postępu, Cancel i Share; wspólne dla pocztówki i widoku „Together”.
 // svg: podgląd na ekranie (PNG i SVG); frame: ta sama karta z postępem animacji, renderowana poza ekranem.
 // resetKey: zmiana karty unieważnia plik do udostępnienia.
-// pov: eksport POV (ADR 0011), tylko plik MP4; povNote: powód, czemu go nie ma (pozycja nieaktywna).
-type Format = 'mp4' | 'gif' | 'pov';
-const STATUS: Record<Format, string> = { mp4: 'Creating video…', gif: 'Creating GIF…', pov: 'Creating POV video…' };
-const FAILED: Record<Format, string> = { mp4: 'video', gif: 'GIF', pov: 'POV video' };
+type Format = 'mp4' | 'gif';
+const STATUS: Record<Format, string> = { mp4: 'Creating video…', gif: 'Creating GIF…' };
+const FAILED: Record<Format, string> = { mp4: 'video', gif: 'GIF' };
 
 export function ExportControls({
   name,
@@ -30,8 +29,6 @@ export function ExportControls({
   frame,
   resetKey,
   disabled,
-  pov,
-  povNote,
   onBusy,
   mode,
 }: {
@@ -40,8 +37,6 @@ export function ExportControls({
   frame: (p: number) => ReactElement;
   resetKey: unknown;
   disabled: boolean;
-  pov?: (o: { onProgress: (done: number) => void; signal: AbortSignal }) => Promise<Blob>;
-  povNote?: string;
   onBusy?: (busy: boolean) => void; // MP4/GIF w trakcie
   mode: 'still' | 'animation'; // still: PNG i SVG; animation: MP4 i GIF
 }) {
@@ -85,9 +80,9 @@ export function ExportControls({
     if (el) exportSvg(el, `${name}.svg`);
   };
 
-  // Klatki animacji: ta sama karta z postępem, renderowana poza ekranem (odłączony div); POV składa klatki sam.
+  // Klatki animacji: ta sama karta z postępem, renderowana poza ekranem (odłączony div).
   const downloadAnimation = async (format: Format) => {
-    const frames = format === 'pov' ? null : offscreenFrames(frame);
+    const frames = offscreenFrames(frame);
     const abort = new AbortController();
     encodeAbort.current = abort;
     setExportFailed(null);
@@ -100,15 +95,15 @@ export function ExportControls({
     };
     try {
       const opts = { onProgress, signal: abort.signal };
-      const blob = !frames ? await pov!(opts) : format === 'mp4' ? await encodeMp4(frames.frameAt, opts) : await encodeGif(frames.frameAt, opts);
+      const blob = format === 'mp4' ? await encodeMp4(frames.frameAt, opts) : await encodeGif(frames.frameAt, opts);
       if (abort.signal.aborted) return; // Cancel w chwili domykania pliku
-      const file = new File([blob], format === 'pov' ? `${name}-pov.mp4` : `${name}.${format}`, { type: blob.type });
+      const file = new File([blob], `${name}.${format}`, { type: blob.type });
       download(file, file.name);
       if (navigator.canShare?.({ files: [file] })) setShareFile(file);
     } catch {
       if (!abort.signal.aborted) setExportFailed(FAILED[format]);
     } finally {
-      frames?.unmount();
+      frames.unmount();
       if (encodeAbort.current === abort) {
         encodeAbort.current = null;
         setEncoding(null);
@@ -129,10 +124,7 @@ export function ExportControls({
         onSvg={downloadSvg}
         onMp4={() => downloadAnimation('mp4')}
         onGif={() => downloadAnimation('gif')}
-        onPov={() => downloadAnimation('pov')}
         mp4Supported={mp4Ok}
-        povSupported={!!pov}
-        povNote={povNote}
         mode={mode}
       />
       {encoding !== null && (

@@ -37,7 +37,6 @@ import { LayoutPicker } from './LayoutPicker';
 import { LinePicker } from './LinePicker';
 import { LookPicker, type Look } from './LookPicker';
 import { MapBackdrop } from './MapBackdrop';
-import { hasWebGL } from '../pov/webgl';
 import { TextStyleToggles } from './TextStyleToggles';
 import { useMapLayers } from './useMapLayers';
 import { useRegionLayers } from './useRegionLayers';
@@ -161,12 +160,8 @@ export function PostcardScreen({
   // 3D liczy się na płaskiej projekcji trasy, więc bez niej przycisk nie ma sensu.
   const has3d = !!streams?.altitude && fit !== null;
   const is3d = view === '3d' && has3d;
-  // POV (ADR 0010, 0011): tylko eksport MP4, lot nad mapą motywu (bez motywu mapy: Dark), trasa ze strumieni.
-  const webgl = useMemo(hasWebGL, []);
-  const hasPov = (streams?.latlng.length ?? 0) >= 2 && fit !== null && webgl;
-  const povTheme: ThemeId = isMap ? (look as ThemeId) : 'dark';
   const profile = POSTCARD_DETAILED;
-  const map = useMapLayers(fit?.projection ?? null, SIZE, profile, isMap || hasPov);
+  const map = useMapLayers(fit?.projection ?? null, SIZE, profile, isMap);
   const mapMissing = isMap && !map.layers;
   const mapLoading = isMap && (!map.layers || map.loading);
   const [camera, setCamera] = useState<Camera>(DEFAULT_CAMERA);
@@ -373,14 +368,14 @@ export function PostcardScreen({
   // Bez wczytanej mapy pocztówka ma gradient, więc podgląd też.
   const preview = previewColors(mapMissing ? 'gradient' : look, accent, photo, gradient);
 
-  // Przy błędzie mapy wracamy do gradientu (mapa wczytywana tylko dla POV przy innym tle nie zmienia wyglądu).
+  // Przy błędzie mapy wracamy do gradientu.
   useEffect(() => {
-    if (!map.failed || !isMap) return;
+    if (!map.failed) return;
     setMapFailed(true);
     setLook('gradient');
     // Font motywu nie pasuje do gradientu; wybór ręczny zostaje.
     setFont((f) => (look in THEMES && f === THEMES[look as ThemeId].font ? DEFAULT_FONT : f));
-  }, [map.failed, isMap]);
+  }, [map.failed]);
 
   // Te same właściwości dla podglądu i klatek animacji; stały obiekt, żeby podgląd nie przerysowywał się przy postępie eksportu.
   const person = look === 'photo' ? (cutout.person ?? undefined) : undefined;
@@ -707,49 +702,6 @@ export function PostcardScreen({
             frame={(p) => <Postcard {...postcardProps} progress={p} />}
             resetKey={postcardProps}
             disabled={loading || !fontReady}
-            pov={
-              hasPov && streams && fit
-                ? (o) =>
-                    import('../pov/export').then(({ encodePovMp4 }) =>
-                      encodePovMp4(
-                        {
-                          streams,
-                          projection: fit.projection,
-                          layers: map.layers,
-                          theme: povTheme,
-                          accent,
-                          dem,
-                          color: showRoute ? lineColor : undefined,
-                          route: showRoute,
-                          // Nakładka: statystyki, znak i podpis w kolorach motywu; mapa i trasa są w klatce WebGL.
-                          overlay: (p, banner) => (
-                            <Postcard
-                              {...postcardProps}
-                              background={map.layers ? 'map' : 'transparent'}
-                              theme={povTheme}
-                              view="flat"
-                              bare
-                              glow={0}
-                              mapDim={0}
-                              progress={p}
-                              banner={banner}
-                            />
-                          ),
-                        },
-                        o,
-                      ),
-                    )
-                : undefined
-            }
-            povNote={
-              fit && streams && !hasPov
-                ? 'needs WebGL and run streams'
-                : hasPov && !map.layers
-                  ? map.failed
-                    ? 'map could not load'
-                    : 'loading map…'
-                  : undefined
-            }
             onBusy={setExporting}
             mode={animated ? 'animation' : 'still'}
           />

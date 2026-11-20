@@ -1,5 +1,7 @@
 # 0011. POV tylko jako eksport MP4 (bez podglądu)
 
+Wycofane: funkcja POV usunięta decyzją właściciela (20 XI 2026).
+
 ## Kontekst
 POV z ADR 0010 miał podgląd na żywo: scena WebGL pod nakładką pocztówki, z własnym zegarem lotu. Nakładka miała stały postęp 1, a lot własny czas, więc statystyki nie zgadzały się z miejscem na trasie. Podgląd trzymał też stale kontekst WebGL (bateria telefonu, błędy przy przebudowie sceny), a przyciski Flat/3D/POV i Still/Animated zajmowały dużo miejsca w panelu.
 

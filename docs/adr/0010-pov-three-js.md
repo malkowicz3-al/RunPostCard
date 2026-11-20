@@ -1,5 +1,7 @@
 # 0010. POV: lot wzdłuż trasy w Three.js (leniwy chunk)
 
+Wycofane: funkcja POV usunięta decyzją właściciela (20 XI 2026).
+
 Zmienione przez 0011: brak podglądu i widoku POV; eksport tylko MP4.
 
 ## Kontekst

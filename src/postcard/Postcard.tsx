@@ -29,8 +29,6 @@ export const terrainImage = ({ href, rect: [x0, y0, x1, y1] }: TerrainImage) => 
 );
 
 export type PostcardBackground = 'gradient' | 'transparent' | 'map' | 'photo';
-// Napis momentu POV (ADR 0011): punkt trasy na ekranie (px płótna), tekst i krycie.
-export type Banner = { x: number; y: number; text: string; alpha: number };
 // Podpis mapy pionowo przy prawej krawędzi: początek linii bazowej, tekst biegnie w górę.
 const ATTRIBUTION_AT: [number, number] = [1056, 1890];
 
@@ -56,10 +54,8 @@ export function Postcard({
   routeColor = 'theme',
   textStyle,
   progress = 1,
-  bare = false,
   glow = 0,
   mapDim = 0,
-  banner,
 }: {
   activity: Activity;
   fontCss?: string;
@@ -82,10 +78,8 @@ export function Postcard({
   textStyle?: TextStyle; // pogrubienie, kursywa, kontur, cień tekstu danych
   routeColor?: RouteColor; // styl linii trasy; 'theme' lub brak danych: kolor motywu (3D: nachylenie)
   progress?: number; // animacja rysowania (0..1): trasa do tego ułamka, dystans i czas rosną; 1 = gotowa pocztówka
-  bare?: boolean; // nakładka POV (ADR 0010): bez tła, mapy i trasy; statystyki, znak i podpis w kolorach motywu
   glow?: number; // poświata trasy 0..100; 0 = bez filtra
   mapDim?: number; // przyciemnienie mapy pod trasą 0..100; 0 = bez prostokąta
-  banner?: Banner;
 }) {
   // Jedna projekcja dla mapy i trasy („scena”).
   const polyline = activity.map.summary_polyline;
@@ -224,27 +218,6 @@ export function Postcard({
     );
   };
 
-  // Tabliczka ok. 90 px nad punktem trasy, połączona z nim kreską w kolorze trasy motywu; x tabliczki w obrębie karty.
-  const bannerNode = (() => {
-    if (!banner) return null;
-    const size = 44 * scale;
-    // shortcut: szerokość z liczby znaków (średnio 0,55 em); przy bardzo szerokich fontach tekst może wyjść poza tabliczkę
-    const w = banner.text.length * size * 0.55 + 56;
-    const h = size + 32;
-    const cx = Math.min(1080 - 24 - w / 2, Math.max(24 + w / 2, banner.x));
-    const top = Math.max(24, banner.y - 90 - h); // punkt wysoko w kadrze: tabliczka nie wychodzi za górną krawędź
-    const line = out?.route.stroke?.startsWith('#') ? out.route.stroke : text.color;
-    return (
-      <g className="pov-banner" opacity={banner.alpha}>
-        <line x1={banner.x} y1={banner.y} x2={banner.x} y2={top + h} stroke={line} strokeWidth={4} strokeLinecap="round" />
-        <rect x={cx - w / 2} y={top} width={w} height={h} rx={h / 2} fill={style.background} fillOpacity={0.85} stroke={line} strokeWidth={4} />
-        <g color={text.color} fontStyle={textStyle?.italic ? 'italic' : undefined} filter={textStyle?.shadow ? 'url(#text-shadow)' : undefined}>
-          <SlotNumber x={cx} y={top + h / 2 + size * 0.35} size={size} scale={scale} labelPos="none" label="" value={banner.text} look={textStyle} />
-        </g>
-      </g>
-    );
-  })();
-
   return (
     <svg
       className="postcard"
@@ -291,7 +264,7 @@ export function Postcard({
         </defs>
       )}
       {background === 'gradient' && <Background gradient={gradient} />}
-      {bare ? null : iso ? (
+      {iso ? (
         <g>
           {out && <rect width={1080} height={1920} fill={style.background} />}
           <g transform={cameraTransform(camera)}>
@@ -348,12 +321,11 @@ export function Postcard({
           </filter>
         </defs>
       )}
-      <g color={text.color} filter={bare ? undefined : text.filter}>
+      <g color={text.color} filter={text.filter}>
         <g fontStyle={textStyle?.italic ? 'italic' : undefined} filter={textStyle?.shadow ? 'url(#text-shadow)' : undefined}>
           {layout.map((item) => slotNode(item))}
         </g>
       </g>
-      {bannerNode}
       <StravaMark x={60} y={1820} variant={out?.mark} />
       {legend && <RouteLegend legend={legend} color={text.color} />}
       {out && (
