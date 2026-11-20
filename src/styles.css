@@ -710,6 +710,52 @@ button.text-button {
   border-left-color: rgb(255 255 255 / 0.4);
 }
 
+/* Ciemny motyw systemu: ciemna płachta; pola mapy przyciemnione w kolorze paska. Po wariantach, żeby je nadpisać. */
+@media (prefers-color-scheme: dark) {
+  .run-tile {
+    --paper: #1c1c1f;
+    --ink: #f4f4f5;
+    --tint: #121214;
+    --map-road: rgb(255 255 255 / 0.13);
+    --map-water: rgb(110 160 210 / 0.2);
+  }
+
+  .bib-training {
+    --band: #3a3a40;
+  }
+
+  .bib-trail,
+  .bib-race[data-tier] {
+    --tint: color-mix(in srgb, var(--band) 16%, #121214);
+  }
+
+  .bib-trail {
+    --map-road: rgb(170 210 110 / 0.2);
+  }
+
+  .bib-data > span + span {
+    border-left-color: rgb(255 255 255 / 0.25);
+  }
+
+  .bib-meta {
+    color: #a1a1aa;
+  }
+
+  .bib-race .bib-data {
+    background: #0a0a0b;
+  }
+
+  .run-badge {
+    border-color: #ff8a80;
+    color: #ff8a80;
+  }
+
+  .skeleton .run-tile .route-thumb,
+  .skeleton .run-tile .skeleton-bar {
+    background: rgb(255 255 255 / 0.08);
+  }
+}
+
 .run-tile .route-line {
   stroke-dasharray: 1;
   stroke-dashoffset: 0;
