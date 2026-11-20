@@ -1062,16 +1062,12 @@ button.text-button {
   background: conic-gradient(#3a3a3f 25%, #2c2c30 0 50%, #3a3a3f 0 75%, #2c2c30 0) 0 0 / 32px 32px;
 }
 
-/* Przeciąganie przesuwa kamerę (płasko i 3D), więc jeden palec nie przewija strony. */
+/* Przeciąganie przesuwa kamerę (płasko i 3D, także przy zoomie 1), więc palec nie przewija strony: przy pan-y przeglądarka
+   przejmowała gest w połowie (pointercancel) i mapa stawała. Pocztówka mieści się na ekranie, przewijać nie trzeba. */
 .postcard-frame.pannable {
   touch-action: none;
   cursor: grab;
   user-select: none; /* przeciąganie mapy nie zaznacza tekstu pocztówki */
-}
-
-/* Płasko przy zoomie 1: palec przewija stronę, szczypanie dalej przychodzi jako zdarzenia wskaźnika. */
-.postcard-frame.pannable.scrolls-page {
-  touch-action: pan-y;
 }
 
 /* Mapa na cały ekran pod pocztówką (MapBackdrop, ADR 0007): poza eksportem, za całym układem. */

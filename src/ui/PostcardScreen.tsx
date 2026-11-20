@@ -280,7 +280,7 @@ export function PostcardScreen({
     setSettled(DEFAULT_CAMERA);
   }, [activity, is3d]);
 
-  // Płasko przy zoomie 1 nie ma czego przesuwać: kółko i palec przewijają stronę (ctrl+kółko i szczypanie nadal przybliżają).
+  // Płasko przy zoomie 1 kółko przewija stronę (ctrl+kółko nadal przybliża); palec zawsze przesuwa mapę (touch-action: none).
   const scrollsPage = !is3d && camera.zoom <= 1;
   // Listener nie-pasywny, żeby preventDefault blokował przewijanie strony; is3d w zależnościach przez scrollsPage.
   useEffect(() => {
@@ -520,7 +520,7 @@ export function PostcardScreen({
       <div className="postcard-layout">
         {/* Szachownica tylko na otoczce podglądu, żeby nie trafiła do eksportu. */}
         <div
-          className={`postcard-frame${look === 'transparent' ? ' checkerboard' : ''}${fit ? ' pannable' : ''}${scrollsPage ? ' scrolls-page' : ''}${pickArmed ? ' picking' : ''}`}
+          className={`postcard-frame${look === 'transparent' ? ' checkerboard' : ''}${fit ? ' pannable' : ''}${pickArmed ? ' picking' : ''}`}
           ref={previewRef}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
