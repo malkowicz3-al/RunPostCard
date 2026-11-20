@@ -296,6 +296,20 @@ describe('Postcard progress (animacja rysowania)', () => {
     }
   });
 
+  it('wykresy: przy 0.5 przycięte do połowy (unikalne id), przy 1 bez przycięcia', () => {
+    const layout = resolveLayout('duo');
+    const half = renderToStaticMarkup(<Postcard {...base} layout={layout} progress={0.5} />);
+    expect(half).toContain('clip-path="url(#slot-clip-left)"');
+    expect(half).toContain('clip-path="url(#slot-clip-right)"');
+    expect(half).toContain(`width="${(520 - 60 + 80) / 2}"`);
+    expect(half).not.toMatch(/NaN|Infinity/);
+    const ids = [...half.matchAll(/id="([^"]+)"/g)].map(([, id]) => id);
+    expect(new Set(ids).size).toBe(ids.length);
+    const full = renderToStaticMarkup(<Postcard {...base} layout={layout} progress={1} />);
+    expect(full).not.toContain('slot-clip');
+    expect(full).toBe(renderToStaticMarkup(<Postcard {...base} layout={layout} />));
+  });
+
   it('płasko: przycięta ścieżka ma mniej punktów niż pełna', () => {
     const d = (svg: string) => svg.match(/<path d="([^"]+)"[^>]*filter="url\(#neon-route\)"/)![1];
     const full = d(renderToStaticMarkup(<Postcard {...base} />));

@@ -18,6 +18,7 @@ import { colorScale, routeLegend, type RouteColor } from './routeColor';
 import { RouteLegend } from './RouteLegend';
 import { StravaMark } from './StravaMark';
 import { SlotNumber, type TextStyle } from './SlotNumber';
+import { liveValue } from './liveValue';
 import { DATA, chartFor, defaultLayout, fitted, type LayoutItem } from './slots';
 import { THEMES, type ThemeId } from './themes';
 
@@ -77,7 +78,7 @@ export function Postcard({
   person?: Cutout; // wycinanka osoby lub obiektu ze zdjęcia (ADR 0009): przed tym, co zasłania częściowo
   textStyle?: TextStyle; // pogrubienie, kursywa, kontur, cień tekstu danych
   routeColor?: RouteColor; // styl linii trasy; 'theme' lub brak danych: kolor motywu (3D: nachylenie)
-  progress?: number; // animacja rysowania (0..1): trasa do tego ułamka, dystans i czas rosną; 1 = gotowa pocztówka
+  progress?: number; // animacja rysowania (0..1): trasa do tego ułamka, statystyki liczą się w górę (liveValue), wykresy odsłaniają się od lewej; 1 = gotowa pocztówka
   glow?: number; // poświata trasy 0..100; 0 = bez filtra
   mapDim?: number; // przyciemnienie mapy pod trasą 0..100; 0 = bez prostokąta
 }) {
@@ -183,7 +184,7 @@ export function Postcard({
     const value = DATA[item.slot.data].value(activity);
     const chart = chartFor(item, streams); // sprawdza box i streams
     if (chart) {
-      return (
+      const node = (
         <chart.Component
           key={item.slot.id}
           box={item.box!}
@@ -194,13 +195,22 @@ export function Postcard({
           scale={scale}
         />
       );
+      if (progress >= 1) return node;
+      // Wykres odsłania się od lewej razem z trasą; zapas, bo podpisy wychodzą trochę poza box.
+      const { x0, y0, x1, y1 } = item.box!;
+      const id = `slot-clip-${item.slot.id}`;
+      return (
+        <g key={item.slot.id}>
+          <clipPath id={id}>
+            <rect x={x0 - 40} y={y0 - 100} width={(x1 - x0 + 80) * Math.max(0, progress)} height={y1 - y0 + 200} />
+          </clipPath>
+          <g clipPath={`url(#${id})`}>{node}</g>
+        </g>
+      );
     }
     // Rozmiar z wartości końcowej, żeby rosnąca liczba nie skakała.
     const { size, labelSize, label } = fitted(item, value, scale);
-    const grows = progress < 1 && (item.slot.data === 'distance' || item.slot.data === 'time');
-    const shown = grows
-      ? DATA[item.slot.data].value({ ...activity, distance: activity.distance * progress, moving_time: Math.round(activity.moving_time * progress) })
-      : value;
+    const shown = progress < 1 ? liveValue(item.slot.data, activity, streams, progress) : value;
     return (
       <SlotNumber
         key={item.slot.id}

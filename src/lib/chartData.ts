@@ -11,7 +11,7 @@ const MAX_GAP_S = 10;
 const gap = (t: number[], i: number) => Math.min(MAX_GAP_S, Math.max(0, t[i] - t[i - 1]));
 
 // Interpolacja liniowa ys w punkcie x (xs niemalejące), wyszukiwanie binarne.
-function lerpAt(xs: number[], ys: number[], x: number): number {
+export function lerpAt(xs: number[], ys: number[], x: number): number {
   let lo = 0;
   let hi = xs.length - 1;
   while (hi - lo > 1) {
@@ -48,7 +48,7 @@ function kmEnds(total: number): number[] {
 }
 
 // Czas w ruchu narastająco, bez pauz.
-function movingTime(t: number[]): number[] {
+export function movingTime(t: number[]): number[] {
   const moving = [0];
   for (let i = 1; i < t.length; i++) moving.push(moving[i - 1] + gap(t, i));
   return moving;
