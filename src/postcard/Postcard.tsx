@@ -14,7 +14,7 @@ import { MapBackground } from './MapBackground';
 import { IsoRoute } from './IsoRoute';
 import { PhotoBackground } from './PhotoBackground';
 import { Route, ROUTE_BOX } from './Route';
-import { colorScale, routeLegend, type RouteColor } from './routeColor';
+import { colorScale, routeLegend, trimAt, type RouteColor } from './routeColor';
 import { RouteLegend } from './RouteLegend';
 import { StravaMark } from './StravaMark';
 import { SlotNumber, type TextStyle } from './SlotNumber';
@@ -151,6 +151,15 @@ export function Postcard({
   );
 
   const behind = background === 'photo' && !!photo && !!person;
+  // Czoło trasy dla drona świata: ten sam punkt co kropka biegacza w Route (płasko) i IsoRoute (3D).
+  const head =
+    props && route && progress < 1
+      ? iso
+        ? trimAt(iso.points, progress, iso.distance).pts(iso.points).at(-1)
+        : fit
+          ? trimAt(fit.points, progress).pts(fit.points).at(-1)
+          : undefined
+      : undefined;
   // Linia podziału trasy („obręcz”): środek jej obrysu w układzie trasy, czyli pod transformacją kamery.
   const mid = iso
     ? (iso.points.reduce((m, [, y]) => Math.min(m, y), Infinity) + iso.points.reduce((m, [, y]) => Math.max(m, y), -Infinity)) / 2
@@ -295,7 +304,7 @@ export function Postcard({
                 {refinedMap}
               </g>
             )}
-            {out && !relief && props && <Props props={props} matrix={iso.matrix} layer="ground" />}
+            {out && !relief && props && <Props props={props} matrix={iso.matrix} layer="ground" progress={progress} />}
             {out && !relief && buildings && (
               <Buildings3D
                 buildings={buildings}
@@ -308,7 +317,7 @@ export function Postcard({
                 accent={style.colors.mid}
               />
             )}
-            {out && !relief && props && <Props props={props} matrix={iso.matrix} layer="sky" />}
+            {out && !relief && props && <Props props={props} matrix={iso.matrix} layer="sky" progress={progress} head={head} />}
           </g>
           {/* Faktura papieru w przestrzeni płótna (jak w widoku płaskim), nie na pochylonej i powiększanej podłodze. */}
           {out?.overlay}
@@ -323,7 +332,7 @@ export function Postcard({
             {out?.scene}
             {refinedMap}
             {relief && terrainImage(relief)}
-            {out && props && <Props props={props} />}
+            {out && props && <Props props={props} progress={progress} head={head} />}
           </g>
           {out?.overlay}
           {out && mapDim > 0 && <rect width={1080} height={1920} fill="#000" opacity={mapDim / 100} />}
