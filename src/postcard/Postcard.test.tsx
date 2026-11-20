@@ -171,7 +171,7 @@ describe('Postcard układy', () => {
       }
     // Linia tętna i pierścień w kolorach stref.
     expect(renderToStaticMarkup(<Postcard activity={run} layout={resolveLayout('hud')} streams={s} />)).toMatch(/stroke="#(3b9cff|3ccf6e|ffa630|ff4d4d|a0a7b4)"/);
-  });
+  }, 20_000); // setki renderów pocztówki: przy pełnym przebiegu bywa > 5 s
 });
 
 describe('Postcard „Behind”', () => {
