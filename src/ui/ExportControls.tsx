@@ -16,7 +16,7 @@ export function offscreenFrames(render: (p: number) => ReactElement) {
 }
 
 // Download: PNG (zdjęcie) albo MP4 (animacja), jedyne formaty, które przyjmuje Strava; pasek postępu, Cancel i Share.
-// Wspólne dla pocztówki i widoku „Together”. svg: podgląd na ekranie (PNG); frame: ta sama karta z postępem animacji, renderowana poza ekranem.
+// Wspólne dla pocztówki i widoku „Together”. frame: karta z postępem, renderowana poza ekranem w pełnej szczegółowości (podgląd bywa uproszczony).
 // resetKey: zmiana karty unieważnia plik do udostępnienia.
 // iPhone i iPad: arkusz udostępniania zamiast pobrania, bo pobranie trafia do Plików, a z arkusza „Zachowaj obrazek/wideo”
 // zapisuje prosto do Zdjęć (stamtąd dodaje się je do aktywności w Stravie). Android zostaje przy pobraniu (trafia do galerii),
@@ -26,7 +26,6 @@ export const savesViaShare = (ua: string, platform: string, touchPoints: number,
 
 export function ExportControls({
   name,
-  svg,
   frame,
   resetKey,
   disabled,
@@ -34,7 +33,6 @@ export function ExportControls({
   mode,
 }: {
   name: string; // nazwa pliku bez rozszerzenia
-  svg: () => SVGSVGElement | null;
   frame: (p: number) => ReactElement;
   resetKey: unknown;
   disabled: boolean;
@@ -78,11 +76,18 @@ export function ExportControls({
   };
 
   const downloadPng = () => {
-    const el = svg();
-    if (!el) return;
     setExportFailed(null);
     setShareFile(null);
+    const frames = offscreenFrames(frame);
+    let el: SVGSVGElement;
+    try {
+      el = frames.frameAt(1);
+    } catch {
+      frames.unmount();
+      return setExportFailed('PNG');
+    }
     pngBlob(el)
+      .finally(frames.unmount)
       .then((blob) => save(new File([blob], `${name}.png`, { type: 'image/png' })))
       .catch(() => setExportFailed('PNG'));
   };

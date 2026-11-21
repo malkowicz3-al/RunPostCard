@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Activity } from '../strava/api';
 import { loadFontCss } from '../lib/fonts';
 import { POSTCARD_DETAILED } from '../lib/vectorMap';
@@ -17,7 +17,6 @@ const THEME_OPTIONS = (Object.keys(THEMES) as ThemeId[]).map((id) => ({ id, labe
 
 // Together: płasko, wszystkie trasy na jednej mapie, żeby było widać, ile biegów i gdzie się powtarzają.
 export function TogetherScreen({ runs, heat = false, onBack }: { runs: Activity[]; heat?: boolean; onBack: () => void }) {
-  const previewRef = useRef<HTMLDivElement>(null);
   const [theme, setTheme] = useState<ThemeId>('dark');
   const [colors, setColors] = useState<TogetherColors>(heat ? 'heat' : 'run');
   const [sync, setSync] = useState<TogetherSync>('real');
@@ -62,7 +61,7 @@ export function TogetherScreen({ runs, heat = false, onBack }: { runs: Activity[
         <h1 className="run-title">{runs.length} runs together</h1>
       </div>
       <div className="postcard-layout">
-        <div className="postcard-frame" ref={previewRef}>
+        <div className="postcard-frame">
           <TogetherCard {...cardProps} progress={progress} />
         </div>
         <StyleSheet>
@@ -109,7 +108,6 @@ export function TogetherScreen({ runs, heat = false, onBack }: { runs: Activity[
           </section>
           <ExportControls
             name={`runpostcard-together-${runs.length}`}
-            svg={() => previewRef.current?.querySelector('svg') ?? null}
             frame={(p) => <TogetherCard {...cardProps} progress={p} />}
             resetKey={cardProps}
             disabled={loading || !fontReady}

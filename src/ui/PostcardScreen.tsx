@@ -115,7 +115,7 @@ const SwapIcon = () => (
 // Podgląd z własnym stanem animacji: co klatkę renderuje się tylko pocztówka, nie cały panel.
 const PreviewCard = memo(function PreviewCard({ props, playing }: { props: Parameters<typeof Postcard>[0]; playing: boolean }) {
   const progress = usePreviewProgress(playing);
-  return <Postcard {...props} progress={progress} />;
+  return <Postcard {...props} progress={progress} draft />;
 });
 
 export function PostcardScreen({
@@ -791,7 +791,6 @@ export function PostcardScreen({
           <TextStyleToggles value={textStyle} onChange={setTextStyle} />
           <ExportControls
             name={`runpostcard-${activity.id}`}
-            svg={currentSvg}
             frame={(p) => <Postcard {...postcardProps} progress={p} />}
             resetKey={postcardProps}
             disabled={loading || !fontReady}

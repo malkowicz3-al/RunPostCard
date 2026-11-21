@@ -59,6 +59,7 @@ export function Postcard({
   glow = 0,
   mapDim = 0,
   props,
+  draft = false,
 }: {
   activity: Activity;
   fontCss?: string;
@@ -83,6 +84,7 @@ export function Postcard({
   glow?: number; // poświata trasy 0..100; 0 = bez filtra
   mapDim?: number; // przyciemnienie mapy pod trasą 0..100; 0 = bez prostokąta
   props?: Prop[]; // pojazdy świata World: nad mapą i bryłami, pod trasą
+  draft?: boolean; // podgląd na ekranie: w 3D bez brył (płaskie obrysy), żeby kadrowanie było płynne; eksport rysuje pełne
 }) {
   // Jedna projekcja dla mapy i trasy („scena”).
   const polyline = activity.map.summary_polyline;
@@ -92,17 +94,17 @@ export function Postcard({
     [view, streams, fit, givenIso],
   );
   const showMap = background === 'map' && !!fit && !!map;
-  const hasIso = !!iso;
+  const solid = !!iso && !draft;
   // W 3D z bryłami podłoga bez płaskich budynków.
-  const floor = (l: MapLayers): MapLayers => (hasIso && l.buildings ? { ...l, building: undefined } : l);
+  const floor = (l: MapLayers): MapLayers => (solid && l.buildings ? { ...l, building: undefined } : l);
   // Mapa i jej fragment w useMemo: w klatkach animacji zmienia się tylko trasa i liczby, ciężka mapa zostaje tym samym elementem.
   const themeDef = typeof theme === 'string' ? THEMES[theme] : theme;
-  const out = useMemo(() => (showMap ? themeDef.render(floor(map!), { accent, font }) : null), [showMap, themeDef, map, hasIso, accent, font]);
+  const out = useMemo(() => (showMap ? themeDef.render(floor(map!), { accent, font }) : null), [showMap, themeDef, map, solid, accent, font]);
   const style = useMemo(() => themeDef.style({ accent }), [themeDef, accent]);
   const relief = out ? terrain : undefined;
   // Bryły ze środkiem w ostrzejszym fragmencie biorą obrysy z niego, pozostałe z mapy bazowej.
   const buildings = useMemo((): Building[] | null => {
-    if (!iso || !(map?.buildings || refined?.layers.buildings)) return null;
+    if (!solid || !(map?.buildings || refined?.layers.buildings)) return null;
     const base = map?.buildings ?? [];
     if (!refined) return base;
     const [x0, y0, x1, y1] = refined.rect;
@@ -112,7 +114,7 @@ export function Postcard({
       return x >= x0 && x <= x1 && y >= y0 && y <= y1;
     };
     return [...base.filter((b) => !inside(b)), ...(refined.layers.buildings ?? []).filter(inside)];
-  }, [iso, map, refined]);
+  }, [solid, map, refined]);
   const lineColor = useMemo(
     () => colorScale(routeColor, streams, activity.max_heartrate) ?? undefined,
     [routeColor, streams, activity.max_heartrate],
@@ -145,7 +147,7 @@ export function Postcard({
           </g>
         </>
       ),
-    [out, refined, style, hasIso, themeDef],
+    [out, refined, style, solid, themeDef],
   );
 
   const behind = background === 'photo' && !!photo && !!person;

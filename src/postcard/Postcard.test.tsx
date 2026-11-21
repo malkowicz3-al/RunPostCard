@@ -56,6 +56,18 @@ describe('Postcard 3D', () => {
     expect(svg).not.toContain('elevation ×');
   });
 
+  it('draft (podgląd): w 3D płaskie obrysy zamiast brył; bez draft bryły i podłoga bez obrysów', () => {
+    const ring: [number, number][] = [[400, 800], [460, 800], [460, 860], [400, 860]];
+    const layers = { ...LAYERS, building: 'M400 800H460V860H400Z', buildings: [{ ring, h: 20, min: 0 }] };
+    const base = { activity: hills, background: 'map' as const, map: layers, theme: 'dark' as const, streams, view: '3d' as const };
+    const full = renderToStaticMarkup(<Postcard {...base} />);
+    const draft = renderToStaticMarkup(<Postcard {...base} draft />);
+    expect(full).not.toContain('M400 800H460V860H400Z');
+    expect(draft).toContain('M400 800H460V860H400Z');
+    expect(draft.length).toBeLessThan(full.length);
+    expect(renderToStaticMarkup(<Postcard {...base} view="flat" draft />)).toBe(renderToStaticMarkup(<Postcard {...base} view="flat" />));
+  });
+
   it('ostrzejsza mapa (3D i płasko): warstwa przycięta do prostokąta, id unikalne; bez niej brak', () => {
     const refined = { rect: [100, 200, 600, 900] as [number, number, number, number], layers: LAYERS };
     for (const theme of ['neon', 'blueprint'] as const) {

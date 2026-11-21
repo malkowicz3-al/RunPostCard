@@ -5,7 +5,6 @@ import { cameraTransform, type Camera } from '../lib/camera';
 import type { IsoRoute as Iso } from '../lib/isoRoute';
 import type { Rect, Region } from '../lib/mapTiles';
 import { loadAreaLayers, type MapProfile } from '../lib/vectorMap';
-import { Buildings3D } from '../postcard/Buildings3D';
 import { IsoRoute } from '../postcard/IsoRoute';
 import { MapBackground } from '../postcard/MapBackground';
 import { terrainImage, type TerrainImage } from '../postcard/Postcard';
@@ -18,8 +17,6 @@ import { useRegionLayers } from './useRegionLayers';
 // Stała referencja dla useRegionLayers; fragment tła to zawsze poziom pocztówki (k = 1), resztę wybiera loadAreaLayers.
 const loadArea = (projection: GeoProjection, size: [number, number], profile: MapProfile, region: Region, signal?: AbortSignal) =>
   loadAreaLayers(projection, size, profile, region.rect, signal);
-
-const MAX_BACKDROP_BUILDINGS = 3000;
 
 // Mapa na cały ekran pod pocztówką (ADR 0007): te same jednostki, projekcja i kamera; bez filtrów motywu, przyciemniona.
 export function MapBackdrop({
@@ -97,11 +94,6 @@ export function MapBackdrop({
     return { style, routeStyle: def.render({}, { accent }).route };
   }, [theme, accent]);
 
-  // Tło ekranu obejmuje większy obszar niż pocztówka: mniejszy limit brył (obrysy są już od największych).
-  const buildings = useMemo(
-    () => (iso ? refined?.layers.buildings?.slice(0, MAX_BACKDROP_BUILDINGS) : undefined),
-    [iso, refined],
-  );
   const [x0, y0, x1, y1] = viewBox ?? [0, 0, 1080, 1920];
   return (
     <svg
@@ -121,24 +113,9 @@ export function MapBackdrop({
         ) : iso ? (
           <>
             <g transform={`matrix(${iso.matrix.join(' ')})`}>
-              {refined && (
-                <MapBackground
-                  layers={buildings ? { ...refined.layers, building: undefined } : refined.layers}
-                  style={style}
-                  rect={refined.rect}
-                />
-              )}
+              {/* Tło to tylko podgląd: budynki płasko, bez brył (płynny obrót i przesuwanie). */}
+              {refined && <MapBackground layers={refined.layers} style={style} rect={refined.rect} />}
             </g>
-            {buildings && (
-              <Buildings3D
-                buildings={buildings}
-                matrix={iso.matrix}
-                pxPerM={iso.pxPerM}
-                color={style.colors.building}
-                shape={style.buildings3d}
-                accent={style.colors.mid}
-              />
-            )}
             <IsoRoute iso={iso} flat={routeStyle.stroke} dash={routeStyle.dash} zoom={camera.zoom} gradientId="backdrop-curtain-grad" color={color} />
           </>
         ) : (
