@@ -36,10 +36,10 @@ describe('LookPicker World', () => {
   it('New world i kolory tylko w Sci-fi; bez sekcji Gradient i Scenery', () => {
     for (const genre of ['fantasy', 'postapo', 'bright'] as GenreId[]) {
       expect(picker('world', genre)).not.toContain('New world');
-      expect(picker('world', genre)).not.toContain('aria-label="Crimson"');
+      expect(picker('world', genre)).not.toContain('aria-label="Color: Violet"');
     }
-    expect(picker('world')).toContain('aria-label="Crimson"');
-    expect(picker('dark')).not.toContain('aria-label="Crimson"');
+    expect(picker('world')).toContain('aria-label="Color: Violet"');
+    expect(picker('dark')).not.toContain('aria-label="Color: Violet"');
     for (const look of ['world', 'dark', 'gradient', 'transparent'] as Look[]) {
       expect(picker(look)).not.toContain('>Gradient<');
       expect(picker(look)).not.toContain('>Scenery<');

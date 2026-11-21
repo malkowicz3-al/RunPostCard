@@ -151,18 +151,14 @@ export function LookPicker({
             preview={worldThumb}
           />
           {genre.variants && (
-            <div className="swatches" role="group" aria-label={`${genre.label} color`}>
-              {genre.variants.map((v) => (
-                <button
-                  key={v.id}
-                  className="swatch"
-                  aria-label={v.label}
-                  aria-pressed={worldVariant === v.id}
-                  style={{ background: v.swatch }}
-                  onClick={() => onWorldVariant(v.id)}
-                />
-              ))}
-            </div>
+            <Select
+              label="Color"
+              className="look-select"
+              value={worldVariant}
+              options={genre.variants.map(({ id, label }) => ({ id, label }))}
+              onChange={onWorldVariant}
+              preview={(id) => <span className="look-preview" style={{ background: genre.variants?.find((v) => v.id === id)?.swatch }} />}
+            />
           )}
           {genre.reseed && (
             <div className="toggle-row">

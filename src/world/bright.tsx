@@ -70,12 +70,12 @@ export const bright: MapTheme = {
     scene: (
       <>
         <defs>
-          <Outline id="world-bright-route" color="#ffffff" radius={3} />
+          <Outline id="world-bright-route" color="#14213d" radius={4} />
         </defs>
         {floor(layers)}
       </>
     ),
-    route: { stroke: '#ff3d8b', width: 12, filter: 'url(#world-bright-route)' },
+    route: { stroke: '#ff3d8b', width: 16, filter: 'url(#world-bright-route)' },
     text: { color: '#14213d' },
     mark: 'black',
   }),
