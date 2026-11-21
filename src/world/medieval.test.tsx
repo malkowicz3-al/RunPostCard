@@ -6,7 +6,7 @@ import { fitRoute } from '../lib/routePath';
 import { Postcard } from '../postcard/Postcard';
 import { ROUTE_BOX } from '../postcard/Route';
 import { KEEP_OUT } from './icons';
-import { TOP_STATS, medieval } from './medieval';
+import { TOP_STATS, medieval, routeStreet } from './medieval';
 
 const hills = mockActivities().find((r) => r.name === 'Hill repeats')!;
 const streams = mockStreams(hills);
@@ -67,5 +67,38 @@ describe('World medieval', () => {
         expect(d, `${cx} ${cy} ${r}`).toBeGreaterThanOrEqual(r);
       }
     }
+  });
+
+  it('routeStreet: wygrywa ulica wzdłuż trasy, nie przecinająca; samo przecięcie albo brak ulic -> undefined', () => {
+    const route: [number, number][] = [[0, 0], [500, 0]];
+    const along = { name: 'Long St', line: [[0, 3], [400, 3]] as [number, number][] };
+    const cross = { name: 'Cross St', line: [[200, -300], [200, 300]] as [number, number][] };
+    expect(routeStreet([cross, along], route)).toBe('Long St');
+    expect(routeStreet([cross], route)).toBeUndefined();
+    expect(routeStreet(undefined, route)).toBeUndefined();
+    expect(routeStreet([], route)).toBeUndefined();
+  });
+
+  it('wstęga z nazwą ulicy trasy tylko gdy ulica jest; bez nazwy wstęgi nie ma, tarcza zostaje', () => {
+    const card = (map: MapLayers) =>
+      renderToStaticMarkup(<Postcard activity={hills} background="map" map={map} theme={medieval} streams={streams} view="flat" />);
+    const named = card({ ...layers, streets: [{ name: 'Rue des Tanneurs', line: points.slice(0, 40) }] });
+    expect(named).toContain('Rue des Tanneurs</textPath>');
+    expect(named).toContain('href="#world-medieval-ribbon"');
+    expect(named).not.toMatch(/NaN|Infinity/);
+    const long = card({ ...layers, streets: [{ name: 'Avenue of the Very Long Medieval Street Name', line: points }] });
+    expect(long).toContain('…</textPath>');
+    expect(long).toContain('textLength="116"');
+    // Szeroki font: krótka nazwa w małym rozmiarze i ściśnięta, żeby nic nie wyszło poza pas.
+    const wide = renderToStaticMarkup(
+      <Postcard activity={hills} background="map" map={{ ...layers, streets: [{ name: 'Rue des Tanneurs', line: points }] }} theme={medieval} streams={streams} view="flat" font="pressstart" />,
+    );
+    const [, size] = wide.match(/<text[^>]*font-size="(\d+)"/)!;
+    const [, len] = wide.match(/textLength="(\d+)"/)!;
+    expect(Number(size)).toBeLessThan(16);
+    expect(Number(len)).toBeLessThanOrEqual(116);
+    const none = card(layers);
+    expect(none).not.toContain('world-medieval-ribbon');
+    expect(none).toContain('fill="#8a2d1f"'); // tarcza
   });
 });

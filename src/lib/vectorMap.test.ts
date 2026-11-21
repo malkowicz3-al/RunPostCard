@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { geoMercator } from 'd3-geo';
-import { VectorTileFeature } from '@mapbox/vector-tile';
+import { VectorTileFeature, type VectorTile } from '@mapbox/vector-tile';
 import { PbfWriter } from 'pbf';
 import {
   buildMapLayers,
@@ -15,7 +15,9 @@ import {
   MAX_BUILDINGS,
   POSTCARD,
   POSTCARD_DETAILED,
+  POSTCARD_NAMED,
   THUMB,
+  tileFeatures,
   type MapFeature,
 } from './vectorMap';
 
@@ -245,6 +247,37 @@ describe('buildMapLayers', () => {
   it('jeden string d na klucz', () => {
     const layers = buildMapLayers([feature({}), feature({ geometry: [[{ x: 0, y: 50 }, { x: 99, y: 50 }]] })], SIZE, POSTCARD);
     expect(layers.minor).toBe('M10 10L100 10M0 50L99 50');
+  });
+
+  it('streets: nazwane linie transportation_name w px płótna, poza płótnem pomijane', () => {
+    const named = (name: string, y: number) => feature({ layer: 'transportation_name', cls: '', name, geometry: [[{ x: 0, y }, { x: 99, y }]] });
+    const layers = buildMapLayers([named('Main St', 50), named('Far St', 5000)], SIZE, POSTCARD_DETAILED);
+    expect(layers.streets).toEqual([{ name: 'Main St', line: [[0, 50], [99, 50]] }]);
+    expect(layers.minor).toBeUndefined();
+  });
+});
+
+describe('tileFeatures: transportation_name', () => {
+  it('nazwy tylko dróg i ścieżek, tylko w profilu z names', () => {
+    const lines = [
+      { class: 'minor', name: 'Main St' },
+      { class: 'path', name: 'Park Path' },
+      { class: 'rail', name: 'Coast Line' },
+      { class: 'ferry', name: 'Ferry' },
+      { class: 'aerialway', name: 'Cable Car' },
+      { class: 'minor', name: ' ' },
+    ];
+    const vt = {
+      layers: {
+        transportation_name: {
+          length: lines.length,
+          extent: 1000,
+          feature: (i: number) => ({ type: 2, properties: lines[i], loadGeometry: () => [[{ x: 0, y: 5 }, { x: 99, y: 5 }]] }),
+        },
+      },
+    } as unknown as VectorTile;
+    expect(tileFeatures(vt, POSTCARD_NAMED).map((f) => f.name)).toEqual(['Main St', 'Park Path']);
+    expect(tileFeatures(vt, POSTCARD_DETAILED)).toEqual([]);
   });
 });
 

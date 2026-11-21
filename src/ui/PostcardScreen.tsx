@@ -25,7 +25,7 @@ import { TERRAIN_AUTO_M } from '../lib/dem';
 import { hillshade, reliefImage, shadeOverlay } from '../lib/relief';
 import { fitRoute } from '../lib/routePath';
 import { zoomRegion } from '../lib/zoomRegion';
-import { POSTCARD_DETAILED } from '../lib/vectorMap';
+import { POSTCARD_DETAILED, POSTCARD_NAMED } from '../lib/vectorMap';
 import { DATA, resolveLayout, slotBox, slotMenu, swapSlot, type LayoutId, type Overrides, type SlotPick } from '../postcard/slots';
 import { THEMES, type ThemeId } from '../postcard/themes';
 import { DEFAULT_ACCENT } from '../postcard/themes/neon';
@@ -187,7 +187,8 @@ export function PostcardScreen({
   // Ilustrowane mapy (Fantasy, Post-apo) są tylko płaskie (Genre.flat).
   const flatOnly = isWorld && genre.flat;
   const is3d = view === '3d' && has3d && !flatOnly;
-  const profile = POSTCARD_DETAILED;
+  // Nazwy ulic tylko dla wstęgi Medieval; ostrzejsza mapa i tło ekranu ich nie dekodują.
+  const profile = isWorld && worldGenre === 'medieval' ? POSTCARD_NAMED : POSTCARD_DETAILED;
   const map = useMapLayers(fit?.projection ?? null, SIZE, profile, hasMap);
   const mapMissing = hasMap && !map.layers;
   const mapLoading = hasMap && (!map.layers || map.loading);

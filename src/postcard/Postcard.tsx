@@ -97,7 +97,7 @@ export function Postcard({
   const floor = (l: MapLayers): MapLayers => (hasIso && l.buildings ? { ...l, building: undefined } : l);
   // Mapa i jej fragment w useMemo: w klatkach animacji zmienia się tylko trasa i liczby, ciężka mapa zostaje tym samym elementem.
   const themeDef = typeof theme === 'string' ? THEMES[theme] : theme;
-  const out = useMemo(() => (showMap ? themeDef.render(floor(map!), { accent }) : null), [showMap, themeDef, map, hasIso, accent]);
+  const out = useMemo(() => (showMap ? themeDef.render(floor(map!), { accent, font }) : null), [showMap, themeDef, map, hasIso, accent, font]);
   const style = useMemo(() => themeDef.style({ accent }), [themeDef, accent]);
   const relief = out ? terrain : undefined;
   // Bryły ze środkiem w ostrzejszym fragmencie biorą obrysy z niego, pozostałe z mapy bazowej.

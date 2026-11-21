@@ -2,11 +2,12 @@ import { MapBackground } from '../postcard/MapBackground';
 import type { MapStyle } from '../postcard/mapStyle';
 import type { ReactNode } from 'react';
 import type { Rect } from '../lib/mapTiles';
-import type { Building, MapLayers } from '../lib/vectorMap';
+import type { Building, MapLayers, Street } from '../lib/vectorMap';
 import type { MapTheme } from '../postcard/themes';
 import { Hatch, Outline, Overlay, Vignette } from '../postcard/themes/texture';
 import { center, corners, keepOutDist, landmarks } from './icons';
-import { box, parseLines, poly } from './geom';
+import { DEFAULT_FONT, FONTS, type FontId } from '../lib/fonts';
+import { box, parseLines, poly, routeIndex } from './geom';
 import type { Pt } from './grid';
 
 const INK = '#3a2412';
@@ -24,7 +25,7 @@ const BLAZON = '#8a2d1f';
 // Ręcznie rysowana mapa miasteczka i okolicy z późnego średniowiecza na prawdziwym szkielecie: szałwiowa ziemia
 // z kreskowaniem, długie zagony pól, lasy z gęstych koron, łupkowe rzeki ze zmarszczkami, jasne polne drogi,
 // prawdziwe obrysy brył jako dachy (kolory z decorateWorld) z kalenicą, kościoły z iglicami, ciemna ramka z kłębów
-// mgły, tarcza herbowa i wstęga
+// mgły, tarcza herbowa i wstęga z nazwą ulicy trasy
 // w górnych rogach. Tylko widok płaski (Genre.flat); ulice bez filtrów, bez ziarna (wydajność).
 const STYLE: MapStyle = {
   background: LAND,
@@ -185,13 +186,60 @@ function Shield({ at: [cx, cy] }: { at: Pt }) {
   );
 }
 
-// Wstęga bez napisu: wygięty pas i dwa wcięte końce za nim (mieści się w SERPENT_BOX).
-function Ribbon({ at: [cx, cy] }: { at: Pt }) {
+const STREET_CORRIDOR = 14; // ulica w tej odległości od trasy liczy się jako „po niej”
+const STREET_STEP = 4; // próbkowanie odcinków ulic (px)
+const MIN_ALONG = 60; // krótszy wspólny odcinek to zwykle tylko przecięcie
+
+// Nazwa ulicy, wzdłuż której trasa biegnie najdłużej (suma długości ulicy w korytarzu trasy); undefined = brak.
+export function routeStreet(streets: Street[] | undefined, route: Pt[]): string | undefined {
+  if (!streets?.length || route.length < 2) return undefined;
+  const near = routeIndex(route, STREET_CORRIDOR);
+  const along = new Map<string, number>();
+  for (const { name, line } of streets)
+    for (let k = 1; k < line.length; k++) {
+      const [[ax, ay], [bx, by]] = [line[k - 1], line[k]];
+      const n = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay) / STREET_STEP));
+      const step = Math.hypot(bx - ax, by - ay) / n;
+      for (let i = 0; i < n; i++) {
+        const t = (i + 0.5) / n;
+        if (near(ax + (bx - ax) * t, ay + (by - ay) * t)) along.set(name, (along.get(name) ?? 0) + step);
+      }
+    }
+  let best: string | undefined;
+  let max = MIN_ALONG;
+  for (const [name, len] of along) if (len > max) [best, max] = [name, len];
+  return best;
+}
+
+// Napis wzdłuż środkowej krzywej pasa (ok. 129 px); font dziedziczony z pocztówki, więc jest też w eksporcie PNG.
+const RIBBON_MID = 'M-76 -2Q-15 -18 52 -2';
+const RIBBON_TEXT = 116;
+const MAX_NAME = 28;
+const CHAR_EM = 0.5; // przybliżona szerokość znaku w em przy FONTS[].scale = 1 (szersze fonty mają mniejszą skalę)
+const SAFE = 0.7; // od tej części pasa długość wymuszona textLength, więc błąd oszacowania nie ucina glifów
+
+// Wstęga z nazwą ulicy: wygięty pas i dwa wcięte końce za nim (mieści się w SERPENT_BOX). Długa nazwa: mniejszy
+// font (do 10 px), potem ściśnięta do szerokości pasa, powyżej MAX_NAME znaków ucięta wielokropkiem.
+function Ribbon({ at: [cx, cy], name, font }: { at: Pt; name: string; font: FontId }) {
+  const text = name.length > MAX_NAME ? name.slice(0, MAX_NAME - 1).trimEnd() + '…' : name;
+  const em = text.length * (CHAR_EM / FONTS[font].scale);
+  const size = Math.max(10, Math.min(16, Math.floor(RIBBON_TEXT / em)));
+  const width = Math.round(Math.min(em * size, RIBBON_TEXT));
+  const squeeze = em * size > SAFE * RIBBON_TEXT;
   return (
     <g transform={`translate(${cx} ${cy})`} stroke={INK} strokeWidth={1.6} strokeLinejoin="round">
       <path d="M-70 -8L-94 -8L-84 6L-94 20L-70 20ZM46 -8L66 -8L56 6L66 20L46 20Z" fill="#cdbb8e" />
       <path d="M-76 -16Q-15 -32 52 -16V12Q-15 -4 -76 12Z" fill={WALL} />
-      <path d="M-66 -6Q-15 -20 42 -6" fill="none" strokeWidth={0.8} />
+      <path id="world-medieval-ribbon" d={RIBBON_MID} fill="none" stroke="none" />
+      <text fill={INK} stroke="none" fontSize={size} textAnchor="middle" dy="0.35em">
+        <textPath
+          href="#world-medieval-ribbon"
+          startOffset="50%"
+          {...(squeeze && { textLength: width, lengthAdjust: 'spacingAndGlyphs' })}
+        >
+          {text}
+        </textPath>
+      </text>
     </g>
   );
 }
@@ -206,8 +254,10 @@ export const medieval: MapTheme = {
   font: 'pirata',
   style: () => STYLE,
   floor,
-  render: (layers) => {
-    const [shield, ribbon] = corners(parseLines(layers.major)[0] ?? []);
+  render: (layers, opts) => {
+    const route = parseLines(layers.major)[0] ?? [];
+    const [shield, ribbon] = corners(route);
+    const street = routeStreet(layers.streets, route);
     return {
       scene: (
         <>
@@ -247,7 +297,7 @@ export const medieval: MapTheme = {
           <path d={FOG_D} fill={FOG} />
           <path d={CURLS_D} fill="none" stroke="#8a8690" strokeWidth={2} strokeLinecap="round" />
           <Shield at={shield} />
-          <Ribbon at={ribbon} />
+          {street && <Ribbon at={ribbon} name={street} font={opts?.font ?? DEFAULT_FONT} />}
         </>
       ),
       route: { stroke: '#16286e', width: 16, filter: 'url(#world-medieval-route)' },

@@ -36,7 +36,9 @@ export type MapKey = (typeof MAP_KEYS)[number];
 // festive: w 3D zamiast bryły obiekt świąteczny (World Christmas i Easter, decorateWorld).
 export type Building = { ring: [number, number][]; h: number; min: number; accent?: string; sign?: boolean; festive?: 'gift' | 'tree' | 'egg' | 'bunny' };
 // buildings: bryły widoku 3D, tylko dla profilu z extrude (obok sklejonej warstwy building dla widoku płaskiego).
-export type MapLayers = Partial<Record<MapKey, string>> & { buildings?: Building[] };
+// streets: nazwane ulice (transportation_name) w px płótna, tylko dla profilu z names (wstęga Medieval).
+export type Street = { name: string; line: [number, number][] };
+export type MapLayers = Partial<Record<MapKey, string>> & { buildings?: Building[]; streets?: Street[] };
 // Linie się obrysowuje, resztę (poligony) tylko wypełnia.
 export const LINE_KEYS: ReadonlySet<MapKey> = new Set([
   'waterway',
@@ -56,11 +58,14 @@ export type MapProfile = {
   precision: number;
   minBuildingArea: number;
   extrude?: boolean;
+  names?: boolean;
 };
 
 export const BASE_KEYS: MapKey[] = ['water', 'waterway', 'green', 'building', 'path', 'minor', 'mid', 'major'];
 export const POSTCARD: MapProfile = { keys: BASE_KEYS, tileUnits: 1024, precision: 1, minBuildingArea: 16 };
 export const POSTCARD_DETAILED: MapProfile = { ...POSTCARD, keys: [...MAP_KEYS], extrude: true };
+// Z nazwami ulic: tylko mapa bazowa World Medieval (wstęga).
+export const POSTCARD_NAMED: MapProfile = { ...POSTCARD_DETAILED, names: true };
 export const THUMB: MapProfile = {
   keys: ['water', 'waterway', 'minor', 'mid', 'major'],
   tileUnits: 256,
@@ -82,6 +87,7 @@ export type MapFeature = {
   h?: number; // render_height / render_min_height warstwy building (m)
   min?: number;
   hide3d?: boolean; // hide_3d: część pokryta inną bryłą (np. building:part), tylko płasko
+  name?: string; // nazwa ulicy z warstwy transportation_name
   geometry: { x: number; y: number }[][];
   tile: Tile;
   extent: number;
@@ -172,15 +178,17 @@ export function buildMapLayers(
   const round = (v: number) => Math.round(v * k) / k;
   const parts: Partial<Record<MapKey, string[]>> = {};
   const buildings: (Building & { area: number; on: boolean })[] = [];
+  const streets: Street[] = [];
 
-  for (const f of features)
+  for (const f of features) {
+    if (f.name) addStreet(f, f.name);
     for (const key of classify(f, profile)) addFeature(f, key);
+  }
 
-  function addFeature(f: MapFeature, key: MapKey) {
-    const line = LINE_KEYS.has(key);
+  // null = pierścień odrzucony po zaokrągleniu; indeksy zgodne z f.geometry.
+  function project(f: MapFeature, line: boolean): (Ring | null)[] {
     const scale = f.tile.size / f.extent;
-    // null = pierścień odrzucony po zaokrągleniu; indeksy zgodne z f.geometry.
-    const rings: (Ring | null)[] = f.geometry.map((ring) => {
+    return f.geometry.map((ring) => {
       const pts: [number, number][] = [];
       for (const p of ring) {
         const x = round(f.tile.left + p.x * scale);
@@ -191,6 +199,20 @@ export function buildMapLayers(
       }
       return pts.length >= (line ? 2 : 3) ? pts : null;
     });
+  }
+
+  function addStreet(f: MapFeature, name: string) {
+    for (const line of project(f, true)) {
+      if (!line) continue;
+      const [minX, minY, maxX, maxY] = boxOf([line]);
+      if (maxX < cx0 || minX > cx1 || maxY < cy0 || minY > cy1) continue;
+      streets.push({ name, line });
+    }
+  }
+
+  function addFeature(f: MapFeature, key: MapKey) {
+    const line = LINE_KEYS.has(key);
+    const rings = project(f, line);
     // OpenMapTiles scala budynki kafelka w jeden multipoligon (setki pierścieni), więc dzielimy na budynki.
     for (const part of key === 'building' ? polygons(f.geometry, rings) : [rings.filter((r) => r !== null)]) {
       if (!part.length) continue;
@@ -211,6 +233,7 @@ export function buildMapLayers(
 
   const layers: MapLayers = {};
   for (const key of MAP_KEYS) if (parts[key]) layers[key] = parts[key].join('');
+  if (streets.length) layers.streets = streets;
   if (buildings.length) {
     // Najpierw bryły ze środkiem na płótnie, żeby duże obrysy z zapasu clip ich nie wypierały.
     // shortcut: limit 5000 brył; przy mocno przesuniętej kamerze widoczny obszar może leżeć poza płótnem, wtedy liczyć `on` wg widoku
@@ -371,16 +394,18 @@ export function loadTile(url: string, signal?: AbortSignal): Promise<VectorTile>
   );
 }
 
-const SOURCE_LAYERS = ['water', 'waterway', 'park', 'landcover', 'landuse', 'aeroway', 'building', 'transportation'];
+const SOURCE_LAYERS = ['water', 'waterway', 'park', 'landcover', 'landuse', 'aeroway', 'building', 'transportation', 'transportation_name'];
 
 type TileFeature = Omit<MapFeature, 'tile'>;
 
 const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
 
 // Adapter VectorTile -> obiekty bez położenia kafelka; geometria tylko dla obiektów potrzebnych w profilu.
-function tileFeatures(vt: VectorTile, profile: MapProfile): TileFeature[] {
+export function tileFeatures(vt: VectorTile, profile: MapProfile): TileFeature[] {
   const out: TileFeature[] = [];
   for (const name of SOURCE_LAYERS) {
+    const names = name === 'transportation_name';
+    if (names && !profile.names) continue;
     const layer = vt.layers[name];
     if (!layer) continue;
     for (let i = 0; i < layer.length; i++) {
@@ -391,12 +416,14 @@ function tileFeatures(vt: VectorTile, profile: MapProfile): TileFeature[] {
         cls: String(f.properties.class ?? ''),
         brunnel: f.properties.brunnel as string | undefined,
       };
-      if (!classify(head, profile).length) continue;
+      // Tylko drogi i ścieżki (bez kolei, promów i kolejek linowych).
+      const street = names && f.type === 2 && ROAD[head.cls] ? String(f.properties.name ?? '').trim() : '';
+      if (!street && !classify(head, profile).length) continue;
       const extra = name === 'building' ? {
               h: num(f.properties.render_height),
               min: num(f.properties.render_min_height),
               hide3d: f.properties.hide_3d === true,
-            } : {};
+            } : street ? { name: street } : {};
       out.push({ ...head, ...extra, geometry: f.loadGeometry(), extent: layer.extent });
     }
   }
@@ -407,7 +434,7 @@ function tileFeatures(vt: VectorTile, profile: MapProfile): TileFeature[] {
 const featureCache = new Map<string, Shared<TileFeature[]>>();
 
 function loadTileFeatures(url: string, profile: MapProfile, signal?: AbortSignal): Promise<TileFeature[]> {
-  const key = `${profile.keys.join()} ${url}`;
+  const key = `${profile.keys.join()}${profile.names ? ' names' : ''} ${url}`;
   return cached(featureCache, key, (shared) => loadTile(url, shared).then((vt) => tileFeatures(vt, profile)), signal);
 }
 
@@ -441,7 +468,7 @@ export async function loadRegionLayers(
   }
   const tiles = mapTiles(projection, size, profile.tileUnits, maxZoom, region);
   if (tiles.length > MAX_REGION_TILES) return null;
-  const sharper = { ...profile, precision: k > 2 ? 0.25 : 0.5, minBuildingArea: profile.minBuildingArea / k ** 2 };
+  const sharper = { ...profile, names: false, precision: k > 2 ? 0.25 : 0.5, minBuildingArea: profile.minBuildingArea / k ** 2 };
   return layersFromTiles(template, tiles, size, sharper, rect, signal);
 }
 
@@ -461,7 +488,7 @@ export async function loadAreaLayers(
   for (const k of [1, 0.5, 0.25]) {
     const tiles = mapTiles(projection, size, profile.tileUnits, maxZoom, { k, rect });
     if (tiles.length > MAX_AREA_TILES) continue;
-    const coarser = { ...profile, precision: profile.precision / k, minBuildingArea: profile.minBuildingArea / k ** 2 };
+    const coarser = { ...profile, names: false, precision: profile.precision / k, minBuildingArea: profile.minBuildingArea / k ** 2 };
     return layersFromTiles(template, tiles, size, coarser, rect, signal);
   }
   return null;

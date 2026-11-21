@@ -113,7 +113,8 @@ export type ThemeOutput = {
   mark: StravaMarkVariant;
 };
 
-export type ThemeOptions = { accent?: string }; // accent: kolor neonu; Dark i Light ignorują
+// accent: kolor neonu; Dark i Light ignorują. font: font pocztówki (szerokość napisu wstęgi Medieval).
+export type ThemeOptions = { accent?: string; font?: FontId };
 
 export type MapTheme = {
   label: string;
