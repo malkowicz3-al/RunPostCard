@@ -74,6 +74,12 @@ export function Select<T extends string>({
     };
   }, [open]);
 
+  // Po otwarciu cała lista w widoku (w arkuszu Style na telefonie rozwija się w miejscu i wychodziła pod dół ekranu,
+  // a dotknięcie arkusza, żeby go przewinąć, zamyka listę).
+  useEffect(() => {
+    if (open) rootRef.current?.querySelector('[role="listbox"]')?.scrollIntoView?.({ block: 'nearest' });
+  }, [open]);
+
   // Fokus idzie za podświetloną pozycją; focus() przewija ją też do widoku.
   useEffect(() => {
     if (open) rootRef.current?.querySelectorAll<HTMLElement>('[role="option"]')[ids.indexOf(active)]?.focus();

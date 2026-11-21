@@ -1753,7 +1753,9 @@ button.swatch,
   .postcard-screen .style-panel .select-list.up {
     position: static;
     margin-top: 8px;
-    max-height: 300px;
+    /* Lista z przyciskiem mieści się w arkuszu (58dvh minus nagłówek), dalsze pozycje przewija się w samej liście. */
+    max-height: min(300px, 58dvh - 140px);
+    overscroll-behavior: contain;
     background: var(--bg);
     box-shadow: none;
   }
