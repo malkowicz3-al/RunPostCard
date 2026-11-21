@@ -16,7 +16,7 @@ import type { TextStyle } from '../postcard/SlotNumber';
 import { ROUTE_BOX } from '../postcard/Route';
 import { gradientCss } from '../postcard/Background';
 import { colorScale, type RouteColor } from '../postcard/routeColor';
-import { CAMERA_CENTER, DEFAULT_CAMERA, clampCamera, keepCamera, twistDegrees, type Camera } from '../lib/camera';
+import { CAMERA_CENTER, DEFAULT_CAMERA, cameraDelta, clampCamera, keepCamera, twistDegrees, type Camera } from '../lib/camera';
 import { backdropArea, nextBackdropArea, type LoadedArea } from '../lib/backdrop';
 import { DEFAULT_FONT, FONTS, loadFontCss, type FontId } from '../lib/fonts';
 import { NO_EDIT, loadPhoto, type PhotoEdit } from '../lib/photo';
@@ -40,6 +40,7 @@ import { LayoutPicker } from './LayoutPicker';
 import { LinePicker } from './LinePicker';
 import { LookPicker, type Look } from './LookPicker';
 import { MapBackdrop } from './MapBackdrop';
+import { useBaseSnapshot } from './useBaseSnapshot';
 import { StyleSheet } from './StyleSheet';
 import { TextStyleToggles } from './TextStyleToggles';
 import { useMapLayers } from './useMapLayers';
@@ -113,9 +114,25 @@ const SwapIcon = () => (
 );
 
 // Podgląd z własnym stanem animacji: co klatkę renderuje się tylko pocztówka, nie cały panel.
-const PreviewCard = memo(function PreviewCard({ props, playing }: { props: Parameters<typeof Postcard>[0]; playing: boolean }) {
+// Gdy jest obraz mapy (useBaseSnapshot), pocztówka rysuje nad nim tylko resztę (trasę, statystyki), a obraz dostaje
+// przekształcenie od kamery z chwili zdjęcia do bieżącej.
+const PreviewCard = memo(function PreviewCard({ props, playing, still }: { props: Parameters<typeof Postcard>[0]; playing: boolean; still: boolean }) {
   const progress = usePreviewProgress(playing);
-  return <Postcard {...props} progress={progress} draft />;
+  const snap = useBaseSnapshot(props, still);
+  const card = <Postcard {...props} progress={progress} draft part={snap ? 'top' : undefined} />;
+  if (!snap) return card;
+  const [a, b, c, d, e, f] = cameraDelta(snap.camera, props.camera ?? DEFAULT_CAMERA);
+  return (
+    <>
+      <img
+        className="postcard-base"
+        src={snap.href}
+        alt=""
+        style={{ transform: `translate(${(e / 1080) * 100}%, ${(f / 1920) * 100}%) matrix(${a}, ${b}, ${c}, ${d}, 0, 0)` }}
+      />
+      {card}
+    </>
+  );
 });
 
 export function PostcardScreen({
@@ -240,6 +257,8 @@ export function PostcardScreen({
   );
   // W 3D obrót robi już iso, więc pocztówka i tło dostają kamerę bez kąta.
   const viewCam = useMemo(() => (is3d && camera.angle ? { ...camera, angle: 0 } : camera), [camera, is3d]);
+  // Surowe kamery (z kątem): w 3D obrót zmienia tylko azymut, a viewCam ma kąt 0.
+  const moving = keepCamera(camera, settled) !== camera;
   const viewSettled = useMemo(() => (is3d && settled.angle ? { ...settled, angle: 0 } : settled), [settled, is3d]);
   // Obszar DEM z iso bez DEM i kamery domyślnej (iso z DEM zależy od DEM); margines pokrywa różnicę dopasowania.
   // Płasko: płótno z marginesem, a od pierwszego obrotu stały kwadrat (jedno doczytanie zamiast nowego DEM przy każdym kącie).
@@ -458,13 +477,15 @@ export function PostcardScreen({
 
   // Te same właściwości dla podglądu i klatek animacji; stały obiekt, żeby podgląd nie przerysowywał się przy postępie eksportu.
   const person = look === 'photo' ? (cutout.person ?? undefined) : undefined;
+  // Stały obiekt: podgląd z obrazu mapy (useBaseSnapshot) porównuje właściwości po referencji.
+  const photoProp = useMemo(() => (photo ? { href: photo, dim: dim / 100 } : undefined), [photo, dim]);
   const postcardProps = useMemo((): ComponentProps<typeof Postcard> => ({
     activity,
     fontCss: fontCss?.css,
     font,
     background: hasMap && !mapMissing ? 'map' : look === 'photo' && photo ? 'photo' : look === 'transparent' ? 'transparent' : 'gradient',
     map: isWorld ? worldMap : map.layers,
-    photo: photo ? { href: photo, dim: dim / 100 } : undefined,
+    photo: photoProp,
     theme: isWorld ? worldTheme : isMap ? (look as ThemeId) : undefined,
     props: vehicles,
     accent,
@@ -482,7 +503,7 @@ export function PostcardScreen({
     glow: isWorld ? 0 : glow,
     mapDim: isWorld ? 0 : mapDim,
   }), [routeStyleEff, glow, mapDim, textStyle, activity, fontCss?.css, font, isMap, hasMap, mapMissing, isWorld, worldMap, vehicles, worldRefined, worldTheme, look, photo, map.layers, dim, accent, streams, is3d, viewCam, iso, zoomed.refined, terrainImage, items, showRoute, routeColor, person]);
-  const previewCard = <PreviewCard props={postcardProps} playing={playPreview} />;
+  const previewCard = <PreviewCard props={postcardProps} playing={playPreview} still={!moving} />;
 
   const currentSvg = () => previewRef.current?.querySelector('svg') ?? null;
 
@@ -555,6 +576,7 @@ export function PostcardScreen({
           accent={accent}
           profile={profile}
           camera={viewCam}
+          moving={moving}
           settled={viewSettled}
           iso={iso ?? undefined}
           terrain={terrainImage}

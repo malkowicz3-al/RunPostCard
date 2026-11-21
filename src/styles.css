@@ -1057,6 +1057,21 @@ button.text-button {
   color: var(--text-secondary);
 }
 
+/* Podgląd mapy jako obraz (useBaseSnapshot): przekształcany w trakcie ruchu kamery, pocztówka (trasa, statystyki) nad nim. */
+.postcard-base {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform-origin: 0 0;
+  will-change: transform;
+  pointer-events: none;
+}
+
+.postcard-base + svg {
+  position: relative;
+}
+
 /* Stałe, ciemne tony w obu motywach: treść pocztówki jest biała i na jasnej szachownicy znika. */
 .postcard-frame.checkerboard {
   background: conic-gradient(#3a3a3f 25%, #2c2c30 0 50%, #3a3a3f 0 75%, #2c2c30 0) 0 0 / 32px 32px;
@@ -1083,6 +1098,11 @@ button.text-button {
   width: 100%;
   height: 100%;
   pointer-events: none;
+}
+
+.map-backdrop-snap {
+  transform-origin: 0 0;
+  will-change: transform;
 }
 
 .has-backdrop .postcard-frame {

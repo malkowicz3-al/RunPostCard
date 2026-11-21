@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyCamera, cameraTransform, clampCamera, keepCamera, twistDegrees, unapplyCamera, wrapAngle } from './camera';
+import { applyCamera, cameraDelta, cameraTransform, clampCamera, keepCamera, twistDegrees, unapplyCamera, wrapAngle } from './camera';
 
 describe('clampCamera', () => {
   it('ogranicza zoom do 1–4', () => {
@@ -89,5 +89,20 @@ describe('obrót kamery', () => {
     // Przejście przez oś ujemną: 170° -> -170° to +20°, nie -340°.
     const at = (deg: number): [number, number] => [Math.cos((deg * Math.PI) / 180), Math.sin((deg * Math.PI) / 180)];
     expect(twistDegrees(at(170), at(-170), [0, 0])).toBeCloseTo(20, 9);
+  });
+});
+
+describe('cameraDelta', () => {
+  it('obraz zrobiony przy kamerze A, przekształcony macierzą, trafia w punkty kamery B', () => {
+    const A = { zoom: 1.5, x: 30, y: -40, angle: 20 };
+    for (const B of [{ zoom: 2.2, x: -10, y: 70, angle: -35 }, { zoom: 1, x: 0, y: 0 }, A]) {
+      const [a, b, c, d, e, f] = cameraDelta(A, B);
+      for (const p of [[0, 0], [540, 960], [1000, 200]] as [number, number][]) {
+        const [sx, sy] = applyCamera(A, p);
+        const [tx, ty] = applyCamera(B, p);
+        expect(a * sx + c * sy + e).toBeCloseTo(tx, 6);
+        expect(b * sx + d * sy + f).toBeCloseTo(ty, 6);
+      }
+    }
   });
 });

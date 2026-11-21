@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import type { GeoProjection } from 'd3-geo';
 import { backdropViewBox, nextBackdropArea, type LoadedArea } from '../lib/backdrop';
-import { cameraTransform, type Camera } from '../lib/camera';
+import { cameraDelta, cameraTransform, type Camera } from '../lib/camera';
 import type { IsoRoute as Iso } from '../lib/isoRoute';
 import type { Rect, Region } from '../lib/mapTiles';
 import { loadAreaLayers, type MapProfile } from '../lib/vectorMap';
@@ -28,6 +28,7 @@ export function MapBackdrop({
   profile,
   camera,
   settled,
+  moving,
   iso,
   terrain,
   points,
@@ -42,6 +43,7 @@ export function MapBackdrop({
   profile: MapProfile;
   camera: Camera;
   settled: Camera; // kamera po zatrzymaniu: od niej zależy doczytany obszar
+  moving: boolean; // kamera w ruchu (także sam obrót w 3D, którego camera nie zawiera)
   iso?: Iso; // widok 3D: mapa jako podłoga z macierzą izometrii i trasa z przewyższeniem
   terrain?: TerrainImage; // ten sam obraz terenu co na pocztówce (3D: zamiast podłogi i brył)
   points?: [number, number][]; // punkty trasy (fit.points) do linii w odcinkach
@@ -94,11 +96,66 @@ export function MapBackdrop({
     return { style, routeStyle: def.render({}, { accent }).route };
   }, [theme, accent]);
 
+  // W trakcie ruchu kamery zamiast tysięcy ścieżek przekształca się obraz tła zrobiony, gdy kamera stała (jak podgląd
+  // pocztówki, useBaseSnapshot). Obraz pasuje tylko do tej samej treści (w 3D obrót zmienia iso, wtedy zwykłe SVG).
+  const content = [refined, style, routeStyle, iso, terrain, color, route, points, viewBox];
+  const [snap, setSnap] = useState<{ href: string; camera: Camera; content: unknown[]; width: number } | null>(null);
+  const snapUrl = useRef<string | null>(null);
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (moving || !svg || !viewBox) return;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      const { width, height } = svg.getBoundingClientRect();
+      const clone = svg.cloneNode(true) as SVGSVGElement;
+      clone.setAttribute('width', String(width));
+      clone.setAttribute('height', String(height));
+      const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(clone)], { type: 'image/svg+xml;charset=utf-8' }));
+      const img = new Image();
+      img.src = url;
+      img.decode().then(
+        () => {
+          if (cancelled) return URL.revokeObjectURL(url);
+          if (snapUrl.current) URL.revokeObjectURL(snapUrl.current);
+          snapUrl.current = url;
+          setSnap({ href: url, camera, content, width });
+        },
+        () => URL.revokeObjectURL(url),
+      );
+    }, 100);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [moving, camera, ...content]);
+  useEffect(() => () => void (snapUrl.current && URL.revokeObjectURL(snapUrl.current)), []);
+  const valid = snap && snap.content.every((c, i) => c === content[i]) ? snap : null;
+  const useSnap = moving ? valid : null;
+
   const [x0, y0, x1, y1] = viewBox ?? [0, 0, 1080, 1920];
+  // Macierz w jednostkach SVG -> piksele ekranu: viewBox ma proporcje okna (slice bez przesunięcia), skala s.
+  const snapTransform = () => {
+    const [a, b, c, d, e, f] = cameraDelta(valid!.camera, camera);
+    const s = valid!.width / (x1 - x0);
+    const tx = s * (a * x0 + c * y0 + e - x0);
+    const ty = s * (b * x0 + d * y0 + f - y0);
+    return `translate(${tx}px, ${ty}px) matrix(${a}, ${b}, ${c}, ${d}, 0, 0)`;
+  };
   return (
+    <>
+    {/* Zamontowany, gdy pasuje (ukryty przy stojącej kamerze), żeby na początku ruchu był już namalowany. */}
+    {valid && (
+      <img
+        className="map-backdrop map-backdrop-snap"
+        src={valid.href}
+        alt=""
+        style={{ transform: snapTransform(), visibility: useSnap ? undefined : 'hidden' }}
+      />
+    )}
     <svg
       ref={svgRef}
       className="map-backdrop"
+      style={useSnap ? { visibility: 'hidden' } : undefined}
       aria-hidden="true"
       viewBox={`${x0} ${y0} ${x1 - x0} ${y1 - y0}`}
       preserveAspectRatio="xMinYMin slice"
@@ -128,5 +185,6 @@ export function MapBackdrop({
       </g>
       <rect x={x0} y={y0} width={x1 - x0} height={y1 - y0} fill="#000000" opacity={0.5} />
     </svg>
+    </>
   );
 }

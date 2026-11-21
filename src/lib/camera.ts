@@ -36,6 +36,16 @@ export const unapplyCamera = ({ zoom, x, y, angle }: Camera, [sx, sy]: [number, 
   return [CX + dx * cos + dy * sin, CY - dx * sin + dy * cos];
 };
 
+// Macierz SVG [a b c d e f] z ekranu kamery from na ekran kamery to (podobieństwo): obraz zrobiony przy from,
+// przekształcony nią, pokrywa się z widokiem przy to (podgląd z gotowego obrazu w trakcie ruchu).
+export const cameraDelta = (from: Camera, to: Camera): [number, number, number, number, number, number] => {
+  const map = (p: [number, number]) => applyCamera(to, unapplyCamera(from, p));
+  const [e, f] = map([0, 0]);
+  const [ax, ay] = map([1, 0]);
+  const [cx, cy] = map([0, 1]);
+  return [ax - e, ay - f, cx - e, cy - f, e, f];
+};
+
 // Kąt w [−180, 180]; 180 zostaje 180 (koniec suwaka).
 export const wrapAngle = (a: number) => (a >= -180 && a <= 180 ? a : a - 360 * Math.floor((a + 180) / 360));
 
