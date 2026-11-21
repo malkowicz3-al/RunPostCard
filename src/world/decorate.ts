@@ -14,6 +14,8 @@ const CAR_CORRIDOR = 34; // auta poza całą ulicą trasy
 const MIN_SIGN_H = 25; // szyld tylko na wyższych budynkach (m)
 const MIN_SEG = 20; // najkrótszy odcinek ulicy z autem (px)
 const SHIP_MARGIN = 0.15;
+const FESTIVE_SHARE = 0.17; // ok. co szósta bryła w Christmas i Easter to obiekt świąteczny w 3D
+const FESTIVE_MAX_PX = 70; // duże hale zostają bryłami (dłuższy bok obrysu w px płótna)
 
 const fmt = (p: Pt) => `${Math.round(p[0])} ${Math.round(p[1])}`;
 
@@ -21,7 +23,7 @@ const fmt = (p: Pt) => `${Math.round(p[0])} ${Math.round(p[1])}`;
 // neon i szyldy ze skrótu środka bryły (ten sam budynek w bazie, refined i tle dostaje ten sam kolor). Czysta funkcja.
 // Wariant zmienia tylko kolory (skrót bez wariantu, więc te same bryły dostają odpowiadające sobie kolory).
 export function decorateWorld(layers: MapLayers, points: Pt[], seed: number, genre: GenreId, variant?: string): MapLayers {
-  const { accents, signs } = genreDef(genre, variant);
+  const { accents, signs, festive, festiveColors } = genreDef(genre, variant);
   const major = points.length > 1 ? `M${points.map(fmt).join('L')}` : undefined;
   const mid = [layers.mid, layers.major].filter(Boolean).join('') || undefined;
   if (!layers.buildings) return { ...layers, major, mid };
@@ -43,7 +45,14 @@ export function decorateWorld(layers: MapLayers, points: Pt[], seed: number, gen
       const r = mulberry32(hashSeed(seed, genre, Math.round(cx / 4), Math.round(cy / 4)));
       const accent = accents[Math.floor(r() * accents.length)];
       const s = r() < 0.3;
-      return { ...b, accent, sign: signs && s && b.h >= MIN_SIGN_H };
+      const deco = { ...b, accent, sign: signs && s && b.h >= MIN_SIGN_H };
+      // Losowanie po dotychczasowych, więc gatunki bez festive i ich akcenty bez zmian.
+      if (!festive || r() >= FESTIVE_SHARE) return deco;
+      const xs = b.ring.map((p) => p[0]);
+      const ys = b.ring.map((p) => p[1]);
+      if (Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) > FESTIVE_MAX_PX) return deco;
+      const kind = festive[Math.floor(r() * festive.length)];
+      return { ...deco, festive: kind, accent: festiveColors ? festiveColors[Math.floor(r() * festiveColors.length)] : accent };
     });
   const building = buildings.map((b) => `M${b.ring.map(([x, y]) => `${x} ${y}`).join('L')}Z`).join('') || undefined;
   return { ...layers, major, mid, buildings, building };

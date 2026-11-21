@@ -89,10 +89,6 @@ describe('THEMES', () => {
       'Cyber HUD',
       'Overworld',
       'Pinball',
-      'Christmas',
-      "New Year's Eve",
-      'Easter',
-      "Valentine's",
     ]);
   });
 
@@ -222,32 +218,5 @@ describe('neonStyle', () => {
       <Postcard activity={mockActivities()[0]} background="map" map={LAYERS} theme="neon" accent="#000000" />,
     );
     expect(svg).toContain('stroke="#808080"');
-  });
-});
-
-describe('motywy świąteczne (Christmas, New Year, Easter, Valentine) bez decorateWorld', () => {
-  const hills = mockActivities().find((r) => r.name === 'Hill repeats')!;
-  const streams = mockStreams(hills);
-  const ring = (x: number, y: number, w: number, h: number): [number, number][] => [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
-  // Gęsta siatka małych brył i kilka dużych (punkty orientacyjne), bez b.accent jak w trybie Map.
-  const buildings = [
-    ...Array.from({ length: 600 }, (_, k) => ({ ring: ring(20 + (k % 40) * 26, 1250 + Math.floor(k / 40) * 40, 12, 10), h: 8, min: 0 })),
-    ...[[100, 300], [700, 320], [400, 900]].map(([x, y]) => ({ ring: ring(x, y, 50, 40), h: 15, min: 0 })),
-  ];
-  const map = { ...LAYERS, building: buildings.map((b) => `M${b.ring.join('L')}Z`).join(''), buildings };
-
-  it('główne ulice jak zwykłe ulice, ozdoby tylko płasko, dachy Easter z palety motywu', () => {
-    for (const id of ['christmas', 'newyear', 'easter', 'valentine'] as const) {
-      const flat = renderToStaticMarkup(<Postcard activity={hills} background="map" map={map} theme={id} streams={streams} />);
-      expect(flat, id).toMatch(new RegExp(`d="M0 100L500 100" stroke="${THEMES[id].style().colors.major}" stroke-width="11"`));
-      expect(flat, id).not.toContain('stroke-width="30"');
-      expect(flat, id).toContain('class="holiday-decor"');
-      const three = renderToStaticMarkup(<Postcard activity={hills} background="map" map={map} theme={id} streams={streams} view="3d" />);
-      expect(three, id).not.toContain('class="holiday-decor"');
-      if (id === 'easter') {
-        const decor = flat.slice(flat.indexOf('class="holiday-decor"'));
-        expect(['#f4a6c0', '#a8d8f0', '#ffd27a', '#c9b3ec'].filter((c) => decor.includes(`fill="${c}"`)).length).toBeGreaterThan(1);
-      }
-    }
   });
 });

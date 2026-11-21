@@ -33,7 +33,8 @@ export const MAP_KEYS = [
 export type MapKey = (typeof MAP_KEYS)[number];
 // Obrys budynku w px płótna (tylko zewnętrzny pierścień) z wysokością dachu i dołu bryły w metrach.
 // accent i sign ustawia tylko dekoracja World (decorateWorld): neon bryły i świecący szyld na ścianie.
-export type Building = { ring: [number, number][]; h: number; min: number; accent?: string; sign?: boolean };
+// festive: w 3D zamiast bryły obiekt świąteczny (World Christmas i Easter, decorateWorld).
+export type Building = { ring: [number, number][]; h: number; min: number; accent?: string; sign?: boolean; festive?: 'gift' | 'tree' | 'egg' | 'bunny' };
 // buildings: bryły widoku 3D, tylko dla profilu z extrude (obok sklejonej warstwy building dla widoku płaskiego).
 export type MapLayers = Partial<Record<MapKey, string>> & { buildings?: Building[] };
 // Linie się obrysowuje, resztę (poligony) tylko wypełnia.

@@ -98,3 +98,30 @@ describe('Buildings3D', () => {
     }
   });
 });
+
+describe('Buildings3D festive', () => {
+  // Macierz jak w isoRoute: [f·cos, f·sin/2, -f·sin, f·cos/2, dx, dy], pxPerM = f.
+  const iso = (az: number, k: number): [number, number, number, number, number, number] => {
+    const [cos, sin] = [Math.cos((az * Math.PI) / 180), Math.sin((az * Math.PI) / 180)];
+    return [k * cos, (k * sin) / 2, -k * sin, (k * cos) / 2, 540, 400];
+  };
+  const rings: [number, number][][] = [
+    [[100, 100], [140, 100], [140, 130], [100, 130]],
+    [[300, 300], [350, 300], [350, 320], [320, 320], [320, 350], [300, 350]],
+    [[600, 200], [630, 200], [630, 240], [600, 240], [600, 200]],
+  ];
+  const look = { gift: ['fill="#c8102e"', 'stroke="#fff3c4"'], tree: ['fill="#2e8b4e"', 'fill="#f5c62e"'], egg: ['fill="#f4a6c0"'], bunny: ['fill="#fbf7f2"'] };
+
+  it('prezent, choinka, jajko i królik przy każdym azymucie i zoomie: bez NaN, w swoich kolorach', () => {
+    for (const [kind, colors] of Object.entries(look) as [keyof typeof look, string[]][])
+      for (const az of [0, 45, 90, 180, 270])
+        for (const k of [1, 2.5]) {
+          const accent = kind === 'egg' ? '#f4a6c0' : '#c8102e';
+          const buildings = rings.map((ring) => ({ ring, h: 15, min: 0, accent, festive: kind }));
+          const svg = renderToStaticMarkup(<Buildings3D buildings={buildings} matrix={iso(az, k)} pxPerM={k} color="#808080" />);
+          expect(svg, `${kind} ${az} ${k}`).not.toMatch(/NaN|Infinity/);
+          for (const c of colors) expect(svg, `${kind} ${az} ${k}`).toContain(c);
+          expect(svg.split('<path').length - 1).toBeGreaterThanOrEqual(rings.length * colors.length);
+        }
+  });
+});

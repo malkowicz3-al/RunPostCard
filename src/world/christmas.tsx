@@ -1,7 +1,7 @@
-import type { MapStyle } from '../mapStyle';
-import { Overlay } from './texture';
-import { box, poly } from '../../world/geom';
-import type { Pt } from '../../world/grid';
+import type { MapStyle } from '../postcard/mapStyle';
+import { Overlay } from '../postcard/themes/texture';
+import { box, poly } from './geom';
+import type { Pt } from './grid';
 import { DASHES, WIDTHS, dot, holidayTheme, paint, r1, rays } from './holiday';
 
 const INK = '#22303a';
@@ -32,12 +32,11 @@ const STYLE: MapStyle = {
     bridge: '#ffffff',
     minor: '#ffffff',
     mid: '#ffffff',
-    major: '#ffffff',
-    
+    major: '#ffffff', // ulica trasy rysowana osobno
   },
   widths: { ...WIDTHS, building: 2 },
   dashes: DASHES,
-  fills: { green: 'url(#christmas-pines)', building: '#fdfdfd' },
+  fills: { green: 'url(#world-christmas-pines)', building: '#fdfdfd' },
   outlines: { water: '#cfe8ef', building: '#a8553a' },
   buildings3d: 'gabled',
 };
@@ -90,15 +89,16 @@ export const christmas = holidayTheme({
   casing: '#b8c4d0',
   route: { stroke: '#c8102e', outline: '#0f3d2a' },
   text: '#0f3d2a',
+  halo: '#f4f8fc',
   mark: 'black',
   defs: (
     <>
-      <pattern id="christmas-pines" patternUnits="userSpaceOnUse" width={64} height={64}>
+      <pattern id="world-christmas-pines" patternUnits="userSpaceOnUse" width={64} height={64}>
         <rect width={64} height={64} fill={STYLE.colors.green} />
         <path d="M14 8L22 26H6ZM44 30L52 48H36ZM18 42L24 56H12Z" fill={PINE} />
         <path d="M14 8L17 15H11ZM44 30L47 37H41ZM18 42L20 47H16Z" fill="#ffffff" />
       </pattern>
-      <pattern id="christmas-snow" patternUnits="userSpaceOnUse" width={140} height={140}>
+      <pattern id="world-christmas-snow" patternUnits="userSpaceOnUse" width={140} height={140}>
         <path d={dot(20, 30, 2.5) + dot(90, 12, 1.8) + dot(60, 80, 3) + dot(120, 100, 2) + dot(30, 120, 1.6) + dot(100, 60, 1.4)} fill="#ffffff" opacity={0.85} />
       </pattern>
     </>
@@ -143,7 +143,7 @@ export const christmas = holidayTheme({
   },
   overlay: ([ax, ay], [bx, by]) => (
     <>
-      <Overlay fill="url(#christmas-snow)" />
+      <Overlay fill="url(#world-christmas-snow)" />
       <path
         d={flake([ax, ay - 8], 52) + flake([bx - 60, by], 30) + flake([bx + 14, by], 32) + flake([bx + 54, by + 22], 12)}
         fill="none"

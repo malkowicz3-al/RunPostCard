@@ -1,15 +1,21 @@
 import { shiftHue } from '../lib/color';
+import type { Building } from '../lib/vectorMap';
 import type { MapTheme } from '../postcard/themes';
 import { bright } from './bright';
+import { christmas } from './christmas';
+import { easter } from './easter';
 import { fantasy } from './fantasy';
 import { medieval } from './medieval';
+import { newyear } from './newyear';
 import { postapo } from './postapo';
 import { SCIFI_VARIANTS, scifi, scifiTheme } from './scifi';
+import { valentine } from './valentine';
 
 // Gatunki świata na prawdziwej mapie (ADR 0013): motyw poza THEMES, kolory brył (neon albo dach; bez koloru trasy),
 // szyldy, pojazdy i ich wygląd; flat: tylko widok płaski (ilustrowana mapa bez 3D); reseed: przycisk „New world”;
-// variants: warianty koloru (obrót odcienia palety).
-export type GenreId = 'scifi' | 'fantasy' | 'postapo' | 'bright' | 'medieval';
+// variants: warianty koloru (obrót odcienia palety); festive: obiekty świąteczne zamiast części brył w 3D;
+// festiveColors: ich kolory (accent obiektu), bez nich kolor z accents.
+export type GenreId = 'scifi' | 'fantasy' | 'postapo' | 'bright' | 'christmas' | 'newyear' | 'easter' | 'valentine' | 'medieval';
 export type Variant = { id: string; label: string; swatch: string; hue: number; route: string };
 export type Genre = {
   label: string;
@@ -20,6 +26,8 @@ export type Genre = {
   flat?: boolean;
   reseed?: boolean;
   variants?: Variant[];
+  festive?: NonNullable<Building['festive']>[];
+  festiveColors?: string[];
 };
 
 // Bez pojazdów (statki, jeśli są, rysuje sam motyw).
@@ -61,6 +69,19 @@ export const GENRES: Record<GenreId, Genre> = {
     accents: [],
     signs: false,
   },
+  // Święta: accents = kolory dachów w 3D (w Easter też skorupki jajek); papier prezentów z festiveColors.
+  christmas: {
+    label: 'Christmas',
+    theme: christmas,
+    props: NO_PROPS,
+    accents: ['#ffffff'],
+    signs: false,
+    festive: ['gift', 'tree'],
+    festiveColors: ['#c8102e', '#1f7a3a', '#d4a017', '#2a5db0'],
+  },
+  newyear: { label: "New Year's Eve", theme: newyear, props: NO_PROPS, accents: ['#d9b45a', '#f0dca0', '#c9a24a'], signs: false },
+  easter: { label: 'Easter', theme: easter, props: NO_PROPS, accents: ['#f4a6c0', '#a8d8f0', '#c9b3ec', '#ffd27a'], signs: false, festive: ['egg', 'bunny'] },
+  valentine: { label: "Valentine's", theme: valentine, props: NO_PROPS, accents: ['#f4a3b8', '#f06292', '#ffffff'], signs: false },
   medieval: { label: 'Medieval', theme: medieval, props: NO_PROPS, accents: ['#a5502f', '#8a5a3a', '#7d7a72', '#b86a3c'], signs: false, flat: true },
 };
 export const GENRE_IDS = Object.keys(GENRES) as GenreId[];

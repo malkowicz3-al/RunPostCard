@@ -27,6 +27,10 @@ describe('GENRES', () => {
       fantasy: undefined,
       postapo: undefined,
       bright: undefined,
+      christmas: 'gabled',
+      newyear: 'plain',
+      easter: 'gabled',
+      valentine: 'gabled',
       medieval: undefined,
     };
     for (const id of GENRE_IDS) {
@@ -83,7 +87,7 @@ describe('GENRES', () => {
     for (const v of variants) {
       for (const c of [v.swatch, v.route, ...genreDef('scifi', v.id).accents]) expect(c).toMatch(/^#[0-9a-f]{6}$/);
     }
-    expect(GENRE_IDS).toEqual(['scifi', 'fantasy', 'postapo', 'bright', 'medieval']);
+    expect(GENRE_IDS).toEqual(['scifi', 'fantasy', 'postapo', 'bright', 'christmas', 'newyear', 'easter', 'valentine', 'medieval']);
     expect(GENRE_IDS.filter((id) => GENRES[id].reseed)).toEqual(['scifi']);
     expect(GENRE_IDS.filter((id) => GENRES[id].flat)).toEqual(['fantasy', 'postapo', 'medieval']);
   });

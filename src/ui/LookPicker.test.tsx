@@ -34,7 +34,7 @@ describe('LookPicker World', () => {
   });
 
   it('New world i kolory tylko w Sci-fi; bez sekcji Gradient i Scenery', () => {
-    for (const genre of ['fantasy', 'postapo', 'bright', 'medieval'] as GenreId[]) {
+    for (const genre of ['fantasy', 'postapo', 'bright', 'christmas', 'newyear', 'easter', 'valentine', 'medieval'] as GenreId[]) {
       expect(picker('world', genre)).not.toContain('New world');
       expect(picker('world', genre)).not.toContain('aria-label="Color: Violet"');
     }

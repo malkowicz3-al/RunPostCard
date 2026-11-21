@@ -95,6 +95,21 @@ describe('warianty koloru', () => {
     expect(shifted[0].look).toBe(genreDef('scifi', 'crimson').props.look);
     expect(shifted[0].look.cars).not.toEqual(GENRES.scifi.props.look.cars);
   });
+
+  it('Christmas: ok. co szósta mała bryła to prezent albo choinka, duże hale nigdy; Sci-fi bez festive', () => {
+    const small = Array.from({ length: 200 }, (_, k) => ({ ring: rect(20 + (k % 20) * 52, 20 + Math.floor(k / 20) * 52, 40, 30), h: 12, min: 0 }));
+    const big = Array.from({ length: 40 }, (_, k) => ({ ring: rect(20 + (k % 8) * 130, 20 + Math.floor(k / 8) * 130, 90, 40), h: 12, min: 0 }));
+    const at = (bs: Building[], genre: 'christmas' | 'scifi') => decorateWorld({ buildings: bs }, [], 3, genre).buildings!;
+    const festive = at(small, 'christmas').filter((b) => b.festive);
+    expect(festive.length / small.length).toBeGreaterThan(0.05);
+    expect(festive.length / small.length).toBeLessThan(0.35);
+    expect(new Set(festive.map((b) => b.festive))).toEqual(new Set(['gift', 'tree']));
+    // Dachy białe (śnieg), prezenty i choinki w kolorach papieru.
+    for (const b of at(small, 'christmas')) expect(b.festive ? GENRES.christmas.festiveColors : GENRES.christmas.accents).toContain(b.accent);
+    expect(at(small, 'christmas')).toEqual(at(small, 'christmas'));
+    expect(at(big, 'christmas').some((b) => b.festive)).toBe(false);
+    expect(at(small, 'scifi').some((b) => 'festive' in b)).toBe(false);
+  });
 });
 
 describe('worldProps', () => {

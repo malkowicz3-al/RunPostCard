@@ -371,7 +371,7 @@ describe('Postcard poświata i przyciemnienie mapy', () => {
   });
 });
 
-describe.each(['scifi', 'bright'] as const)('Postcard World %s', (genre) => {
+describe.each(['scifi', 'bright', 'christmas', 'newyear', 'easter', 'valentine'] as const)('Postcard World %s', (genre) => {
   const points = fitRoute(hills.map.summary_polyline, ROUTE_BOX)!.points;
   // Ręczna mapa: siatka brył i ulic na płótnie, dekorowana jak w PostcardScreen.
   const buildings = Array.from({ length: 40 }, (_, k) => {
@@ -395,7 +395,7 @@ describe.each(['scifi', 'bright'] as const)('Postcard World %s', (genre) => {
     props: worldProps(layers, points, 1, genre),
     streams,
   };
-  // Ulica trasy pod trasą: asfalt 28 px (Sci-fi), jasna jezdnia 24 px (Bright).
+  // Ulica trasy pod trasą: asfalt 28 px (Sci-fi), jasna jezdnia 24 px (Bright i święta).
   const road = new RegExp(`stroke="${theme.style().colors.major}" stroke-width="${genre === 'scifi' ? 28 : 24}"`);
 
   it('2D i 3D: z podpisem OSM, lokalne i unikalne id, bez NaN, pojazdy nad mapą i pod trasą', () => {
@@ -418,14 +418,26 @@ describe.each(['scifi', 'bright'] as const)('Postcard World %s', (genre) => {
         // Każda bryła narysowana raz (obrysy z kolorem gatunku zamiast warstwy building).
         const ring = decorated.buildings![0].ring.map(([x, y]) => `${x} ${y}`).join('L');
         expect(svg.split(ring)).toHaveLength(2);
+        // Ozdoby świąt (lampki, serca…) tylko płasko.
+        expect(svg.includes('class="world-decor"')).toBe(genre !== 'scifi' && genre !== 'bright');
         for (const id of ids.filter((i) => i.startsWith('world-'))) expect(id).toMatch(new RegExp(`^world-${genre}-`));
       }
       if (view === '3d') {
         expect(svg).toContain('transform="matrix(');
         // Auta pod bryłami, statki nad nimi (dwie grupy, gdy są pojazdy).
         if (base.props.length) expect(svg.split('class="world-props"')).toHaveLength(3);
-        // Neon okien i krawędzi w kolorach gatunku (Bright bez akcentów).
+        expect(svg).not.toContain('class="world-decor"');
+        if (genre !== 'scifi' && genre !== 'bright') expect(svg).toContain(`filter="url(#world-${genre}-text)"`);
+        // Prezenty (wstążka) i choinki, jajka i króliki zamiast części brył.
+        if (genre === 'christmas') expect(svg).toContain('fill="#fff3c4"');
+        if (genre === 'easter') expect(decorated.buildings!.some((b) => b.festive)).toBe(true);
+        // Neon okien i krawędzi w kolorach gatunku (Bright bez akcentów); w świętach dachy w kolorach gatunku.
         if (genre === 'scifi') expect(accents.filter((c) => svg.includes(`stroke="${c}"`)).length).toBeGreaterThanOrEqual(3);
+        else if (accents.length) {
+          // Szukane w gotowym tekście Buildings3D (ścieżki zamknięte „/>”, nie przez Reacta): biały akcent jest też gdzie indziej.
+          const solids = svg.match(/<g>((?:<path [^>]*\/>)+)<\/g>/)![1];
+          expect(accents.some((c) => solids.includes(`fill="${c}"`))).toBe(true);
+        }
       }
     }
   });

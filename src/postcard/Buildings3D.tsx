@@ -15,6 +15,17 @@ const FLOOR_M = 3.5; // piętro (okna, kondygnacje voxel)
 const MAX_FLOORS = 30;
 const MAX_MERLONS = 40; // ząbki na krawędź
 const ANTENNAS = 8; // tyle najwyższych brył w motywie tower dostaje antenę
+// Obiekty świąteczne (Building.festive): szerokość na ekranie z rzutu obrysu, w tych granicach (px).
+const FESTIVE_MIN_PX = 10;
+const FESTIVE_MAX_PX = 60;
+const RIBBON = '#fff3c4';
+const PINES = ['#2e8b4e', '#237a42', '#1a6636'];
+const TRUNK = '#6b4226';
+const STAR = '#f5c62e';
+const BAUBLES = ['#d7263d', '#f5c62e', '#2f6fd6', '#ffffff'];
+const BUNNY = '#fbf7f2';
+const BUNNY_LINE = '#7d6b7d';
+const BUNNY_EAR = '#f4a6c0';
 
 type Pt = [number, number];
 type Part = { d: string; fill?: string; stroke?: string; width?: number; opacity?: number };
@@ -131,7 +142,7 @@ export const Buildings3D = memo(function Buildings3D({
       return out;
     };
     // Ściany od z0 do wysokości wierzchołka (z), więc szczyt dachu dwuspadowego wychodzi sam.
-    const prism = (pts: [number, number, number][], z0: number): Part[] => {
+    const prism = (pts: [number, number, number][], z0: number, lf = left, rf = right): Part[] => {
       let l = '';
       let r = '';
       for (const [i, j, isLeft] of visible(pts)) {
@@ -142,8 +153,8 @@ export const Buildings3D = memo(function Buildings3D({
         else r += quad;
       }
       return [
-        { d: l, fill: left },
-        { d: r, fill: right },
+        { d: l, fill: lf },
+        { d: r, fill: rf },
       ];
     };
     const floors = (z0: number, z1: number) => {
@@ -159,8 +170,119 @@ export const Buildings3D = memo(function Buildings3D({
       return { d: dd, stroke, width: 0.8, opacity };
     };
 
+    // Elipsa w px ekranu (środek x, y).
+    const ell = (x: number, y: number, rx: number, ry: number) =>
+      `M${p(x - rx)} ${p(y)}a${p(rx)} ${p(ry)} 0 1 0 ${p(2 * rx)} 0a${p(rx)} ${p(ry)} 0 1 0 ${p(-2 * rx)} 0Z`;
+    // Obiekt świąteczny zamiast bryły. Prezent to pudełko na prawdziwym obrysie; choinka, jajko i królik stoją pionowo
+    // na ekranie (billboard z rzutu środka, bez obrotu, więc prosto przy każdym azymucie). w: szerokość rzutu (px).
+    const festiveParts = ({ ring, h, min, accent: own, festive }: Building, w: number): Part[] => {
+      const cx = ring.reduce((sum, [x]) => sum + x, 0) / ring.length;
+      const cy = ring.reduce((sum, [, y]) => sum + y, 0) / ring.length;
+      const bx = sx(cx, cy);
+      const by = sy(cx, cy) - min * s;
+      // Punkt billboardu: u w prawo, v w górę od podstawy (px).
+      const at = (u: number, v: number) => `${p(bx + u)} ${p(by - v)}`;
+      const tri = (v0: number, half: number, v1: number) => `M${at(-half, v0)}L${at(half, v0)}L${at(0, v1)}Z`;
+      if (festive === 'gift') {
+        let area = 0;
+        for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) area += ring[j][0] * ring[i][1] - ring[i][0] * ring[j][1];
+        // Wysokość jak bok obrysu (prawie sześcian), najwyżej jak budynek.
+        const top = min + Math.min(Math.sqrt(Math.abs(area) / 2) * mPerUnit, h - min);
+        const paper = own ?? color;
+        const pts = ring.map(([x, y]): [number, number, number] => [x, y, top]);
+        const out = [...prism(pts, min, mix(paper, '#000000', 0.35), mix(paper, '#000000', 0.15)), { d: poly(pts), fill: paper }];
+        // Wstążka: krzyż na wieczku wzdłuż najdłuższej krawędzi i w poprzek, dalej pionowo w dół na widocznych ścianach.
+        let [ux, uy, len] = [1, 0, 0];
+        ring.forEach(([x0, y0], i) => {
+          const [x1, y1] = ring[(i + 1) % ring.length];
+          const l = Math.hypot(x1 - x0, y1 - y0);
+          if (l > len) [ux, uy, len] = [(x1 - x0) / l, (y1 - y0) / l, l];
+        });
+        // Najbliższe przecięcie promienia ze środka z obrysem: [punkt, indeks krawędzi albo -1].
+        const reach = (dx: number, dy: number): [Pt, number] => {
+          let best: [number, number] = [Infinity, -1];
+          ring.forEach(([x0, y0], i) => {
+            const [x1, y1] = ring[(i + 1) % ring.length];
+            const [ex, ey] = [x1 - x0, y1 - y0];
+            const den = dx * ey - dy * ex;
+            if (!den) return;
+            const t = ((x0 - cx) * ey - (y0 - cy) * ex) / den;
+            const k = ((x0 - cx) * dy - (y0 - cy) * dx) / den;
+            if (t > 0 && k >= 0 && k <= 1 && t < best[0]) best = [t, i];
+          });
+          return [[cx + dx * best[0], cy + dy * best[0]], best[1]];
+        };
+        const seen = new Set(visible(pts).map(([i]) => i));
+        let band = '';
+        for (const [dx, dy] of [[ux, uy], [-ux, -uy], [-uy, ux], [uy, -ux]]) {
+          const [q, i] = reach(dx, dy);
+          if (i < 0) continue;
+          band += `M${P(cx, cy, top)}L${P(...q, top)}`;
+          if (seen.has(i)) band += `M${P(...q, top)}L${P(...q, min)}`;
+        }
+        const k = Math.max(2.5, Math.min(7, w * 0.12)); // kokarda
+        const [tx, ty] = [sx(cx, cy), sy(cx, cy) - top * s];
+        const loop = (dir: number) =>
+          `M${p(tx)} ${p(ty)}C${p(tx + dir * 1.3 * k)} ${p(ty - 1.2 * k)} ${p(tx + dir * 1.3 * k)} ${p(ty + 0.4 * k)} ${p(tx)} ${p(ty)}Z`;
+        out.push({ d: band, stroke: RIBBON, width: Math.round(Math.max(1.5, w * 0.08) * 10) / 10 });
+        out.push({ d: loop(-1) + loop(1) + ell(tx, ty, k * 0.3, k * 0.3), fill: RIBBON });
+        return out;
+      }
+      if (festive === 'tree') {
+        const H = 1.6 * w;
+        const r = Math.max(1, w * 0.05);
+        const star = Array.from({ length: 10 }, (_, i) => {
+          const [ang, rad] = [(i * Math.PI) / 5, (i % 2 ? 0.4 : 1) * Math.max(3, w * 0.11)];
+          return at(rad * Math.sin(ang), H + rad * Math.cos(ang));
+        });
+        const spots = [[-0.28, 0.18], [0.22, 0.3], [-0.12, 0.47], [0.14, 0.66]];
+        return [
+          { d: `M${at(-0.08 * w, 0)}L${at(0.08 * w, 0)}L${at(0.08 * w, 0.14 * H)}L${at(-0.08 * w, 0.14 * H)}Z`, fill: TRUNK },
+          { d: tri(0.1 * H, 0.5 * w, 0.52 * H), fill: PINES[2] },
+          { d: tri(0.36 * H, 0.4 * w, 0.76 * H), fill: PINES[1] },
+          { d: tri(0.6 * H, 0.29 * w, 0.97 * H), fill: PINES[0] },
+          ...BAUBLES.map((fill, i) => ({ d: ell(bx + spots[i][0] * w, by - spots[i][1] * H, r, r), fill })),
+          { d: `M${star.join('L')}Z`, fill: STAR },
+        ];
+      }
+      if (festive === 'egg') {
+        const H = 1.3 * w;
+        const shell = own ?? color;
+        // Węższe u góry: najszersze na 40% wysokości.
+        const egg =
+          `M${at(0, 0)}C${at(0.28 * w, 0)} ${at(0.5 * w, 0.15 * H)} ${at(0.5 * w, 0.4 * H)}` +
+          `C${at(0.5 * w, 0.72 * H)} ${at(0.25 * w, H)} ${at(0, H)}C${at(-0.25 * w, H)} ${at(-0.5 * w, 0.72 * H)} ${at(-0.5 * w, 0.4 * H)}` +
+          `C${at(-0.5 * w, 0.15 * H)} ${at(-0.28 * w, 0)} ${at(0, 0)}Z`;
+        const zig = Array.from({ length: 7 }, (_, i) => at((i / 3 - 1) * 0.44 * w, (i % 2 ? 0.5 : 0.42) * H)).join('L');
+        return [
+          { d: egg, fill: shell, stroke: mix(shell, '#000000', 0.3), width: 1 },
+          {
+            d: `M${zig}M${at(-0.36 * w, 0.7 * H)}L${at(0.36 * w, 0.7 * H)}M${at(-0.4 * w, 0.2 * H)}L${at(0.4 * w, 0.2 * H)}`,
+            stroke: '#ffffff',
+            width: Math.round(Math.max(1.2, w * 0.07) * 10) / 10,
+          },
+        ];
+      }
+      // Królik siedzący bokiem: ogonek, tułów, głowa, dwa długie uszy (różowe w środku), oko.
+      const ear = (u0: number, u1: number, tip: number) =>
+        `M${at(u0 * w, 0.85 * w)}Q${at((u0 - 0.12) * w, 1.3 * w)} ${at(tip * w, 1.62 * w)}Q${at((u1 + 0.06) * w, 1.3 * w)} ${at(u1 * w, 0.85 * w)}Z`;
+      const body =
+        ell(bx + 0.4 * w, by - 0.26 * w, 0.11 * w, 0.11 * w) +
+        ell(bx + 0.05 * w, by - 0.3 * w, 0.4 * w, 0.3 * w) +
+        ell(bx - 0.2 * w, by - 0.72 * w, 0.22 * w, 0.2 * w) +
+        ear(-0.32, -0.18, -0.34) +
+        ear(-0.14, 0, -0.02);
+      const eye = Math.max(0.8, 0.03 * w);
+      return [
+        { d: body, fill: BUNNY, stroke: BUNNY_LINE, width: 1 },
+        { d: ear(-0.29, -0.21, -0.32) + ear(-0.11, -0.03, -0.04), fill: BUNNY_EAR },
+        { d: ell(bx - 0.27 * w, by - 0.74 * w, eye, eye), fill: BUNNY_LINE },
+      ];
+    };
+
     const key = [a, b, c, d, e, f, pxPerM, color, fill, shape, accent, tall].join();
-    const build = ({ ring, h, min, accent: own, sign }: Building): Solid => {
+    const build = (bld: Building): Solid => {
+      const { ring, h, min, accent: own, sign } = bld;
       let x0 = Infinity, x1 = -Infinity, maxY = -Infinity;
       for (const [x, y] of ring) {
         x0 = Math.min(x0, sx(x, y));
@@ -171,6 +293,10 @@ export const Buildings3D = memo(function Buildings3D({
       const detail = x1 - x0 >= DETAIL_PX && (h - min) * s >= DETAIL_WALL_PX;
       // Klucz: najniższy punkt rzutu na podłoże + wysokość dołu, więc część na podium idzie po podium.
       const solid: Solid = { y: maxY + min * s, parts: [] };
+      if (bld.festive) {
+        solid.parts = festiveParts(bld, Math.max(FESTIVE_MIN_PX, Math.min(FESTIVE_MAX_PX, x1 - x0)));
+        return solid;
+      }
       // Kolor gatunku World jako dach (poza tower, gdzie accent to neon okien i krawędzi).
       const roof = shape === 'tower' ? roofFill : (own ?? roofFill);
       const box = (top = h) => {
