@@ -791,7 +791,8 @@ export function PostcardScreen({
           <TextStyleToggles value={textStyle} onChange={setTextStyle} />
           <ExportControls
             name={`runpostcard-${activity.id}`}
-            frame={(p) => <Postcard {...postcardProps} progress={p} />}
+            frame={(p, part) => <Postcard {...postcardProps} progress={p} part={part} />}
+            layered
             resetKey={postcardProps}
             disabled={loading || !fontReady}
             onBusy={setExporting}

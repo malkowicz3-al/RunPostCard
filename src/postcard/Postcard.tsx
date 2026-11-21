@@ -60,6 +60,7 @@ export function Postcard({
   mapDim = 0,
   props,
   draft = false,
+  part,
 }: {
   activity: Activity;
   fontCss?: string;
@@ -85,6 +86,7 @@ export function Postcard({
   mapDim?: number; // przyciemnienie mapy pod trasą 0..100; 0 = bez prostokąta
   props?: Prop[]; // pojazdy świata World: nad mapą i bryłami, pod trasą
   draft?: boolean; // podgląd na ekranie: w 3D bez brył (płaskie obrysy), żeby kadrowanie było płynne; eksport rysuje pełne
+  part?: 'base' | 'top'; // wideo: 'base' = tło i mapa (stałe, rysowane raz), 'top' = reszta nad nim (trasa, osoba, statystyki); brak = całość
 }) {
   // Jedna projekcja dla mapy i trasy („scena”).
   const polyline = activity.map.summary_polyline;
@@ -93,6 +95,8 @@ export function Postcard({
     () => (view === '3d' && streams && fit ? (givenIso ?? isoRoute(streams, ROUTE_BOX, fit.projection)) : null),
     [view, streams, fit, givenIso],
   );
+  const showBase = part !== 'top';
+  const showTop = part !== 'base';
   const showMap = background === 'map' && !!fit && !!map;
   const solid = !!iso && !draft;
   // W 3D z bryłami podłoga bez płaskich budynków.
@@ -246,7 +250,7 @@ export function Postcard({
       fontWeight={weight}
     >
       {fontCss && <style>{fontCss}</style>}
-      {background === 'photo' && photo && <PhotoBackground {...photo} />}
+      {showBase && background === 'photo' && photo && <PhotoBackground {...photo} />}
       {behind && (
         <defs>
           {splitRoute && (
@@ -282,9 +286,11 @@ export function Postcard({
           </filter>
         </defs>
       )}
-      {background === 'gradient' && <Background />}
+      {showBase && background === 'gradient' && <Background />}
       {iso ? (
         <g>
+          {showBase && (
+          <>
           {out && <rect width={1080} height={1920} fill={style.background} />}
           <g transform={cameraTransform(camera)}>
             {relief && terrainImage(relief)}
@@ -313,11 +319,15 @@ export function Postcard({
           {/* Faktura papieru w przestrzeni płótna (jak w widoku płaskim), nie na pochylonej i powiększanej podłodze. */}
           {out?.overlay}
           {out && mapDim > 0 && <rect width={1080} height={1920} fill="#000" opacity={mapDim / 100} />}
-          {(!behind || splitRoute) && routeLayer(splitRoute ? 'behind' : undefined)}
+          </>
+          )}
+          {showTop && (!behind || splitRoute) && routeLayer(splitRoute ? 'behind' : undefined)}
         </g>
       ) : (
         <g>
           {/* Przesunięta kamera odsłania obszar poza płótnem, zanim dojdą kafelki: tło motywu zamiast pustki. */}
+          {showBase && (
+          <>
           {out && <rect width={1080} height={1920} fill={style.background} />}
           <g transform={cameraTransform(camera)}>
             {out?.scene}
@@ -327,10 +337,12 @@ export function Postcard({
           </g>
           {out?.overlay}
           {out && mapDim > 0 && <rect width={1080} height={1920} fill="#000" opacity={mapDim / 100} />}
-          {(!behind || splitRoute) && routeLayer(splitRoute ? 'behind' : undefined)}
+          </>
+          )}
+          {showTop && (!behind || splitRoute) && routeLayer(splitRoute ? 'behind' : undefined)}
         </g>
       )}
-      {behind && (
+      {showTop && behind && (
         <>
           <g filter="url(#person-dim)">{terrainImage(person)}</g>
           {routeLayer(splitRoute ? 'front' : undefined)}
@@ -343,6 +355,8 @@ export function Postcard({
           </filter>
         </defs>
       )}
+      {showTop && (
+      <>
       <g color={text.color} filter={text.filter}>
         <g fontStyle={textStyle?.italic ? 'italic' : undefined} filter={textStyle?.shadow ? 'url(#text-shadow)' : undefined}>
           {layout.map((item) => slotNode(item))}
@@ -361,6 +375,8 @@ export function Postcard({
         >
           {relief ? `${MAP_ATTRIBUTION} · ${TERRAIN_ATTRIBUTION}` : MAP_ATTRIBUTION}
         </text>
+      )}
+      </>
       )}
     </svg>
   );

@@ -68,6 +68,23 @@ describe('Postcard 3D', () => {
     expect(renderToStaticMarkup(<Postcard {...base} view="flat" draft />)).toBe(renderToStaticMarkup(<Postcard {...base} view="flat" />));
   });
 
+  it('part: base ma mapę bez trasy i statystyk, top trasę i statystyki bez mapy (płasko i 3D)', () => {
+    for (const view of ['flat', '3d'] as const) {
+      const base = { activity: hills, background: 'map' as const, map: LAYERS, theme: 'dark' as const, streams, view, progress: 0.5 };
+      const full = renderToStaticMarkup(<Postcard {...base} />);
+      const under = renderToStaticMarkup(<Postcard {...base} part="base" />);
+      const over = renderToStaticMarkup(<Postcard {...base} part="top" />);
+      const mapPath = 'M0 100L500 100';
+      expect(full).toContain(mapPath);
+      expect(under).toContain(mapPath);
+      expect(over).not.toContain(mapPath);
+      expect(full).toContain(MAP_ATTRIBUTION);
+      expect(over).toContain(MAP_ATTRIBUTION);
+      expect(under).not.toContain(MAP_ATTRIBUTION);
+      for (const svg of [under, over]) for (const [, ref] of svg.matchAll(/url\(#([\w-]+)\)/g)) expect(svg).toContain(`id="${ref}"`);
+    }
+  });
+
   it('ostrzejsza mapa (3D i płasko): warstwa przycięta do prostokąta, id unikalne; bez niej brak', () => {
     const refined = { rect: [100, 200, 600, 900] as [number, number, number, number], layers: LAYERS };
     for (const theme of ['neon', 'blueprint'] as const) {

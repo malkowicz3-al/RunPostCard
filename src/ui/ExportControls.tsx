@@ -31,13 +31,15 @@ export function ExportControls({
   disabled,
   onBusy,
   mode,
+  layered,
 }: {
   name: string; // nazwa pliku bez rozszerzenia
-  frame: (p: number) => ReactElement;
+  frame: (p: number, part?: 'base' | 'top') => ReactElement; // part: tylko przy layered
   resetKey: unknown;
   disabled: boolean;
   onBusy?: (busy: boolean) => void; // MP4/GIF w trakcie
   mode: 'still' | 'animation'; // still: PNG; animation: MP4
+  layered?: boolean; // wideo: stała część karty (frame(p, 'base')) rysowana raz, w klatkach tylko frame(p, 'top')
 }) {
   const [exportFailed, setExportFailed] = useState<string | null>(null); // format, którego nie udało się zrobić
   const [encoding, setEncoding] = useState<{ pct: number } | null>(null); // null = nie trwa
@@ -94,7 +96,8 @@ export function ExportControls({
 
   // Klatki animacji: ta sama karta z postępem, renderowana poza ekranem (odłączony div).
   const downloadVideo = async () => {
-    const frames = offscreenFrames(frame);
+    const frames = offscreenFrames((p) => frame(p, layered ? 'top' : undefined));
+    const base = layered ? offscreenFrames((p) => frame(p, 'base')) : null;
     const abort = new AbortController();
     encodeAbort.current = abort;
     setExportFailed(null);
@@ -106,13 +109,14 @@ export function ExportControls({
       setEncoding((e) => (e && e.pct !== pct ? { pct } : e));
     };
     try {
-      const blob = await encodeMp4(frames.frameAt, { onProgress, signal: abort.signal });
+      const blob = await encodeMp4(frames.frameAt, { onProgress, signal: abort.signal, base: base?.frameAt });
       if (abort.signal.aborted) return; // Cancel w chwili domykania pliku
       save(new File([blob], `${name}.mp4`, { type: 'video/mp4' }));
     } catch {
       if (!abort.signal.aborted) setExportFailed('video');
     } finally {
       frames.unmount();
+      base?.unmount();
       if (encodeAbort.current === abort) {
         encodeAbort.current = null;
         setEncoding(null);

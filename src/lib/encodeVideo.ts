@@ -1,7 +1,7 @@
 import { DRAW_S, HOLD_S, drawFrame, renderFrames, type FrameOptions } from './animate';
 
 type Frame = FrameOptions['frame'];
-type Progress = { onProgress?: (done: number) => void; signal?: AbortSignal };
+type Progress = { onProgress?: (done: number) => void; signal?: AbortSignal; base?: Frame };
 
 const MP4 = { width: 1080, height: 1920, fps: 30, bitrate: 8e6 };
 
@@ -25,9 +25,11 @@ export async function canEncodeMp4(): Promise<boolean> {
   }
 }
 
-export async function encodeMp4(frame: Frame, { onProgress, signal }: Progress): Promise<Blob> {
+// base: stała część karty (mapa) rysowana raz do osobnego płótna; frame wtedy daje tylko to, co się zmienia.
+export async function encodeMp4(frame: Frame, { onProgress, signal, base }: Progress): Promise<Blob> {
   const { Output, Mp4OutputFormat, BufferTarget, CanvasSource } = await import('mediabunny');
   const canvas = canvasOf(MP4.width, MP4.height);
+  const baseCanvas = base ? canvasOf(MP4.width, MP4.height) : undefined;
   const target = new BufferTarget();
   // fastStart: indeks na początku pliku, telefony i aplikacje odtwarzają od razu.
   const output = new Output({ format: new Mp4OutputFormat({ fastStart: 'in-memory' }), target });
@@ -35,7 +37,8 @@ export async function encodeMp4(frame: Frame, { onProgress, signal }: Progress):
   output.addVideoTrack(source, { frameRate: MP4.fps });
   await output.start();
   try {
-    await renderFrames({ frame, canvas, fps: MP4.fps, seconds: DRAW_S, holdSeconds: HOLD_S, onProgress, signal }, (i) =>
+    if (base && baseCanvas) await drawFrame(base(1), baseCanvas);
+    await renderFrames({ frame, canvas, fps: MP4.fps, seconds: DRAW_S, holdSeconds: HOLD_S, onProgress, signal, base: baseCanvas }, (i) =>
       source.add(i / MP4.fps, 1 / MP4.fps),
     );
     await output.finalize();
@@ -44,6 +47,7 @@ export async function encodeMp4(frame: Frame, { onProgress, signal }: Progress):
     throw e;
   } finally {
     canvas.width = 0; // pamięć płótna od razu, nie przy GC
+    if (baseCanvas) baseCanvas.width = 0;
   }
   return new Blob([target.buffer!], { type: 'video/mp4' });
 }
