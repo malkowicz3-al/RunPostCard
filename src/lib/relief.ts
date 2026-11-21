@@ -43,7 +43,8 @@ export function shadeOverlay(dem: Dem, shade: Float32Array): Pixels {
   return { width: dem.w, height: dem.h, data };
 }
 
-// Widok 3D: relief „voxel” jako obraz w jednostkach płótna przed kamerą. iso.matrix = [a, b, -a, b, e, f], więc kolumna
+// Widok 3D: relief „voxel” jako obraz w jednostkach płótna przed kamerą. iso.matrix = [a, b, -a, b, e, f] (tylko azymut 0,
+// PostcardScreen nie obraca sceny z terenem), więc kolumna
 // ekranu to stałe u = x − y, a głębokość v = x + y: każdą kolumnę idziemy od przodu (duże v) do tyłu i rysujemy pionowy
 // odcinek od wierzchołka próbki do najwyższego dotąd narysowanego piksela (zasłanianie bez sortowania).
 export function reliefImage(

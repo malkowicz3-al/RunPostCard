@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { mockActivities } from '../dev/mockActivities';
 import type { Building } from '../lib/vectorMap';
 import { DATA, LAYOUTS } from '../postcard/slots';
-import { COMPASS_BOX, CORNERS, SERPENT_BOX, center, corners, houseIcons, landmarks, shipIcons } from './icons';
+import { COMPASS_BOX, CORNERS, SERPENT_BOX, center, corners, houseIcons, keepOutDist, landmarks, shipIcons } from './icons';
 import { box, poly, segDist } from './geom';
 import { SIGN, TREFOIL_R } from './postapo';
 import type { Pt } from './grid';
@@ -102,6 +102,13 @@ describe('icons', () => {
     expect(TREFOIL_R).toBeLessThanOrEqual(Math.min(-x0, -y0, x1, y1));
     const [sx0, sy0, sx1, sy1] = SERPENT_BOX;
     expect(SIGN[0] >= sx0 && SIGN[1] >= sy0 && SIGN[2] <= sx1 && SIGN[3] <= sy1).toBe(true);
+  });
+
+  it('keepOutDist: 0 na znaku Stravy i podpisie OSM, odległość do najbliższego pola poza nimi', () => {
+    expect(keepOutDist(200, 1830)).toBe(0);
+    expect(keepOutDist(1045, 1600)).toBe(0);
+    expect(keepOutDist(200, 1690)).toBe(100);
+    expect(keepOutDist(1080, 1600)).toBe(22);
   });
 
   it('poly: przesunięcie, obrót i zaokrąglenie do 0,1 px', () => {

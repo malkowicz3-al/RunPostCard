@@ -22,7 +22,17 @@ function contrast(a: string, b: string): number {
 
 describe('GENRES', () => {
   it('pełna paleta, font z listy, bryły gatunku i kolory brył', () => {
-    const shapes = { scifi: 'tower', fantasy: undefined, postapo: undefined, bright: undefined };
+    const shapes = {
+      scifi: 'tower',
+      fantasy: undefined,
+      postapo: undefined,
+      bright: undefined,
+      christmas: 'gabled',
+      newyear: 'plain',
+      easter: 'gabled',
+      valentine: 'gabled',
+      medieval: undefined,
+    };
     for (const id of GENRE_IDS) {
       const { theme } = GENRES[id];
       const style = theme.style();
@@ -63,7 +73,7 @@ describe('GENRES', () => {
     }
   });
 
-  it('warianty Sci-fi: unikalne id, Violet bez obrotu, ta sama tożsamość; New world tylko w Sci-fi; tylko płasko Fantasy i Post-apo', () => {
+  it('warianty Sci-fi: unikalne id, Violet bez obrotu, ta sama tożsamość; New world tylko w Sci-fi; tylko płasko Fantasy, Post-apo i Medieval', () => {
     const variants = GENRES.scifi.variants!;
     expect(new Set(variants.map((v) => v.id)).size).toBe(variants.length);
     expect(variants[0]).toMatchObject({ id: 'violet', hue: 0 });
@@ -77,8 +87,8 @@ describe('GENRES', () => {
     for (const v of variants) {
       for (const c of [v.swatch, v.route, ...genreDef('scifi', v.id).accents]) expect(c).toMatch(/^#[0-9a-f]{6}$/);
     }
-    expect(GENRE_IDS).toEqual(['scifi', 'fantasy', 'postapo', 'bright']);
+    expect(GENRE_IDS).toEqual(['scifi', 'fantasy', 'postapo', 'bright', 'christmas', 'newyear', 'easter', 'valentine', 'medieval']);
     expect(GENRE_IDS.filter((id) => GENRES[id].reseed)).toEqual(['scifi']);
-    expect(GENRE_IDS.filter((id) => GENRES[id].flat)).toEqual(['fantasy', 'postapo']);
+    expect(GENRE_IDS.filter((id) => GENRES[id].flat)).toEqual(['fantasy', 'postapo', 'medieval']);
   });
 });

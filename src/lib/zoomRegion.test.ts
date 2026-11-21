@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { unapplyCamera } from './camera';
 import { zoomRegion } from './zoomRegion';
 
 const C: [number, number] = [540, 720];
@@ -7,26 +8,26 @@ const ID: [number, number, number, number, number, number] = [1, 0, 0, 1, 0, 0];
 
 describe('zoomRegion', () => {
   it('zoom poniżej 1,5 -> null', () => {
-    expect(zoomRegion({ zoom: 1.4, x: 0, y: 0 }, ID, C, SIZE)).toBeNull();
+    expect(zoomRegion({ zoom: 1.4, x: 0, y: 0 }, ID, SIZE)).toBeNull();
   });
 
   it('macierz jednostkowa, zoom 2: prostokąt wokół środka z marginesem, k = 2', () => {
     // Widok [-162, 1242] × [-288, 2208] cofnięty kamerą: 540 + (s − 540) / 2 itd., przycięty do podłogi.
-    const r = zoomRegion({ zoom: 2, x: 0, y: 0 }, ID, C, SIZE)!;
+    const r = zoomRegion({ zoom: 2, x: 0, y: 0 }, ID, SIZE)!;
     expect(r.k).toBe(2);
     expect(r.rect).toEqual([189, 216, 891, 1464]);
-    expect(zoomRegion({ zoom: 3, x: 0, y: 0 }, ID, C, SIZE)!.k).toBe(4);
+    expect(zoomRegion({ zoom: 3, x: 0, y: 0 }, ID, SIZE)!.k).toBe(4);
   });
 
   it('przycina do podłogi [0,1080] × [0,1480]; poza płótnem -> null', () => {
-    expect(zoomRegion({ zoom: 2, x: 1000, y: 0 }, ID, C, SIZE)!.rect[0]).toBe(0);
-    expect(zoomRegion({ zoom: 2, x: 0, y: -1000 }, ID, C, SIZE)!.rect[3]).toBe(1480);
-    expect(zoomRegion({ zoom: 4, x: 5000, y: 0 }, ID, C, SIZE)).toBeNull();
+    expect(zoomRegion({ zoom: 2, x: 1000, y: 0 }, ID, SIZE)!.rect[0]).toBe(0);
+    expect(zoomRegion({ zoom: 2, x: 0, y: -1000 }, ID, SIZE)!.rect[3]).toBe(1480);
+    expect(zoomRegion({ zoom: 4, x: 5000, y: 0 }, ID, SIZE)).toBeNull();
   });
 
   it('parametr floor: widok płaski przycina do całego płótna, nie do podłogi 3D', () => {
     // y: 720 + (s − 720 + 1000) / 2 dla s ∈ [−288, 2208] -> [716, 1964], przycięte do 1920.
-    const r = zoomRegion({ zoom: 2, x: 0, y: -1000 }, ID, C, SIZE, 0.15, [0, 0, 1080, 1920])!;
+    const r = zoomRegion({ zoom: 2, x: 0, y: -1000 }, ID, SIZE, 0.15, [0, 0, 1080, 1920])!;
     expect(r.rect[1]).toBe(716);
     expect(r.rect[3]).toBe(1920);
   });
@@ -36,7 +37,7 @@ describe('zoomRegion', () => {
     const b = 1.2 / (2 * Math.SQRT2);
     const m: [number, number, number, number, number, number] = [a, b, -a, b, 500, 100];
     const cam = { zoom: 4, x: 100, y: -200 };
-    const [x0, y0, x1, y1] = zoomRegion(cam, m, C, SIZE)!.rect;
+    const [x0, y0, x1, y1] = zoomRegion(cam, m, SIZE)!.rect;
     let seen = 0;
     for (let x = 0; x <= 1080; x += 10)
       for (let y = 0; y <= 1480; y += 10) {
@@ -49,5 +50,16 @@ describe('zoomRegion', () => {
     expect(seen).toBeGreaterThan(0);
     // Prostokąt jest mniejszy niż cała podłoga (inaczej przybliżenie nic by nie dało).
     expect((x1 - x0) * (y1 - y0)).toBeLessThan(1080 * 1480);
+  });
+
+  it('płasko z obrotem, zoom 2: rogi ekranu cofnięte kamerą leżą w prostokącie', () => {
+    const cam = { zoom: 2, x: 30, y: -60, angle: 37 };
+    const all: [number, number, number, number] = [-Infinity, -Infinity, Infinity, Infinity];
+    const [x0, y0, x1, y1] = zoomRegion(cam, ID, SIZE, 0.15, all)!.rect;
+    for (const sx of [0, SIZE[0]])
+      for (const sy of [0, SIZE[1]]) {
+        const [x, y] = unapplyCamera(cam, [sx, sy]);
+        expect(x >= x0 && x <= x1 && y >= y0 && y <= y1).toBe(true);
+      }
   });
 });

@@ -26,7 +26,9 @@ export type FontId =
   | 'pacifico'
   | 'lobster'
   | 'kaushan'
-  | 'pirata';
+  | 'pirata'
+  | 'mountains'
+  | 'sniglet';
 export const DEFAULT_FONT: FontId = 'barlow';
 
 type Font = {
@@ -98,11 +100,20 @@ export const FONTS: Record<FontId, Font> = {
   alfa: { label: 'Alfa Slab', file: 'AlfaSlabOne-Regular.ttf', family: 'Alfa Slab One', weight: 400, scale: 0.64, group: 'Retro' },
   bangers: { label: 'Bangers', file: 'Bangers-Regular.ttf', family: 'Bangers', weight: 400, scale: 0.98, group: 'Retro' },
   pressstart: { label: 'Press Start', file: 'PressStart2P-Regular.ttf', family: 'Press Start 2P', weight: 400, scale: 0.38, group: 'Retro' },
+  sniglet: { label: 'Sniglet', file: 'Sniglet-ExtraBold.ttf', family: 'Sniglet', weight: 800, scale: 0.75, group: 'Retro' },
   marker: { label: 'Marker', file: 'PermanentMarker-Regular.ttf', family: 'Permanent Marker', weight: 400, scale: 0.82, group: 'Script' },
   pacifico: { label: 'Pacifico', file: 'Pacifico-Regular.ttf', family: 'Pacifico', weight: 400, scale: 0.85, group: 'Script' },
   lobster: { label: 'Lobster', file: 'Lobster-Regular.ttf', family: 'Lobster', weight: 400, scale: 0.95, group: 'Script' },
   kaushan: { label: 'Kaushan', file: 'KaushanScript-Regular.ttf', family: 'Kaushan Script', weight: 400, scale: 0.73, group: 'Script' },
   pirata: { label: 'Pirata One', file: 'PirataOne-Regular.ttf', family: 'Pirata One', weight: 400, scale: 0.85, group: 'Script' },
+  mountains: {
+    label: 'Mountains of Christmas',
+    file: 'MountainsofChristmas-Bold.ttf',
+    family: 'Mountains of Christmas',
+    weight: 700,
+    scale: 0.95,
+    group: 'Script',
+  },
 };
 
 export const fontStack = (id: FontId) => `'${FONTS[id].family}', system-ui, sans-serif`;

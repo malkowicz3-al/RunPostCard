@@ -118,6 +118,12 @@ export const CORNERS: [Pt, Pt] = [[160, 350], [920, 350]];
 export const COMPASS_BOX = [-58, -76, 58, 58];
 export const SERPENT_BOX = [-96, -36, 66, 38];
 
+// Pola bez ozdób: znak Stravy (lewy dół) i pionowy podpis OSM przy prawej krawędzi (x0, y0, x1, y1).
+export const KEEP_OUT = [[40, 1790, 460, 1866], [1038, 1380, 1058, 1892]];
+// Odległość punktu od najbliższego pola KEEP_OUT (0 wewnątrz).
+export const keepOutDist = (x: number, y: number) =>
+  Math.min(...KEEP_OUT.map(([x0, y0, x1, y1]) => Math.hypot(Math.max(x0 - x, 0, x - x1), Math.max(y0 - y, 0, y - y1))));
+
 export function corners(route: Pt[]): [Pt, Pt] {
   const [tl, tr] = CORNERS;
   const count = ([cx, cy]: Pt) => route.filter(([x, y]) => Math.abs(x - cx) <= 120 && Math.abs(y - cy) <= 120).length;

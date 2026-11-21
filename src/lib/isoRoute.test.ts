@@ -108,4 +108,22 @@ describe('isoRoute', () => {
     expect((rise[10] - rise[70]) / (xs[10] - xs[70])).toBeCloseTo(k, 6);
     expect(k).toBeGreaterThan(0);
   });
+
+  it('azymut: 0 = stara macierz 45°, inne kąty bez NaN i w polu trasy', () => {
+    const p = proj(hill);
+    const [a, b, c, d] = isoRoute(hill, ROUTE_BOX, p, undefined, 0)!.matrix;
+    expect(c).toBeCloseTo(-a, 12);
+    expect(d).toBeCloseTo(b, 12);
+    expect(a).toBeCloseTo(2 * b, 12);
+    for (const az of [90, 180, -135]) {
+      const r = isoRoute(hill, ROUTE_BOX, p, undefined, az)!;
+      expect(r.matrix.every(Number.isFinite)).toBe(true);
+      for (const [x, y] of [...r.points, ...r.ground]) {
+        expect(x).toBeGreaterThanOrEqual(x0 - 1e-6);
+        expect(x).toBeLessThanOrEqual(x1 + 1e-6);
+        expect(y).toBeGreaterThanOrEqual(y0 - 1e-6);
+        expect(y).toBeLessThanOrEqual(y1 + 1e-6);
+      }
+    }
+  });
 });

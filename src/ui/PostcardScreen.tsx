@@ -16,7 +16,7 @@ import type { TextStyle } from '../postcard/SlotNumber';
 import { ROUTE_BOX } from '../postcard/Route';
 import { gradientCss } from '../postcard/Background';
 import { colorScale, type RouteColor } from '../postcard/routeColor';
-import { CAMERA_CENTER, DEFAULT_CAMERA, clampCamera, keepCamera, type Camera } from '../lib/camera';
+import { CAMERA_CENTER, DEFAULT_CAMERA, clampCamera, keepCamera, twistDegrees, type Camera } from '../lib/camera';
 import { backdropArea, nextBackdropArea, type LoadedArea } from '../lib/backdrop';
 import { DEFAULT_FONT, FONTS, loadFontCss, type FontId } from '../lib/fonts';
 import { NO_EDIT, loadPhoto, type PhotoEdit } from '../lib/photo';
@@ -53,6 +53,12 @@ import { toggleView, type View } from './viewState';
 const SIZE: [number, number] = [1080, 1920];
 const IDENTITY: [number, number, number, number, number, number] = [1, 0, 0, 1, 0, 0];
 const CANVAS: [number, number, number, number] = [0, 0, 1080, 1920];
+// DEM płasko niezależny od obrotu: kwadrat wokół środka kamery przez najdalszy róg płótna, ×1,45 na oddalenie do ~0,7 przy obrocie (clampCamera).
+const DEM_SQUARE: [number, number, number, number] = (() => {
+  const [cx, cy] = CAMERA_CENTER;
+  const r = 1.45 * Math.max(...[0, 1080].flatMap((x) => [0, 1920].map((y) => Math.hypot(x - cx, y - cy))));
+  return [cx - r, cy - r, cx + r, cy + r];
+})();
 const UNBOUNDED: [number, number, number, number] = [-Infinity, -Infinity, Infinity, Infinity];
 
 type Point = { x: number; y: number };
@@ -186,9 +192,10 @@ export function PostcardScreen({
   const mapMissing = hasMap && !map.layers;
   const mapLoading = hasMap && (!map.layers || map.loading);
   const [camera, setCamera] = useState<Camera>(DEFAULT_CAMERA);
-  const moved = camera.zoom !== 1 || camera.x !== 0 || camera.y !== 0;
+  const moved = camera.zoom !== 1 || camera.x !== 0 || camera.y !== 0 || !!camera.angle;
   // Aktywne wskaźniki nad podglądem (1 = przesuwanie, 2 = szczypanie).
   const pointers = useRef(new Map<number, { x: number; y: number }>());
+  const twist = useRef({ sum: 0, on: false }); // skręt palców w bieżącym geście
   // Zmiany kamery z kółka i przeciągania zbieramy i stosujemy raz na klatkę (render długiego biegu jest drogi).
   const frame = useRef(0);
   const queued = useRef<((c: Camera) => Camera)[]>([]);
@@ -199,7 +206,7 @@ export function PostcardScreen({
       frame.current = 0;
       const fns = queued.current;
       queued.current = [];
-      setCamera((c) => keepCamera(c, fns.reduce((acc, f) => clampCamera(f(acc)), c)));
+      setCamera((c) => keepCamera(c, fns.reduce((acc, f) => clampCamera(f(acc), is3d), c)));
     });
   };
   useEffect(() => () => cancelAnimationFrame(frame.current), []);
@@ -209,10 +216,6 @@ export function PostcardScreen({
     const t = setTimeout(() => setSettled(camera), 300);
     return () => clearTimeout(t);
   }, [camera]);
-  const baseIso = useMemo(
-    () => (is3d && streams && fit ? isoRoute(streams, ROUTE_BOX, fit.projection) : null),
-    [is3d, streams, fit],
-  );
   // Teren (ADR 0008): tylko dla biegów w górach (rozpiętość wysokości zegarka >= TERRAIN_AUTO_M), wtedy domyślnie włączony.
   // W mieście i na płaskim przycisku Terrain nie ma wcale (decyzja właściciela).
   const mountainous = useMemo(() => {
@@ -228,11 +231,36 @@ export function PostcardScreen({
   }, [streams]);
   const hasTerrain = mountainous && isMap && !mapMissing && fit !== null;
   const terrainOn = hasTerrain && (terrainPick ?? true);
-  // Obszar DEM z iso bez DEM i kamery domyślnej (iso z DEM zależy od DEM); margines pokrywa różnicę dopasowania.
-  const demArea = useMemo(
-    () => (terrainOn ? backdropArea(CANVAS, DEFAULT_CAMERA, 0.3, baseIso?.matrix ?? IDENTITY) : null),
-    [terrainOn, baseIso],
+  // 3D: kąt kamery to azymut izometrii (relief terenu tylko przy 0); odroczony, bo przebudowa iso jest droga.
+  const azimuth = useDeferredValue(terrainOn ? 0 : (camera.angle ?? 0));
+  const baseIso = useMemo(
+    () => (is3d && streams && fit ? isoRoute(streams, ROUTE_BOX, fit.projection, undefined, azimuth) : null),
+    [is3d, streams, fit, azimuth],
   );
+  // W 3D obrót robi już iso, więc pocztówka i tło dostają kamerę bez kąta.
+  const viewCam = useMemo(() => (is3d && camera.angle ? { ...camera, angle: 0 } : camera), [camera, is3d]);
+  const viewSettled = useMemo(() => (is3d && settled.angle ? { ...settled, angle: 0 } : settled), [settled, is3d]);
+  // Obszar DEM z iso bez DEM i kamery domyślnej (iso z DEM zależy od DEM); margines pokrywa różnicę dopasowania.
+  // Płasko: płótno z marginesem, a od pierwszego obrotu stały kwadrat (jedno doczytanie zamiast nowego DEM przy każdym kącie).
+  const rotatedOnce = useRef(false);
+  if (settled.angle) rotatedOnce.current = true;
+  const wideDem = rotatedOnce.current;
+  const demArea = useMemo(
+    () =>
+      terrainOn
+        ? baseIso
+          ? backdropArea(CANVAS, DEFAULT_CAMERA, 0.3, baseIso.matrix)
+          : wideDem
+            ? DEM_SQUARE
+            : backdropArea(CANVAS, DEFAULT_CAMERA, 0.3, IDENTITY)
+        : null,
+    [terrainOn, baseIso, wideDem],
+  );
+  // 3D z terenem: relief tylko przy azymucie 0, więc obrót zablokowany i kąt wraca do 0.
+  const rotLocked = is3d && terrainOn;
+  useEffect(() => {
+    if (rotLocked) setCamera((c) => (c.angle ? clampCamera({ ...c, angle: 0 }, true) : c));
+  }, [rotLocked]);
   const terrain = useTerrain(fit?.projection ?? null, demArea, terrainOn);
   const dem = terrainOn ? terrain.dem : null;
   const iso = useMemo(
@@ -265,13 +293,13 @@ export function PostcardScreen({
     // 3D: podłoga bez wygaszania, więc widoczną część poza płótnem doczytujemy zawsze (także przy kamerze domyślnej).
     if (!iso) {
       // Płasko: widok w całości na płótnie = mapa bazowa wystarcza (bez drugiej kopii w eksporcie).
-      const [x0, y0, x1, y1] = backdropArea(CANVAS, settled, 0);
-      if (settled.zoom < 1.5 && x0 >= 0 && y0 >= 0 && x1 <= SIZE[0] && y1 <= SIZE[1]) return null;
+      const [x0, y0, x1, y1] = backdropArea(CANVAS, viewSettled, 0);
+      if (viewSettled.zoom < 1.5 && x0 >= 0 && y0 >= 0 && x1 <= SIZE[0] && y1 <= SIZE[1]) return null;
     }
     // Małe przesunięcie w doczytanym obszarze zostawia go (bez nowego zapytania), jak w tle ekranu.
-    if (settled.zoom < 1.5) return (regionArea.current = nextBackdropArea(regionArea.current, CANVAS, settled, matrix));
-    return zoomRegion(settled, matrix, CAMERA_CENTER, SIZE, 0.15, UNBOUNDED);
-  }, [iso, terrainOn, terrain.loading, dem, hasMap, settled]);
+    if (viewSettled.zoom < 1.5) return (regionArea.current = nextBackdropArea(regionArea.current, CANVAS, viewSettled, matrix));
+    return zoomRegion(viewSettled, matrix, SIZE, 0.15, UNBOUNDED);
+  }, [iso, terrainOn, terrain.loading, dem, hasMap, viewSettled]);
   const zoomed = useRegionLayers(fit?.projection ?? null, region, profile, hasMap);
   const terrainLoading = terrainOn && terrain.loading;
   // Dekoracja World od obiektów warstw, więc klatki animacji i ruch kamery jej nie liczą od nowa.
@@ -312,18 +340,22 @@ export function PostcardScreen({
     setSettled(DEFAULT_CAMERA);
   }, [activity, is3d]);
 
-  // Kółko nad pocztówką zawsze przybliża; listener nie-pasywny, żeby preventDefault blokował przewijanie strony.
+  // Kółko nad pocztówką przybliża, z Shiftem obraca; listener nie-pasywny, żeby preventDefault blokował przewijanie strony.
   useEffect(() => {
     const el = previewRef.current;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
       if (!fit) return;
       e.preventDefault();
-      moveCamera((c) => ({ ...c, zoom: c.zoom * Math.exp(-e.deltaY * 0.002) }));
+      const k = e.deltaMode === 1 ? 16 : 1; // delta w liniach (Firefox) -> piksele
+      // Shift+kółko: przeglądarki często podają wtedy deltaX zamiast deltaY.
+      if (e.shiftKey) {
+        if (!rotLocked) moveCamera((c) => ({ ...c, angle: (c.angle ?? 0) + (e.deltaX || e.deltaY) * k * 0.15 }));
+      } else moveCamera((c) => ({ ...c, zoom: c.zoom * Math.exp(-e.deltaY * k * 0.002) }));
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
-  }, [fit]);
+  }, [fit, is3d, rotLocked]);
 
   useEffect(() => {
     setEditing(null);
@@ -347,6 +379,7 @@ export function PostcardScreen({
     shouldOpenSlot({ down: tap.current, up: { x: e.clientX, y: e.clientY }, multiTouch: multiTouch.current, keyboard });
 
   const onPointerDown = (e: ReactPointerEvent) => {
+    twist.current = { sum: 0, on: false };
     if (pointers.current.size > 0) multiTouch.current = true;
     const hit = (e.target as Element).closest?.('[data-slot]');
     tap.current = { x: e.clientX, y: e.clientY, id: hit?.getAttribute('data-slot') ?? null };
@@ -368,12 +401,19 @@ export function PostcardScreen({
     } else if (other) {
       const before = Math.hypot(prev.x - other.x, prev.y - other.y);
       const after = Math.hypot(next.x - other.x, next.y - other.y);
-      if (before > 0) moveCamera((c) => ({ ...c, zoom: (c.zoom * after) / before }));
+      const d = twistDegrees([prev.x, prev.y], [next.x, next.y], [other.x, other.y]);
+      // Martwa strefa: obrót dopiero po skręcie palców o ponad 10° w tym geście, potem przyrostowo.
+      const t = twist.current;
+      t.sum += d;
+      if (Math.abs(t.sum) > 10) t.on = true;
+      const turn = t.on && !rotLocked ? d : 0;
+      if (before > 0) moveCamera((c) => ({ ...c, zoom: (c.zoom * after) / before, angle: (c.angle ?? 0) + turn }));
     }
     all.set(e.pointerId, next);
   };
 
   const onPointerUp = (e: ReactPointerEvent) => {
+    twist.current = { sum: 0, on: false };
     // Ramka przechwytuje wskaźnik, więc klik może nie dojść do przycisku slotu; dotknięcie łapiemy tutaj.
     if (pickArmed) {
       const r = currentSvg()?.getBoundingClientRect();
@@ -429,7 +469,7 @@ export function PostcardScreen({
     accent,
     streams,
     view: is3d ? '3d' : 'flat',
-    camera,
+    camera: viewCam,
     iso,
     refined: isWorld ? worldRefined : zoomed.refined,
     terrain: terrainImage,
@@ -440,7 +480,7 @@ export function PostcardScreen({
     person,
     glow: isWorld ? 0 : glow,
     mapDim: isWorld ? 0 : mapDim,
-  }), [routeStyleEff, glow, mapDim, textStyle, activity, fontCss?.css, font, isMap, hasMap, mapMissing, isWorld, worldMap, vehicles, worldRefined, worldTheme, look, photo, map.layers, dim, accent, streams, is3d, camera, iso, zoomed.refined, terrainImage, items, showRoute, routeColor, person]);
+  }), [routeStyleEff, glow, mapDim, textStyle, activity, fontCss?.css, font, isMap, hasMap, mapMissing, isWorld, worldMap, vehicles, worldRefined, worldTheme, look, photo, map.layers, dim, accent, streams, is3d, viewCam, iso, zoomed.refined, terrainImage, items, showRoute, routeColor, person]);
   const previewCard = <PreviewCard props={postcardProps} playing={playPreview} />;
 
   const currentSvg = () => previewRef.current?.querySelector('svg') ?? null;
@@ -513,8 +553,8 @@ export function PostcardScreen({
           theme={isWorld ? worldTheme : (look as ThemeId)}
           accent={accent}
           profile={profile}
-          camera={camera}
-          settled={settled}
+          camera={viewCam}
+          settled={viewSettled}
           iso={iso ?? undefined}
           terrain={terrainImage}
           points={fit.points}
@@ -694,7 +734,24 @@ export function PostcardScreen({
                   </button>
                 )}
               </div>
-              {fit && <p className="panel-hint">Drag, scroll or pinch to move and zoom the map.</p>}
+              {fit && !rotLocked && (
+                <label className="zoom-control">
+                  Rotate
+                  <input
+                    type="range"
+                    min={-180}
+                    max={180}
+                    step={5}
+                    value={camera.angle ?? 0}
+                    onChange={(e) => setCamera((c) => keepCamera(c, clampCamera({ ...c, angle: Number(e.target.value) }, is3d)))}
+                  />
+                </label>
+              )}
+              {fit && (
+                <p className="panel-hint">
+                  Drag, scroll or pinch to move and zoom.{!rotLocked && ' Twist or Shift+scroll to rotate.'}
+                </p>
+              )}
           </section>
           {fit && !isWorld && (
             <section className="panel-section" inert={exporting}>

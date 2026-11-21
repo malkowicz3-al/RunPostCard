@@ -26,9 +26,9 @@ describe('fonty pocztówki', () => {
     expect(await loadFontCss('bungee')).toBeUndefined();
   });
 
-  it('20 fontów; każdy ma plik, licencję, unikalną rodzinę i rozsądną skalę', () => {
+  it('28 fontów; każdy ma plik, licencję, unikalną rodzinę i rozsądną skalę', () => {
     const ids = Object.keys(FONTS) as FontId[];
-    expect(ids).toHaveLength(26);
+    expect(ids).toHaveLength(28);
     const licenses = readdirSync('public/fonts/licenses');
     for (const id of ids) {
       expect(existsSync(`public/fonts/${FONTS[id].file}`), id).toBe(true);

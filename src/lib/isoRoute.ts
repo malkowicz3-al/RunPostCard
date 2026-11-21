@@ -89,15 +89,15 @@ function extent(values: number[]): [number, number] {
 
 type Prepared = { flat: [number, number][]; alt: number[]; k0: number; distance: number[] };
 
-// Trasa obrócona o 45° na płaskim płótnie i jej wysokości (przed dopasowaniem do box).
-function prepare(s: RunStreams, projection: GeoProjection, dem?: Dem): Prepared | null {
+// Trasa obrócona o 45° + azymut na płaskim płótnie i jej wysokości (przed dopasowaniem do box).
+function prepare(s: RunStreams, projection: GeoProjection, dem: Dem | undefined, cos: number, sin: number): Prepared | null {
   const n = s.latlng.length;
   if (!s.altitude || n < 2) return null;
 
   const lat = smooth(s.latlng.map(([la]) => la), LATLNG_SMOOTH);
   const lng = smooth(s.latlng.map(([, lo]) => lo), LATLNG_SMOOTH);
   const canvas = lat.map((la, i) => projection([lng[i], la]) ?? [0, 0]);
-  const flat = canvas.map(([x, y]) => [(x - y) / Math.SQRT2, (x + y) / (2 * Math.SQRT2)] as [number, number]);
+  const flat = canvas.map(([x, y]) => [x * cos - y * sin, (x * sin + y * cos) / 2] as [number, number]);
 
   // Metry -> px projekcji (d3 Mercator: x = scale · λ, więc 1 m = scale / (R · cos lat)).
   const meanLat = lat.reduce((sum, v) => sum + v, 0) / n;
@@ -108,7 +108,7 @@ function prepare(s: RunStreams, projection: GeoProjection, dem?: Dem): Prepared 
 }
 
 // Wspólne dopasowanie do box: jedna podstawa wysokości, jedno przewyższenie i jedna macierz dla wszystkich tras.
-function build(runs: Prepared[], box: Box): IsoRoute[] {
+function build(runs: Prepared[], box: Box, cos: number, sin: number): IsoRoute[] {
   const [minAlt, maxAlt] = extent(runs.flatMap((r) => extent(r.alt)));
   const span = maxAlt - minAlt;
   // shortcut: przewyższenie i pxPerM ze średniego k0 (różni się z szerokością geograficzną), dla biegów oddalonych o setki km liczyć osobno.
@@ -136,8 +136,6 @@ function build(runs: Prepared[], box: Box): IsoRoute[] {
   const dx = x0 + (boxW - (maxX - minX) * f) / 2;
   const dy = y0 + (boxH - (maxY - minY) * f) / 2;
   const fit = ([x, y]: [number, number]): [number, number] => [dx + (x - minX) * f, dy + (y - minY) * f];
-  const a = f / Math.SQRT2;
-  const b = f / (2 * Math.SQRT2);
 
   return runs.map((r, k) => {
     const grade = gradeByDistance(r.alt, r.distance, GRADE_HALF_M).slice(0, -1);
@@ -147,7 +145,7 @@ function build(runs: Prepared[], box: Box): IsoRoute[] {
       distance: r.distance,
       slope: slopes(grade, r.distance, MIN_RUN_M),
       exaggeration,
-      matrix: [a, b, -a, b, dx - f * minX, dy - f * minY],
+      matrix: [f * cos, (f * sin) / 2, -f * sin, (f * cos) / 2, dx - f * minX, dy - f * minY],
       pxPerM: k0 * f,
       baseM: minAlt,
     };
@@ -155,10 +153,13 @@ function build(runs: Prepared[], box: Box): IsoRoute[] {
 }
 
 // Izometria na płaskim płótnie pocztówki (projection = fit.projection, ta sama co mapa):
-// obrót o 45°, oś Y × 0,5, podniesienie o wysokość; całość dopasowana do box. Przekształcenie podłoża
-// jest afiniczne, więc mapa trafia pod trasę jako <g transform="matrix(...)">.
-// dem: wysokości z terenu zamiast zegarka, żeby trasa leżała na reliefie (ADR 0008).
-export function isoRoute(s: RunStreams, box: Box, projection: GeoProjection, dem?: Dem): IsoRoute | null {
-  const run = prepare(s, projection, dem);
-  return run ? build([run], box)[0] : null;
+// obrót o 45° + azymut (stopnie, obrót sceny), oś Y × 0,5, podniesienie o wysokość; całość dopasowana do box
+// przy każdym azymucie (skala trochę się zmienia). Przekształcenie podłoża jest afiniczne, więc mapa trafia pod trasę
+// jako <g transform="matrix(...)">. dem: wysokości z terenu zamiast zegarka, żeby trasa leżała na reliefie (ADR 0008;
+// relief zakłada azymut 0).
+export function isoRoute(s: RunStreams, box: Box, projection: GeoProjection, dem?: Dem, azimuth = 0): IsoRoute | null {
+  const theta = Math.PI / 4 + (azimuth * Math.PI) / 180;
+  const [cos, sin] = [Math.cos(theta), Math.sin(theta)];
+  const run = prepare(s, projection, dem, cos, sin);
+  return run ? build([run], box, cos, sin)[0] : null;
 }

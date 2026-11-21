@@ -1,6 +1,6 @@
 import { useMemo, type ReactNode } from 'react';
 import type { Activity, RunStreams } from '../strava/api';
-import { DEFAULT_CAMERA, cameraTransform, type Camera } from '../lib/camera';
+import { CAMERA_CENTER, DEFAULT_CAMERA, applyCamera, cameraTransform, type Camera } from '../lib/camera';
 import { type Cutout } from '../lib/cutout';
 import { isoRoute, type IsoRoute as IsoData } from '../lib/isoRoute';
 import type { Rect } from '../lib/mapTiles';
@@ -149,40 +149,40 @@ export function Postcard({
   );
 
   const behind = background === 'photo' && !!photo && !!person;
-  // Linia podziału trasy („obręcz”): środek jej obrysu w układzie trasy, czyli pod transformacją kamery.
+  // Linia podziału trasy („obręcz”): środek obrysu trasy po kamerze; klip poza grupą kamery, więc przy obrocie linia zostaje pozioma.
+  // Płasko przy obrocie: zakres y punktów trasy na ekranie (środek obrysu przed obrotem nie wystarcza).
+  const midOf = (ys: number[]) => (ys.reduce((m, y) => Math.min(m, y), Infinity) + ys.reduce((m, y) => Math.max(m, y), -Infinity)) / 2;
   const mid = iso
-    ? (iso.points.reduce((m, [, y]) => Math.min(m, y), Infinity) + iso.points.reduce((m, [, y]) => Math.max(m, y), -Infinity)) / 2
-    : fit
-      ? (fit.bounds[0][1] + fit.bounds[1][1]) / 2
-      : 0;
+    ? applyCamera(camera, [CAMERA_CENTER[0], midOf(iso.points.map(([, y]) => y))])[1]
+    : fit && fit.points.length
+      ? midOf(fit.points.map((p) => applyCamera(camera, p)[1]))
+      : applyCamera(camera, [CAMERA_CENTER[0], 0])[1];
   // Za obiektem zawsze tylko górna część trasy; statystyki zawsze przed (decyzja właściciela, ADR 0009).
   const splitRoute = route && behind;
   const clipped = (part: 'behind' | 'front' | undefined, node: ReactNode) =>
     part ? <g clipPath={`url(#route-${part})`}>{node}</g> : node;
   const routeInner = (part?: 'behind' | 'front') =>
     iso
-      ? route && (
+      ? route &&
+        clipped(
+          part,
           <g transform={cameraTransform(camera)}>
-            {clipped(
-              part,
-              <IsoRoute
-                iso={iso}
-                flat={out?.route.stroke}
-                filter={out?.route.filter}
-                dash={out?.route.dash}
-                zoom={camera.zoom}
-                onSurface={!!relief}
-                color={lineColor}
-                progress={progress}
-                gradientId={part === 'front' ? 'iso-curtain-grad-front' : undefined}
-              />,
-            )}
-          </g>
+            <IsoRoute
+              iso={iso}
+              flat={out?.route.stroke}
+              filter={out?.route.filter}
+              dash={out?.route.dash}
+              zoom={camera.zoom}
+              onSurface={!!relief}
+              color={lineColor}
+              progress={progress}
+              gradientId={part === 'front' ? 'iso-curtain-grad-front' : undefined}
+            />
+          </g>,
         )
       : fit &&
-        route && (
-          <g transform={cameraTransform(camera)}>{clipped(part, <Route {...out?.route} d={fit.d} zoom={camera.zoom} points={fit.points} color={lineColor} progress={progress} />)}</g>
-        );
+        route &&
+        clipped(part, <g transform={cameraTransform(camera)}><Route {...out?.route} d={fit.d} zoom={camera.zoom} points={fit.points} color={lineColor} progress={progress} /></g>);
   const routeLayer = (part?: 'behind' | 'front') => {
     const node = routeInner(part);
     return glow > 0 && node ? <g filter="url(#route-glow)">{node}</g> : node;

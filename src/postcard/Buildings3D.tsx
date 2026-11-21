@@ -99,7 +99,7 @@ export const Buildings3D = memo(function Buildings3D({
 }) {
   const markup = useMemo(() => {
     const s = pxPerM * BUILDING_EXAGGERATION;
-    const mPerUnit = (a * Math.SQRT2) / pxPerM; // metry na jednostkę płótna (iso: a = f/√2, pxPerM = k0·f)
+    const mPerUnit = Math.hypot(a, 2 * b) / pxPerM; // metry na jednostkę płótna (iso: a = f·cos, b = f·sin/2 przy każdym azymucie, pxPerM = k0·f)
     const sx = (x: number, y: number) => a * x + c * y + e;
     const sy = (x: number, y: number) => b * x + d * y + f;
     const P = (x: number, y: number, z: number) => `${p(sx(x, y))} ${p(sy(x, y) - z * s)}`;

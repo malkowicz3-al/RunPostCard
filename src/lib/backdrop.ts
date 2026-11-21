@@ -1,4 +1,4 @@
-import { CAMERA_CENTER, type Camera } from './camera';
+import { unapplyCamera, type Camera } from './camera';
 import type { Rect, Region } from './mapTiles';
 
 type Box = { left: number; top: number; width: number; height: number };
@@ -14,24 +14,24 @@ export function backdropViewBox(screen: Box, frame: Box): Rect {
 type Matrix = [number, number, number, number, number, number];
 const IDENTITY: Matrix = [1, 0, 0, 1, 0, 0];
 
-// Obszar płótna widoczny w tle przy danej kamerze (odwrotność cameraTransform, potem odwrotność macierzy 3D), z marginesem.
+// Obszar płótna widoczny w tle przy danej kamerze (odwrotność cameraTransform z obrotem, potem odwrotność macierzy 3D), z marginesem.
 export function backdropArea(
   [x0, y0, x1, y1]: Rect,
-  { zoom, x, y }: Camera,
+  camera: Camera,
   margin = 0.15,
   [a, b, c, d, e, f]: Matrix = IDENTITY,
 ): Rect {
-  const [cx, cy] = CAMERA_CENTER;
   const mx = (x1 - x0) * margin;
   const my = (y1 - y0) * margin;
   const det = a * d - c * b;
-  if (!det) return backdropArea([x0, y0, x1, y1], { zoom, x, y }, margin);
+  if (!det) return backdropArea([x0, y0, x1, y1], camera, margin);
   const xs: number[] = [];
   const ys: number[] = [];
   for (const sx of [x0 - mx, x1 + mx])
     for (const sy of [y0 - my, y1 + my]) {
-      const px = cx + (sx - cx - x) / zoom - e;
-      const py = cy + (sy - cy - y) / zoom - f;
+      const [ux, uy] = unapplyCamera(camera, [sx, sy]);
+      const px = ux - e;
+      const py = uy - f;
       xs.push((d * px - c * py) / det);
       ys.push((a * py - b * px) / det);
     }

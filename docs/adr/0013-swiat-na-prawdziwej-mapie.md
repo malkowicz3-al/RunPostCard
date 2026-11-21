@@ -102,3 +102,8 @@ Bryły w 3D to prawdziwe wysokości z `render_height` i istniejące przewyższen
 - Sci-fi ma 5 wariantów koloru (`Genre.variants`): paleta obrócona w odcieniu (`shiftHue`) raz przy tworzeniu motywu, nie filtrem SVG (bez kosztu przy rysowaniu); trasa z wariantu, z kontrastem do szczegółów mapy. Violet (obrót 0) to ten sam obiekt co dotąd, więc wynik bez zmian.
 - `genreDef(id, variantId)` zwraca gatunek z wariantem (pamięć podręczna, stała tożsamość dla `useMemo`); `decorateWorld` i `worldProps` dostają wariant.
 - `Genre.reseed`: przycisk „New world” tylko tam, gdzie losowanie coś zmienia (Sci-fi).
+
+## Dopisek 21 XI 2026 (2): święta i Medieval
+- Cztery style świąteczne (decyzja właściciela): Christmas, New Year's Eve, Easter, Valentine's. Wspólna fabryka `holidayTheme` w `src/world/holiday.tsx` na wzór Bright (najpierw wszystkie krawężniki ulic, potem wypełnienia, bez szarych pasów na skrzyżowaniach); każdy styl to plik z paletą, fontem, trasą z konturem i ozdobami. Ozdoby (światełka, choinki, jajka, serca, fajerwerki, płatki) są statyczne i deterministyczne, jedna ścieżka na kolor, rysowane z `layers.buildings` tylko w widoku płaskim; w 3D znikają, a `Genre.accents` daje dachy w kolorach święta. Bez szyldów, pojazdów i „New world”; 2D i 3D.
+- Medieval (`src/world/medieval.tsx`): ilustrowana mapa późnego średniowiecza na wzór Fantasy: domki z dwuspadowym dachem (kolory z `accents`) i kościoły z wieżą zamiast brył, pola w bruzdy, gęste lasy, woda z falkami, ramka z chmur i mgły (pas do 24 px, z dala od podpisu OSM i znaku Stravy), tarcza i wstęga w górnych rogach. Tylko płasko (`Genre.flat`).
+- Nazwy ogólne, bez filmów, gier i marek.

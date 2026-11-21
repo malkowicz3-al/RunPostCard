@@ -26,6 +26,19 @@ describe('backdropArea', () => {
     const area = backdropArea([cx - 100, cy - 100, cx + 100, cy + 100], DEFAULT_CAMERA, 0, [1, 0, 0, 0.5, 0, 0]);
     expect(area).toEqual([cx - 100, 2 * (cy - 100), cx + 100, 2 * (cy + 100)]);
   });
+
+  it('obrót o 90°: prostokąt obejmuje obrócony widok (tu ten sam, bo kwadrat wokół środka) i widok bez obrotu', () => {
+    const [cx, cy] = CAMERA_CENTER;
+    const view: [number, number, number, number] = [cx - 100, cy - 50, cx + 100, cy + 50];
+    const [x0, y0, x1, y1] = backdropArea(view, { zoom: 1, x: 0, y: 0, angle: 90 }, 0);
+    expect(x0).toBeCloseTo(cx - 50, 9);
+    expect(x1).toBeCloseTo(cx + 50, 9);
+    expect(y0).toBeCloseTo(cy - 100, 9);
+    expect(y1).toBeCloseTo(cy + 100, 9);
+    // Pod kątem 45° obszar zawiera i widok bez obrotu.
+    const [r0, s0, r1, s1] = backdropArea(view, { zoom: 1, x: 0, y: 0, angle: 45 }, 0);
+    expect(r0 <= cx - 100 && s0 <= cy - 50 && r1 >= cx + 100 && s1 >= cy + 50).toBe(true);
+  });
 });
 
 describe('nextBackdropArea', () => {
