@@ -88,10 +88,17 @@ Bryły w 3D to prawdziwe wysokości z `render_height` i istniejące przewyższen
 - `Genre` ma pola `signs` (szyldy tylko w Sci-fi), `props.look` (kolory aut i statków, smuga, poświata) i `flat` (tylko widok płaski).
 - `Buildings3D`: `accent` bryły jest kolorem dachu we wszystkich wariantach poza `tower` (tam to nadal neon okien i krawędzi). Motywy bez `accent` bez zmian.
 - Fantasy to ilustrowana mapa na pergaminie na tym samym szkielecie (decyzja właściciela):
-  - zamiast obrysów brył domki (`src/world/fantasyIcons.ts`): komórka 40 px dostaje domek, gdy jej skrót przechodzi próg (ok. 230 na płótnie w gęstym mieście, limit 400 tylko jako bezpiecznik), a w komórce wygrywa bryła ze skrótem z grubej siatki 16 px; zamek to największa bryła od 1000 px² w komórce 400 px z wylosowanym progiem (ok. 3 na płótno). Wybór nie zależy od zestawu brył, więc baza, refined po zoomie i tło pokazują te same domki i zamki; dach w kolorze `accent`, więc „New world” zmienia tylko dachy;
+  - zamiast obrysów brył domki (`src/world/icons.ts`, `houseIcons`; zamki z `landmarks`): komórka 40 px dostaje domek, gdy jej skrót przechodzi próg (ok. 230 na płótnie w gęstym mieście, limit 400 tylko jako bezpiecznik), a w komórce wygrywa bryła ze skrótem z grubej siatki 16 px; zamek to największa bryła od 1000 px² w komórce 400 px z wylosowanym progiem (ok. 3 na płótno). Wybór nie zależy od zestawu brył, więc baza, refined po zoomie i tło pokazują te same domki i zamki; dach w kolorze `accent`, więc „New world” zmienia tylko dachy;
   - lasy, pola i łąki to wzory przez `MapStyle.fills`; obrys wody i lasu przez nowe `MapStyle.outlines` z `paint-order: stroke`, bo kafelki tną poligony i zwykły obrys rysowałby szwy kafelków;
   - statki (do 3) tylko na dużej wodzie (od 25 000 px²), z dala od brzegu i trasy; zwykłe pojazdy wyłączone;
   - ramka, róża wiatrów i wąż morski w nakładce (przestrzeń płótna, więc bez dublowania w refined); róża (r 52) i wąż (skala 0,8) na wysokości y 350, pod statystykami górnych układów (test kolizji z `LAYOUTS`), róża w rogu z mniejszą liczbą punktów trasy;
   - trasa z jednym filtrem (drżenie i kontur tuszem); ulice bez filtrów (wydajność);
   - tylko widok płaski (`Genre.flat`): `PostcardScreen` ukrywa przełącznik 2D/3D i nie włącza 3D.
 - Bez animacji: ruch pojazdów był zrobiony i usunięty, bo za bardzo spadała liczba klatek.
+
+## Dopisek 21 XI 2026: Post-apo, Bright, kolory Sci-fi
+- Post-apo wraca (decyzja właściciela) jako ilustrowana mapa jak Fantasy, na wspólnych ikonach (`src/world/icons.ts`, dawniej `fantasyIcons.ts`): ruiny, największa bryła w komórce 400 px dostaje grzyb atomowy, ramka w pasy ostrzegawcze; tylko płasko (`Genre.flat`).
+- Bright: jasna, kolorowa mapa bez szyldów i pojazdów; 2D i 3D.
+- Sci-fi ma 5 wariantów koloru (`Genre.variants`): paleta obrócona w odcieniu (`shiftHue`) raz przy tworzeniu motywu, nie filtrem SVG (bez kosztu przy rysowaniu); trasa z wariantu, z kontrastem do szczegółów mapy. Violet (obrót 0) to ten sam obiekt co dotąd, więc wynik bez zmian.
+- `genreDef(id, variantId)` zwraca gatunek z wariantem (pamięć podręczna, stała tożsamość dla `useMemo`); `decorateWorld` i `worldProps` dostają wariant.
+- `Genre.reseed`: przycisk „New world” tylko tam, gdzie losowanie coś zmienia (Sci-fi).

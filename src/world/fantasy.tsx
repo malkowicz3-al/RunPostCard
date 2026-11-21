@@ -5,8 +5,8 @@ import type { Rect } from '../lib/mapTiles';
 import type { MapLayers } from '../lib/vectorMap';
 import type { MapTheme } from '../postcard/themes';
 import { FILTER_AREA, Grain, Overlay, Vignette } from '../postcard/themes/texture';
-import { castles as pickCastles, center, corners, houseIcons, shipIcons } from './fantasyIcons';
-import { parseLines } from './geom';
+import { center, corners, houseIcons, landmarks, shipIcons } from './icons';
+import { box, parseLines, poly } from './geom';
 import type { Pt } from './grid';
 
 const INK = '#3a2412';
@@ -54,13 +54,6 @@ const STYLE: MapStyle = {
   outlines: { water: INK, green: INK },
 };
 
-// Obrót i przesunięcie wielokąta do ścieżki (jedna ścieżka na wiele ikon, bez <use>).
-const poly = (pts: Pt[], x: number, y: number, angle = 0) => {
-  const [c, s] = [Math.cos((angle * Math.PI) / 180), Math.sin((angle * Math.PI) / 180)];
-  return `M${pts.map(([px, py]) => `${Math.round((x + px * c - py * s) * 10) / 10} ${Math.round((y + px * s + py * c) * 10) / 10}`).join('L')}Z`;
-};
-const box = (x0: number, y0: number, x1: number, y1: number): Pt[] => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
-
 // Domek 26×22: ściany, drzwi, dach.
 const WALLS = box(-10, -2, 10, 11);
 const DOOR = box(-2.5, 4, 2.5, 11);
@@ -103,7 +96,7 @@ const MAST = box(-1.5, -46, 1.5, 0);
 // Scena bez <defs> (id są w render().scene); refined w Postcard rysuje ją we własnym prostokącie.
 function floor(layers: MapLayers, rect?: Rect): ReactNode {
   const shown = layers.building ? layers.buildings : undefined;
-  const castleSet = pickCastles(shown);
+  const castleSet = landmarks(shown);
   const castles = castleSet.map((b) => center(b).map(Math.round) as Pt);
   const houses = houseIcons(shown, castleSet, ROOF);
   const ships = shipIcons(layers.water, parseLines(layers.major)[0] ?? []);

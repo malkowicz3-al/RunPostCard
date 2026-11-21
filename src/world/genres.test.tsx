@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { hexToRgb } from '../lib/color';
 import { FONTS } from '../lib/fonts';
 import { BASE_KEYS, LINE_KEYS, MAP_KEYS } from '../lib/vectorMap';
-import { GENRES, GENRE_IDS } from './genres';
+import { GENRES, GENRE_IDS, genreDef } from './genres';
 
 const DETAIL_KEYS = MAP_KEYS.filter((k) => !BASE_KEYS.includes(k));
 
@@ -22,7 +22,7 @@ function contrast(a: string, b: string): number {
 
 describe('GENRES', () => {
   it('pełna paleta, font z listy, bryły gatunku i kolory brył', () => {
-    const shapes = { scifi: 'tower', fantasy: undefined };
+    const shapes = { scifi: 'tower', fantasy: undefined, postapo: undefined, bright: undefined };
     for (const id of GENRE_IDS) {
       const { theme } = GENRES[id];
       const style = theme.style();
@@ -34,17 +34,22 @@ describe('GENRES', () => {
     }
   });
 
+  // Wszystkie gatunki i warianty koloru Sci-fi.
+  const all = [
+    ...GENRE_IDS.map((id) => ({ id, name: id, theme: GENRES[id].theme })),
+    ...GENRES.scifi.variants!.map((v) => ({ id: 'scifi', name: `scifi ${v.id}`, theme: genreDef('scifi', v.id).theme })),
+  ];
+
   it('szczegóły mapy odcinają się od trasy (kontrast >= 2)', () => {
-    for (const id of GENRE_IDS) {
-      const { theme } = GENRES[id];
+    for (const { name: id, theme } of all) {
       const route = theme.render({}).route.stroke!;
       for (const key of DETAIL_KEYS) expect(contrast(theme.style().colors[key], route), `${id}: ${key}`).toBeGreaterThanOrEqual(2);
     }
   });
 
   it('id w defs i url(#…) z prefiksem world-<gatunek>-', () => {
-    for (const id of GENRE_IDS) {
-      const out = GENRES[id].theme.render({ major: 'M0 0L10 10', mid: 'M0 5L10 5' });
+    for (const { id, theme } of all) {
+      const out = theme.render({ major: 'M0 0L10 10', mid: 'M0 5L10 5' });
       const svg = renderToStaticMarkup(
         <svg>
           {out.scene}
@@ -56,5 +61,24 @@ describe('GENRES', () => {
       expect(ids.length).toBeGreaterThan(0);
       for (const ref of [...ids, ...refs, out.route.filter!.slice(5, -1)]) expect(ref).toMatch(new RegExp(`^world-${id}-`));
     }
+  });
+
+  it('warianty Sci-fi: unikalne id, Violet bez obrotu, ta sama tożsamość; New world tylko w Sci-fi; tylko płasko Fantasy i Post-apo', () => {
+    const variants = GENRES.scifi.variants!;
+    expect(new Set(variants.map((v) => v.id)).size).toBe(variants.length);
+    expect(variants[0]).toMatchObject({ id: 'violet', hue: 0 });
+    expect(genreDef('scifi')).toBe(GENRES.scifi);
+    expect(genreDef('scifi', 'violet')).toBe(GENRES.scifi);
+    expect(genreDef('fantasy', 'crimson')).toBe(GENRES.fantasy);
+    const crimson = genreDef('scifi', 'crimson');
+    expect(genreDef('scifi', 'crimson')).toBe(crimson);
+    expect(crimson.accents).not.toEqual(GENRES.scifi.accents);
+    expect(crimson.theme.style().background).not.toBe(GENRES.scifi.theme.style().background);
+    for (const v of variants) {
+      for (const c of [v.swatch, v.route, ...genreDef('scifi', v.id).accents]) expect(c).toMatch(/^#[0-9a-f]{6}$/);
+    }
+    expect(GENRE_IDS).toEqual(['scifi', 'fantasy', 'postapo', 'bright']);
+    expect(GENRE_IDS.filter((id) => GENRES[id].reseed)).toEqual(['scifi']);
+    expect(GENRE_IDS.filter((id) => GENRES[id].flat)).toEqual(['fantasy', 'postapo']);
   });
 });

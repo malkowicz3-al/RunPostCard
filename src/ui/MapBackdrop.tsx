@@ -49,7 +49,7 @@ export function MapBackdrop({
   terrain?: TerrainImage; // ten sam obraz terenu co na pocztówce (3D: zamiast podłogi i brył)
   points?: [number, number][]; // punkty trasy (fit.points) do linii w odcinkach
   color?: (t: number) => string; // styl linii jak na pocztówce
-  world?: { seed: number; genre: GenreId }; // tło World: kafelki z dekoracją gatunku (ADR 0013), bez pojazdów
+  world?: { seed: number; genre: GenreId; variant?: string }; // tło World: kafelki z dekoracją gatunku (ADR 0013), bez pojazdów
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [viewBox, setViewBox] = useState<Rect | null>(null);
@@ -87,8 +87,8 @@ export function MapBackdrop({
   // 3D z terenem: podłogi wektorowej nie ma, więc nie pobieramy jej.
   const { refined: tiles } = useRegionLayers(projection, region, profile, !(iso && terrain), loadArea);
   const refined = useMemo(
-    () => (world && points && tiles ? { rect: tiles.rect, layers: decorateWorld(tiles.layers, points, world.seed, world.genre) } : tiles),
-    [tiles, world?.seed, world?.genre, points],
+    () => (world && points && tiles ? { rect: tiles.rect, layers: decorateWorld(tiles.layers, points, world.seed, world.genre, world.variant) } : tiles),
+    [tiles, world?.seed, world?.genre, world?.variant, points],
   );
 
   const { style, routeStyle } = useMemo(() => {

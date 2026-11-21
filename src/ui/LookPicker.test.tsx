@@ -14,13 +14,11 @@ const picker = (look: Look, genre: GenreId = 'scifi') =>
       onLook={noop}
       accent="#ff2bd6"
       onAccent={noop}
-      gradient="dusk"
-      onGradient={noop}
       onPhotoFile={noop}
-      onScenery={noop}
-      onOwnPhoto={noop}
       worldGenre={genre}
       onWorldGenre={noop}
+      worldVariant="violet"
+      onWorldVariant={noop}
       onNewWorld={noop}
     />,
   );
@@ -33,5 +31,18 @@ describe('LookPicker World', () => {
     expect(svg).toContain('Sci-fi');
     expect(picker('world', 'fantasy')).toContain('Fantasy'); // zamknięta lista pokazuje tylko wybrany styl
     expect(picker('dark')).not.toContain('New world');
+  });
+
+  it('New world i kolory tylko w Sci-fi; bez sekcji Gradient i Scenery', () => {
+    for (const genre of ['fantasy', 'postapo', 'bright'] as GenreId[]) {
+      expect(picker('world', genre)).not.toContain('New world');
+      expect(picker('world', genre)).not.toContain('aria-label="Crimson"');
+    }
+    expect(picker('world')).toContain('aria-label="Crimson"');
+    expect(picker('dark')).not.toContain('aria-label="Crimson"');
+    for (const look of ['world', 'dark', 'gradient', 'transparent'] as Look[]) {
+      expect(picker(look)).not.toContain('>Gradient<');
+      expect(picker(look)).not.toContain('>Scenery<');
+    }
   });
 });

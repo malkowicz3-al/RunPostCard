@@ -3,7 +3,7 @@ import { parseLines, routeIndex } from './geom';
 import type { Pt } from './grid';
 import { hashSeed } from './rng';
 
-// Rozmieszczenie ikon ilustrowanej mapy Fantasy (px płótna). Czyste funkcje: ten sam wynik w bazie i refined.
+// Rozmieszczenie ikon ilustrowanych map Fantasy i Post-apo (px płótna). Czyste funkcje: ten sam wynik w bazie i refined.
 export type House = { x: number; y: number; roof: string };
 export type Ship = { x: number; y: number; angle: number };
 
@@ -12,9 +12,9 @@ export type Ship = { x: number; y: number; angle: number };
 const CELL = 40;
 const HOUSE_P = 0.18; // ok. 230 domków na płótnie w gęstym mieście (strojone na oko)
 const MAX_HOUSES = 400; // tylko bezpiecznik
-const CASTLE_CELL = 400;
-const CASTLE_P = 0.25; // ok. 3 zamki na płótno: więcej psuło klimat wioski
-const CASTLE_AREA = 1000; // px² prostokąta otaczającego
+const LANDMARK_CELL = 400;
+const LANDMARK_P = 0.25; // ok. 3 na płótno: więcej psuło klimat wioski
+const LANDMARK_AREA = 1000; // px² prostokąta otaczającego
 const BIG_WATER = 25000; // px²
 const SHIP_GRID = 40;
 const SHIP_MARGIN = 90;
@@ -34,27 +34,29 @@ const bboxArea = ({ ring }: Building) => {
   return (Math.max(...xs) - Math.min(...xs)) * (Math.max(...ys) - Math.min(...ys));
 };
 
-// Zamki: największa bryła (od 1000 px²) w komórce 400 px, której skrót przechodzi próg; najwyżej jeden na komórkę.
-export function castles(buildings: Building[] = []): Building[] {
+// Punkty orientacyjne (zamek w Fantasy, grzyb atomowy w Post-apo): największa bryła (od 1000 px²) w komórce 400 px,
+// której skrót przechodzi próg; najwyżej jeden na komórkę.
+export function landmarks(buildings: Building[] = []): Building[] {
   const cells = new Map<string, { area: number; b: Building }>();
   for (const b of buildings) {
     const area = bboxArea(b);
-    if (area < CASTLE_AREA) continue;
+    if (area < LANDMARK_AREA) continue;
     const [cx, cy] = center(b);
-    const [i, j] = [Math.floor(cx / CASTLE_CELL), Math.floor(cy / CASTLE_CELL)];
-    if (hashSeed('fc', i, j) / U32 >= CASTLE_P) continue;
+    const [i, j] = [Math.floor(cx / LANDMARK_CELL), Math.floor(cy / LANDMARK_CELL)];
+    if (hashSeed('fc', i, j) / U32 >= LANDMARK_P) continue;
     const old = cells.get(`${i}:${j}`);
     if (!old || area > old.area) cells.set(`${i}:${j}`, { area, b });
   }
   return [...cells.values()].map((c) => c.b);
 }
 
-// Domki: komórka 40 px przechodząca próg, w niej bryła z najmniejszym skrótem grubej siatki; bez zamków.
+// Domki (albo ruiny): komórka 40 px przechodząca próg, w niej bryła z najmniejszym skrótem grubej siatki; bez punktów
+// orientacyjnych (skip).
 export function houseIcons(buildings: Building[] = [], skip: Building[] = [], roof = '#b5442f'): House[] {
-  const castleSet = new Set(skip);
+  const skipSet = new Set(skip);
   const cells = new Map<string, { key: number; cell: number; house: House }>();
   for (const b of buildings) {
-    if (castleSet.has(b)) continue;
+    if (skipSet.has(b)) continue;
     const [cx, cy] = center(b);
     const [i, j] = [Math.floor(cx / CELL), Math.floor(cy / CELL)];
     const cell = hashSeed('fh', i, j);
@@ -109,10 +111,10 @@ export function shipIcons(water: string | undefined, route: Pt[]): Ship[] {
   return ships;
 }
 
-// Górne rogi na róże wiatrów i smoka: pod statystykami z górnych układów (kończą się ok. y 235), w polu trasy.
-// Pierwszy ten z mniejszą liczbą punktów trasy (remis: lewy).
+// Górne rogi na dwa rysunki (Fantasy: róża wiatrów i wąż; Post-apo: znak promieniowania i tablica z czaszką): pod statystykami z górnych układów (kończą się ok. y 235), w polu trasy.
+// Pierwszy (róża, znak) ten z mniejszą liczbą punktów trasy (remis: lewy).
 export const CORNERS: [Pt, Pt] = [[160, 350], [920, 350]];
-// Zasięg rysunków względem środka rogu (x0, y0, x1, y1) dla testu kolizji ze statystykami.
+// Zasięg rysunków względem środka rogu (x0, y0, x1, y1) dla testu kolizji ze statystykami; Post-apo mieści się w nich.
 export const COMPASS_BOX = [-58, -76, 58, 58];
 export const SERPENT_BOX = [-96, -36, 66, 38];
 

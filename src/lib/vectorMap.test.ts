@@ -232,6 +232,16 @@ describe('buildMapLayers', () => {
     expect(buildings![0].ring[0]).toEqual([70, 0]);
   });
 
+  it('extrude: on-canvas buildings not lost to off-canvas ones', () => {
+    const off = Array.from({ length: MAX_BUILDINGS + 10 }, (_, i) =>
+      feature({ layer: 'building', type: 3, geometry: square(-4000 + (i % 100) * 30, -4000 + Math.floor(i / 100) * 30, 20) }),
+    );
+    const on = Array.from({ length: 10 }, (_, i) => feature({ layer: 'building', type: 3, geometry: square(100 + i * 50, 100, 5) }));
+    const { buildings } = buildMapLayers([...off, ...on], [1000, 1000], POSTCARD_DETAILED, [-5000, -5000, 6000, 6000]);
+    expect(buildings).toHaveLength(MAX_BUILDINGS);
+    for (let i = 0; i < 10; i++) expect(buildings).toContainEqual(expect.objectContaining({ ring: square(100 + i * 50, 100, 5)[0].map(({ x, y }) => [x, y]) }));
+  });
+
   it('jeden string d na klucz', () => {
     const layers = buildMapLayers([feature({}), feature({ geometry: [[{ x: 0, y: 50 }, { x: 99, y: 50 }]] })], SIZE, POSTCARD);
     expect(layers.minor).toBe('M10 10L100 10M0 50L99 50');

@@ -9,7 +9,7 @@ import { TERRAIN_ATTRIBUTION } from '../lib/dem';
 import { DEFAULT_FONT, FONTS, fontStack, type FontId } from '../lib/fonts';
 import { MAP_ATTRIBUTION, type Building, type MapLayers } from '../lib/vectorMap';
 import { Buildings3D } from './Buildings3D';
-import { Background, type GradientId } from './Background';
+import { Background } from './Background';
 import { MapBackground } from './MapBackground';
 import { IsoRoute } from './IsoRoute';
 import { PhotoBackground } from './PhotoBackground';
@@ -40,7 +40,6 @@ export function Postcard({
   fontCss,
   font = DEFAULT_FONT,
   background = 'gradient',
-  gradient,
   map,
   photo,
   theme = 'dark',
@@ -65,7 +64,6 @@ export function Postcard({
   fontCss?: string;
   font?: FontId;
   background?: PostcardBackground;
-  gradient?: GradientId;
   map?: MapLayers;
   photo?: { href: string; dim: number };
   theme?: ThemeId | MapTheme; // obiekt: motyw spoza THEMES (świat World, ADR 0013)
@@ -282,7 +280,7 @@ export function Postcard({
           </filter>
         </defs>
       )}
-      {background === 'gradient' && <Background gradient={gradient} />}
+      {background === 'gradient' && <Background />}
       {iso ? (
         <g>
           {out && <rect width={1080} height={1920} fill={style.background} />}

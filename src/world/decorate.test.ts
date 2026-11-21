@@ -4,7 +4,7 @@ import { fitRoute } from '../lib/routePath';
 import type { Building, MapLayers } from '../lib/vectorMap';
 import { ROUTE_BOX } from '../postcard/Route';
 import { decorateWorld, parseLines, worldProps } from './decorate';
-import { GENRES } from './genres';
+import { GENRES, genreDef } from './genres';
 
 const points = fitRoute(mockActivities()[0].map.summary_polyline, ROUTE_BOX)!.points;
 const rect = (x: number, y: number, w: number, h: number): [number, number][] => [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
@@ -77,6 +77,23 @@ describe('decorateWorld', () => {
         if (x.sign) expect(x.h).toBeGreaterThanOrEqual(25);
       }
     }
+  });
+});
+
+describe('warianty koloru', () => {
+  it('bez wariantu i Violet tak samo; Crimson te same bryły i szyldy w swoich kolorach; pojazdy z obróconym wyglądem', () => {
+    const base = decorateWorld(LAYERS, points, 4, 'scifi');
+    expect(decorateWorld(LAYERS, points, 4, 'scifi', 'violet')).toEqual(base);
+    const crimson = decorateWorld(LAYERS, points, 4, 'scifi', 'crimson');
+    const { accents } = genreDef('scifi', 'crimson');
+    expect(crimson.buildings!.map((b) => [b.ring, b.sign])).toEqual(base.buildings!.map((b) => [b.ring, b.sign]));
+    crimson.buildings!.forEach((b, k) => expect(b.accent).toBe(accents[GENRES.scifi.accents.indexOf(base.buildings![k].accent!)]));
+    const props = worldProps(LAYERS, points, 4, 'scifi');
+    expect(props[0].look).toBe(GENRES.scifi.props.look);
+    const shifted = worldProps(LAYERS, points, 4, 'scifi', 'crimson');
+    expect(shifted.map(({ x, y, angle }) => [x, y, angle])).toEqual(props.map(({ x, y, angle }) => [x, y, angle]));
+    expect(shifted[0].look).toBe(genreDef('scifi', 'crimson').props.look);
+    expect(shifted[0].look.cars).not.toEqual(GENRES.scifi.props.look.cars);
   });
 });
 

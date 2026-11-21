@@ -1,6 +1,5 @@
 import type { IsoRoute } from '../lib/isoRoute';
 import type { Prop } from './decorate';
-import { GENRES } from './genres';
 
 const SHIP_LIFT = 60; // statki w 3D wiszą nad podłożem (px pocztówki)
 
@@ -10,7 +9,7 @@ const SHIP_LIFT = 60; // statki w 3D wiszą nad podłożem (px pocztówki)
 // i statki (nad nimi). defs tylko w warstwie innej niż 'sky', więc dwie instancje w 3D nie dublują id.
 export function Props({ props, matrix, layer }: { props: Prop[]; matrix?: IsoRoute['matrix']; layer?: 'ground' | 'sky' }) {
   if (!props.length) return null;
-  const { look } = GENRES[props[0].genre].props;
+  const { look } = props[0];
   const glow = `world-${props[0].genre}-props-glow`;
   const shown = props.filter((p) => !layer || (layer === 'ground' ? p.kind === 'car' : p.kind === 'ship'));
   const place = ({ x, y, angle }: Prop): [number, number, number] => {

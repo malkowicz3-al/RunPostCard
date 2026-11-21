@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { mockActivities } from '../dev/mockActivities';
 import type { Building } from '../lib/vectorMap';
 import { DATA, LAYOUTS } from '../postcard/slots';
-import { COMPASS_BOX, CORNERS, SERPENT_BOX, castles, center, corners, houseIcons, shipIcons } from './fantasyIcons';
-import { segDist } from './geom';
+import { COMPASS_BOX, CORNERS, SERPENT_BOX, center, corners, houseIcons, landmarks, shipIcons } from './icons';
+import { box, poly, segDist } from './geom';
+import { SIGN, TREFOIL_R } from './postapo';
 import type { Pt } from './grid';
 
 const rect = (x: number, y: number, w: number, h: number): Pt[] => [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
@@ -18,9 +19,9 @@ const routeDist = ([x, y]: Pt) => segDist(x, y, route[0], route[1]);
 const lake = 'M200 600L900 600L900 1200L200 1200Z';
 const key = (p: Pt | { x: number; y: number }) => ('x' in p ? `${p.x}:${p.y}` : `${p[0]}:${p[1]}`);
 
-describe('fantasyIcons', () => {
+describe('icons', () => {
   it('domki i zamki: deterministycznie, jeden domek na komórkę, w gęstym mieście ok. 230, bez zamków pod domkami', () => {
-    const c = castles(all);
+    const c = landmarks(all);
     const houses = houseIcons(all, c);
     expect(houseIcons(all, c)).toEqual(houses);
     expect(houses.length).toBeGreaterThan(150);
@@ -37,7 +38,7 @@ describe('fantasyIcons', () => {
   it('wybór nie zależy od zestawu: przesunięcie o 0,3 px i wycinek dają to samo we wspólnej części', () => {
     const shift = (bs: Building[]) => bs.map((b) => ({ ...b, ring: b.ring.map(([x, y]) => [x + 0.3, y + 0.3] as Pt) }));
     const at = (bs: Building[]) => {
-      const c = castles(bs);
+      const c = landmarks(bs);
       return { houses: houseIcons(bs, c).map(key).sort(), castles: c.map((b) => center(b).map(Math.round).join(':')).sort() };
     };
     const base = at(all);
@@ -94,5 +95,17 @@ describe('fantasyIcons', () => {
           expect(hit, `${layout.id}.${item.slot.id} (${DATA[item.slot.data].value(run)})`).toBe(false);
         }
       }
+  });
+
+  it('znak promieniowania i tablica Post-apo mieszczą się w zasięgach róży i węża (test kolizji wyżej)', () => {
+    const [x0, y0, x1, y1] = COMPASS_BOX;
+    expect(TREFOIL_R).toBeLessThanOrEqual(Math.min(-x0, -y0, x1, y1));
+    const [sx0, sy0, sx1, sy1] = SERPENT_BOX;
+    expect(SIGN[0] >= sx0 && SIGN[1] >= sy0 && SIGN[2] <= sx1 && SIGN[3] <= sy1).toBe(true);
+  });
+
+  it('poly: przesunięcie, obrót i zaokrąglenie do 0,1 px', () => {
+    expect(poly(box(0, 0, 2, 1), 10, 20)).toBe('M10 20L12 20L12 21L10 21Z');
+    expect(poly([[1, 0], [0.33, 0]], 0, 0, 90)).toBe('M0 1L0 0.3Z');
   });
 });

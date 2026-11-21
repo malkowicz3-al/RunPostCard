@@ -41,3 +41,10 @@ export function parseLines(d = ''): Pt[][] {
     .filter(Boolean)
     .map((sub) => sub.split('L').map((p) => p.trim().split(/[ ,]+/).map(Number) as Pt));
 }
+
+// Obrót i przesunięcie wielokąta do ścieżki (jedna ścieżka na wiele ikon, bez <use>); współrzędne co 0,1 px.
+export const poly = (pts: Pt[], x: number, y: number, angle = 0) => {
+  const [c, s] = [Math.cos((angle * Math.PI) / 180), Math.sin((angle * Math.PI) / 180)];
+  return `M${pts.map(([px, py]) => `${Math.round((x + px * c - py * s) * 10) / 10} ${Math.round((y + px * s + py * c) * 10) / 10}`).join('L')}Z`;
+};
+export const box = (x0: number, y0: number, x1: number, y1: number): Pt[] => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];

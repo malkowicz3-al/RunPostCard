@@ -14,7 +14,7 @@ import type { Activity } from '../strava/api';
 import { Postcard } from '../postcard/Postcard';
 import type { TextStyle } from '../postcard/SlotNumber';
 import { ROUTE_BOX } from '../postcard/Route';
-import { gradientCss, type GradientId } from '../postcard/Background';
+import { gradientCss } from '../postcard/Background';
 import { colorScale, type RouteColor } from '../postcard/routeColor';
 import { CAMERA_CENTER, DEFAULT_CAMERA, clampCamera, keepCamera, type Camera } from '../lib/camera';
 import { backdropArea, nextBackdropArea, type LoadedArea } from '../lib/backdrop';
@@ -30,7 +30,7 @@ import { DATA, resolveLayout, slotBox, slotMenu, swapSlot, type LayoutId, type O
 import { THEMES, type ThemeId } from '../postcard/themes';
 import { DEFAULT_ACCENT } from '../postcard/themes/neon';
 import { decorateWorld, worldProps } from '../world/decorate';
-import { GENRES, type GenreId } from '../world/genres';
+import { GENRES, genreDef, type Genre, type GenreId } from '../world/genres';
 import { hashSeed } from '../world/rng';
 import { DataModal } from './DataModal';
 import { PhotoEditor } from './PhotoEditor';
@@ -41,7 +41,6 @@ import { LinePicker } from './LinePicker';
 import { LookPicker, type Look } from './LookPicker';
 import { MapBackdrop } from './MapBackdrop';
 import { StyleSheet } from './StyleSheet';
-import { sceneryUrl, type SceneryId } from './scenery';
 import { TextStyleToggles } from './TextStyleToggles';
 import { useMapLayers } from './useMapLayers';
 import { useRegionLayers } from './useRegionLayers';
@@ -79,11 +78,10 @@ function previewColors(
   look: Look,
   accent: string,
   photo: string | undefined,
-  gradient: GradientId,
-  genre: GenreId,
+  genre: Genre,
 ): { color: string; bg: CSSProperties } {
   if (look in THEMES || look === 'world') {
-    const theme = look === 'world' ? GENRES[genre].theme : THEMES[look as ThemeId];
+    const theme = look === 'world' ? genre.theme : THEMES[look as ThemeId];
     return { color: theme.render({}, { accent }).text.color, bg: { background: theme.style({ accent }).background } };
   }
   if (look === 'photo' && photo) {
@@ -92,7 +90,7 @@ function previewColors(
   if (look === 'transparent') {
     return { color: '#ffffff', bg: { background: 'conic-gradient(#3a3a3f 25%, #2c2c30 0 50%, #3a3a3f 0 75%, #2c2c30 0) 0 0 / 16px 16px' } };
   }
-  return { color: '#ffffff', bg: { background: gradientCss(gradient) } };
+  return { color: '#ffffff', bg: { background: gradientCss() } };
 }
 
 // Domyślne tło: mapa Dark albo Light wg motywu systemu; bez trasy nie ma mapy, więc gradient.
@@ -130,9 +128,6 @@ export function PostcardScreen({
   const [fontCss, setFontCss] = useState<{ id: FontId; css?: string }>();
   const fontReady = fontCss?.id === font;
   const [photo, setPhoto] = useState<string>();
-  const [scenery, setScenery] = useState<SceneryId>(); // zdjęcie z listy Scenery, nie własne
-  // Własne zdjęcie zostaje w pamięci, gdy tło przechodzi na Scenery.
-  const ownPhoto = useRef<{ file: Blob; url: string; edit: PhotoEdit }>(undefined);
   // Oryginał zostaje, żeby kolejne edycje nie traciły jakości; edycja jest wypalana w `photo`.
   const [photoFile, setPhotoFile] = useState<Blob>();
   const [photoEdit, setPhotoEdit] = useState<PhotoEdit>(NO_EDIT);
@@ -147,7 +142,6 @@ export function PostcardScreen({
   const [photoError, setPhotoError] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
   const [accent, setAccent] = useState(DEFAULT_ACCENT);
-  const [gradient, setGradient] = useState<GradientId>('dusk');
   const [textStyle, setTextStyle] = useState<TextStyle>({});
   const [mapFailed, setMapFailed] = useState(false);
   const [view, setView] = useState<View>('flat');
@@ -161,6 +155,7 @@ export function PostcardScreen({
   // Świat World (ADR 0013): ziarno z biegu, „New world” losuje inne (tylko w pamięci).
   const [worldSeed, setWorldSeed] = useState(() => hashSeed(activity.id));
   const [worldGenre, setWorldGenre] = useState<GenreId>('scifi');
+  const [worldVariant, setWorldVariant] = useState('violet'); // kolor Sci-fi; inne gatunki go pomijają
   const [terrainPick, setTerrainPick] = useState<boolean | null>(null); // null = automatycznie z przewyższenia
   const [layoutId, setLayoutId] = useState<LayoutId>('classic');
   const [overrides, setOverrides] = useState<Partial<Record<LayoutId, Overrides>>>({});
@@ -177,11 +172,14 @@ export function PostcardScreen({
   // World (ADR 0013): prawdziwa mapa w stylu gatunku, więc ten sam tor kafelków co Map (bez terenu).
   const isWorld = look === 'world' && fit !== null;
   const hasMap = isMap || isWorld;
-  const worldTheme = GENRES[worldGenre].theme;
+  const genre = genreDef(worldGenre, worldVariant);
+  const worldTheme = genre.theme;
+  // World maluje trasę po swojemu (kolor, filtr), więc sekcja Route jest ukryta, a jej ustawienia nie działają.
+  const routeStyleEff: RouteColor = isWorld ? 'theme' : routeColor;
   // 3D liczy się na płaskiej projekcji trasy, więc bez niej przycisk nie ma sensu.
   const has3d = !!streams?.altitude && fit !== null;
-  // Ilustrowana mapa Fantasy jest tylko płaska (Genre.flat).
-  const flatOnly = isWorld && GENRES[worldGenre].flat;
+  // Ilustrowane mapy (Fantasy, Post-apo) są tylko płaskie (Genre.flat).
+  const flatOnly = isWorld && genre.flat;
   const is3d = view === '3d' && has3d && !flatOnly;
   const profile = POSTCARD_DETAILED;
   const map = useMapLayers(fit?.projection ?? null, SIZE, profile, hasMap);
@@ -278,19 +276,19 @@ export function PostcardScreen({
   const terrainLoading = terrainOn && terrain.loading;
   // Dekoracja World od obiektów warstw, więc klatki animacji i ruch kamery jej nie liczą od nowa.
   const worldMap = useMemo(
-    () => (isWorld && map.layers && fit ? decorateWorld(map.layers, fit.points, worldSeed, worldGenre) : undefined),
-    [isWorld, map.layers, fit, worldSeed, worldGenre],
+    () => (isWorld && map.layers && fit ? decorateWorld(map.layers, fit.points, worldSeed, worldGenre, worldVariant) : undefined),
+    [isWorld, map.layers, fit, worldSeed, worldGenre, worldVariant],
   );
   const worldRefined = useMemo(
     () =>
       isWorld && zoomed.refined && fit
-        ? { rect: zoomed.refined.rect, layers: decorateWorld(zoomed.refined.layers, fit.points, worldSeed, worldGenre) }
+        ? { rect: zoomed.refined.rect, layers: decorateWorld(zoomed.refined.layers, fit.points, worldSeed, worldGenre, worldVariant) }
         : undefined,
-    [isWorld, zoomed.refined, fit, worldSeed, worldGenre],
+    [isWorld, zoomed.refined, fit, worldSeed, worldGenre, worldVariant],
   );
   const vehicles = useMemo(
-    () => (isWorld && map.layers && fit ? worldProps(map.layers, fit.points, worldSeed, worldGenre) : undefined),
-    [isWorld, map.layers, fit, worldSeed, worldGenre],
+    () => (isWorld && map.layers && fit ? worldProps(map.layers, fit.points, worldSeed, worldGenre, worldVariant) : undefined),
+    [isWorld, map.layers, fit, worldSeed, worldGenre, worldVariant],
   );
   // Punkt należy do zdjęcia, przy którym go kliknięto: po zmianie zdjęcia nie liczymy go na nowym ani przez jeden render.
   const cutout = usePersonCutout(photo, behind && look === 'photo', pickAt?.href === photo ? pickAt : null);
@@ -314,20 +312,18 @@ export function PostcardScreen({
     setSettled(DEFAULT_CAMERA);
   }, [activity, is3d]);
 
-  // Płasko przy zoomie 1 kółko przewija stronę (ctrl+kółko nadal przybliża); palec zawsze przesuwa mapę (touch-action: none).
-  const scrollsPage = !is3d && camera.zoom <= 1;
-  // Listener nie-pasywny, żeby preventDefault blokował przewijanie strony; is3d w zależnościach przez scrollsPage.
+  // Kółko nad pocztówką zawsze przybliża; listener nie-pasywny, żeby preventDefault blokował przewijanie strony.
   useEffect(() => {
     const el = previewRef.current;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
-      if (!fit || (scrollsPage && !e.ctrlKey)) return;
+      if (!fit) return;
       e.preventDefault();
       moveCamera((c) => ({ ...c, zoom: c.zoom * Math.exp(-e.deltaY * 0.002) }));
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
-  }, [is3d, fit, scrollsPage]);
+  }, [fit]);
 
   useEffect(() => {
     setEditing(null);
@@ -406,7 +402,7 @@ export function PostcardScreen({
   };
   const scale = FONTS[font].scale;
   // Bez wczytanej mapy pocztówka ma gradient, więc podgląd też.
-  const preview = previewColors(mapMissing ? 'gradient' : look, accent, photo, gradient, worldGenre);
+  const preview = previewColors(mapMissing ? 'gradient' : look, accent, photo, genre);
 
   // Przy błędzie mapy wracamy do gradientu.
   useEffect(() => {
@@ -426,7 +422,6 @@ export function PostcardScreen({
     fontCss: fontCss?.css,
     font,
     background: hasMap && !mapMissing ? 'map' : look === 'photo' && photo ? 'photo' : look === 'transparent' ? 'transparent' : 'gradient',
-    gradient,
     map: isWorld ? worldMap : map.layers,
     photo: photo ? { href: photo, dim: dim / 100 } : undefined,
     theme: isWorld ? worldTheme : isMap ? (look as ThemeId) : undefined,
@@ -439,19 +434,19 @@ export function PostcardScreen({
     refined: isWorld ? worldRefined : zoomed.refined,
     terrain: terrainImage,
     layout: items,
-    route: showRoute,
-    routeColor,
+    route: isWorld || showRoute,
+    routeColor: routeStyleEff,
     textStyle,
     person,
-    glow,
-    mapDim,
-  }), [glow, mapDim, textStyle, activity, fontCss?.css, font, isMap, hasMap, mapMissing, isWorld, worldMap, vehicles, worldRefined, worldTheme, look, gradient, photo, map.layers, dim, accent, streams, is3d, camera, iso, zoomed.refined, terrainImage, items, showRoute, routeColor, person]);
+    glow: isWorld ? 0 : glow,
+    mapDim: isWorld ? 0 : mapDim,
+  }), [routeStyleEff, glow, mapDim, textStyle, activity, fontCss?.css, font, isMap, hasMap, mapMissing, isWorld, worldMap, vehicles, worldRefined, worldTheme, look, photo, map.layers, dim, accent, streams, is3d, camera, iso, zoomed.refined, terrainImage, items, showRoute, routeColor, person]);
   const previewCard = <PreviewCard props={postcardProps} playing={playPreview} />;
 
   const currentSvg = () => previewRef.current?.querySelector('svg') ?? null;
 
   const choose = (value: Look) => {
-    // Inny wygląd unieważnia trwające wczytanie zdjęcia (wolne Scenery nie nadpisze mapy ani gradientu).
+    // Inny wygląd unieważnia trwające wczytanie zdjęcia (wolny plik nie nadpisze wybranej mapy).
     if (value !== 'photo') {
       photoReq.current++;
       setPhotoBusy(false);
@@ -459,7 +454,7 @@ export function PostcardScreen({
     setMapFailed(false);
     setLook(value);
     if (value in THEMES) setFont(THEMES[value as ThemeId].font);
-    if (value === 'world') setFont(GENRES[worldGenre].theme.font);
+    if (value === 'world') setFont(genre.theme.font);
   };
 
   const chooseWorldGenre = (id: GenreId) => {
@@ -468,48 +463,20 @@ export function PostcardScreen({
   };
 
   // Przy błędzie zostaje poprzednie zdjęcie i wygląd.
-  // `stock`: gotowe zdjęcie z listy Scenery (wczytywane z public/backgrounds); bez = własny plik.
-  const choosePhoto = (source: Blob | Promise<Blob>, stock?: SceneryId) => {
+  const choosePhoto = (file: Blob) => {
     const n = ++photoReq.current;
     setPhotoBusy(true);
-    Promise.resolve(source)
-      .then(async (file) => ({ file, url: await loadPhoto(file) }))
-      .then(({ file, url }) => {
+    loadPhoto(file)
+      .then((url) => {
         if (n !== photoReq.current) return;
         setPhoto(url);
-        setScenery(stock);
         setPhotoFile(file);
         setPhotoEdit(NO_EDIT);
-        if (!stock) ownPhoto.current = { file, url, edit: NO_EDIT };
         choose('photo');
         setPhotoError(false);
       })
       .catch(() => n === photoReq.current && setPhotoError(true))
       .finally(() => n === photoReq.current && setPhotoBusy(false));
-  };
-
-  const chooseScenery = (id: SceneryId) => {
-    if (id === scenery && look === 'photo') return; // ta sama scena: bez ponownego wczytania i utraty edycji
-    choosePhoto(
-      fetch(sceneryUrl(id)).then((r) => {
-        if (!r.ok) throw new Error(`Scenery ${r.status}`);
-        return r.blob();
-      }),
-      id,
-    );
-  };
-
-  // Powrót z Scenery do własnego zdjęcia razem z jego edycją.
-  const restoreOwnPhoto = () => {
-    const own = ownPhoto.current;
-    if (!own) return;
-    photoReq.current++;
-    setPhotoBusy(false);
-    setPhoto(own.url);
-    setPhotoFile(own.file);
-    setPhotoEdit(own.edit);
-    setScenery(undefined);
-    choose('photo');
   };
 
   const applyPhotoEdit = (edit: PhotoEdit) => {
@@ -522,7 +489,6 @@ export function PostcardScreen({
         if (n !== photoReq.current) return;
         setPhoto(url);
         setPhotoEdit(edit);
-        if (!scenery) ownPhoto.current = { file: photoFile, url, edit };
         setPhotoError(false);
       })
       .catch(() => n === photoReq.current && setPhotoError(true))
@@ -531,8 +497,8 @@ export function PostcardScreen({
 
   // Ten sam styl linii na tle ekranu co na pocztówce.
   const lineColor = useMemo(
-    () => colorScale(routeColor, streams, activity.max_heartrate) ?? undefined,
-    [routeColor, streams, activity.max_heartrate],
+    () => colorScale(routeStyleEff, streams, activity.max_heartrate) ?? undefined,
+    [routeStyleEff, streams, activity.max_heartrate],
   );
   // Tło ekranu tylko przy motywie mapy (lub świecie World) i po wczytaniu mapy pocztówki, płasko i w 3D (ADR 0007).
   const backdrop = hasMap && !mapMissing && fit !== null;
@@ -553,7 +519,7 @@ export function PostcardScreen({
           terrain={terrainImage}
           points={fit.points}
           color={lineColor}
-          world={isWorld ? { seed: worldSeed, genre: worldGenre } : undefined}
+          world={isWorld ? { seed: worldSeed, genre: worldGenre, variant: worldVariant } : undefined}
         />
       )}
       <div className="top-bar">
@@ -624,16 +590,13 @@ export function PostcardScreen({
               onLook={choose}
               accent={accent}
               onAccent={setAccent}
-              gradient={gradient}
-              onGradient={setGradient}
               onPhotoFile={choosePhoto}
-              scenery={scenery}
-              onScenery={chooseScenery}
-              ownPhotoHref={ownPhoto.current?.url}
-              onOwnPhoto={restoreOwnPhoto}
+              photoHref={photo}
               photoBusy={photoBusy}
               worldGenre={worldGenre}
               onWorldGenre={chooseWorldGenre}
+              worldVariant={worldVariant}
+              onWorldVariant={setWorldVariant}
               onNewWorld={() => setWorldSeed(Math.floor(Math.random() * 2 ** 32))}
             />
           </div>
@@ -731,9 +694,9 @@ export function PostcardScreen({
                   </button>
                 )}
               </div>
-              {fit && <p className="panel-hint">Drag, Ctrl + scroll or pinch to move and zoom the map.</p>}
+              {fit && <p className="panel-hint">Drag, scroll or pinch to move and zoom the map.</p>}
           </section>
-          {fit && (
+          {fit && !isWorld && (
             <section className="panel-section" inert={exporting}>
               <h3 className="panel-heading">Route</h3>
               <div className="toggle-row">

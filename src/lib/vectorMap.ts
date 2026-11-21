@@ -170,7 +170,7 @@ export function buildMapLayers(
   const k = 1 / profile.precision;
   const round = (v: number) => Math.round(v * k) / k;
   const parts: Partial<Record<MapKey, string[]>> = {};
-  const buildings: (Building & { area: number })[] = [];
+  const buildings: (Building & { area: number; on: boolean })[] = [];
 
   for (const f of features)
     for (const key of classify(f, profile)) addFeature(f, key);
@@ -199,7 +199,9 @@ export function buildMapLayers(
       if (line && Math.hypot(maxX - minX, maxY - minY) < 1) continue;
       if (key === 'building' && profile.extrude && !f.hide3d) {
         const min = f.min ?? 0;
-        buildings.push({ ring: part[0], h: Math.max(min, f.h ?? DEFAULT_HEIGHT_M), min, area: (maxX - minX) * (maxY - minY) });
+        const [x, y] = [(minX + maxX) / 2, (minY + maxY) / 2];
+        const on = x >= 0 && x <= width && y >= 0 && y <= height;
+        buildings.push({ ring: part[0], h: Math.max(min, f.h ?? DEFAULT_HEIGHT_M), min, area: (maxX - minX) * (maxY - minY), on });
       }
       const d = part.map((r) => 'M' + r.map(([x, y]) => `${x} ${y}`).join('L') + (line ? '' : 'Z')).join('');
       (parts[key] ??= []).push(d);
@@ -209,8 +211,9 @@ export function buildMapLayers(
   const layers: MapLayers = {};
   for (const key of MAP_KEYS) if (parts[key]) layers[key] = parts[key].join('');
   if (buildings.length) {
-    // shortcut: limit 5000 brył, podnieść przy problemach z gęstym centrum
-    buildings.sort((a, b) => b.area - a.area);
+    // Najpierw bryły ze środkiem na płótnie, żeby duże obrysy z zapasu clip ich nie wypierały.
+    // shortcut: limit 5000 brył; przy mocno przesuniętej kamerze widoczny obszar może leżeć poza płótnem, wtedy liczyć `on` wg widoku
+    buildings.sort((a, b) => Number(b.on) - Number(a.on) || b.area - a.area);
     layers.buildings = buildings.slice(0, MAX_BUILDINGS).map(({ ring, h, min }) => ({ ring, h, min }));
   }
   return layers;

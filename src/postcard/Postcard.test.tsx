@@ -371,7 +371,7 @@ describe('Postcard poświata i przyciemnienie mapy', () => {
   });
 });
 
-describe.each(['scifi'] as const)('Postcard World %s', (genre) => {
+describe.each(['scifi', 'bright'] as const)('Postcard World %s', (genre) => {
   const points = fitRoute(hills.map.summary_polyline, ROUTE_BOX)!.points;
   // Ręczna mapa: siatka brył i ulic na płótnie, dekorowana jak w PostcardScreen.
   const buildings = Array.from({ length: 40 }, (_, k) => {
@@ -395,8 +395,8 @@ describe.each(['scifi'] as const)('Postcard World %s', (genre) => {
     props: worldProps(layers, points, 1, genre),
     streams,
   };
-  // Ulica trasy: asfalt 28 px pod trasą.
-  const road = new RegExp(`stroke="${theme.style().colors.major}" stroke-width="28"`);
+  // Ulica trasy pod trasą: asfalt 28 px (Sci-fi), jasna jezdnia 24 px (Bright).
+  const road = new RegExp(`stroke="${theme.style().colors.major}" stroke-width="${genre === 'scifi' ? 28 : 24}"`);
 
   it('2D i 3D: z podpisem OSM, lokalne i unikalne id, bez NaN, pojazdy nad mapą i pod trasą', () => {
     for (const view of ['flat', '3d'] as const) {
@@ -423,8 +423,8 @@ describe.each(['scifi'] as const)('Postcard World %s', (genre) => {
         expect(svg).toContain('transform="matrix(');
         // Auta pod bryłami, statki nad nimi (dwie grupy, gdy są pojazdy).
         if (base.props.length) expect(svg.split('class="world-props"')).toHaveLength(3);
-        // Neon okien i krawędzi w kolorach gatunku.
-        expect(accents.filter((c) => svg.includes(`stroke="${c}"`)).length).toBeGreaterThanOrEqual(3);
+        // Neon okien i krawędzi w kolorach gatunku (Bright bez akcentów).
+        if (accents.length) expect(accents.filter((c) => svg.includes(`stroke="${c}"`)).length).toBeGreaterThanOrEqual(3);
       }
     }
   });
@@ -437,7 +437,7 @@ describe.each(['scifi'] as const)('Postcard World %s', (genre) => {
   });
 });
 
-describe('Postcard World fantasy', () => {
+describe.each(['fantasy', 'postapo'] as const)('Postcard World %s', (genre) => {
   const points = fitRoute(hills.map.summary_polyline, ROUTE_BOX)!.points;
   // Ręczna mapa: gęsta siatka małych domków, kilka dużych brył, las, pole i duże jezioro pod trasą.
   const ring = (x: number, y: number, w: number, h: number): [number, number][] => [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
@@ -454,8 +454,8 @@ describe('Postcard World fantasy', () => {
     building: buildings.map((b) => `M${b.ring.join('L')}Z`).join(''),
     buildings,
   };
-  const decorated = decorateWorld(layers, points, 1, 'fantasy');
-  const base = { activity: hills, background: 'map' as const, map: decorated, theme: GENRES.fantasy.theme, streams };
+  const decorated = decorateWorld(layers, points, 1, genre);
+  const base = { activity: hills, background: 'map' as const, map: decorated, theme: GENRES[genre].theme, streams };
   const check = (svg: string) => {
     expect(svg).toContain(MAP_ATTRIBUTION);
     for (const [, ref] of svg.matchAll(/url\(#([\w-]+)\)/g)) expect(svg, `#${ref}`).toContain(`id="${ref}"`);
@@ -465,7 +465,7 @@ describe('Postcard World fantasy', () => {
     return ids;
   };
 
-  it('płasko: wzory, ramka, domki do 150, trasa z filtrem, nowe id z prefiksem', () => {
+  it.runIf(genre === 'fantasy')('płasko: wzory, ramka, domki do 150, trasa z filtrem, nowe id z prefiksem', () => {
     const svg = renderToStaticMarkup(<Postcard {...base} view="flat" />);
     const ids = check(svg);
     for (const id of ['world-fantasy-trees', 'world-fantasy-waves', 'world-fantasy-field', 'world-fantasy-meadow', 'world-fantasy-route'])
@@ -481,6 +481,20 @@ describe('Postcard World fantasy', () => {
     // Obrysy brył nie są rysowane, tylko domki.
     expect(svg).not.toContain(decorated.buildings![0].ring.map(([x, y]) => `${x} ${y}`).join('L'));
     expect(svg).toMatch(/fill="#7a4a26"/); // statek na jeziorze
+  });
+
+  it.runIf(genre === 'postapo')('płasko: id z prefiksem, trasa z filtrem, ramka, ruiny 20–150 bez obrysów brył, bez statków', () => {
+    const svg = renderToStaticMarkup(<Postcard {...base} view="flat" />);
+    const ids = check(svg);
+    for (const id of ids.filter((i) => i.startsWith('world-'))) expect(id).toMatch(/^world-postapo-/);
+    expect(svg).toContain('filter="url(#world-postapo-route)"');
+    expect(svg).toContain('width="1064" height="1904"'); // ramka
+    const walls = [...svg.matchAll(/<path d="([^"]+)" fill="(#[0-9a-f]{6})"/g)].filter(([, , c]) => GENRES.postapo.accents.includes(c));
+    const ruins = walls.reduce((n, [, d]) => n + d.split('M').length - 1, 0);
+    expect(ruins).toBeGreaterThan(20);
+    expect(ruins).toBeLessThanOrEqual(150);
+    expect(svg).not.toContain(decorated.buildings![0].ring.map(([x, y]) => `${x} ${y}`).join('L'));
+    expect(svg).not.toMatch(/fill="#7a4a26"/); // bez statków
   });
 
   it('refined bez zdublowanych id; 3D się renderuje', () => {
