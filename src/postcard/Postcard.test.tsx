@@ -56,16 +56,20 @@ describe('Postcard 3D', () => {
     expect(svg).not.toContain('elevation ×');
   });
 
-  it('draft (podgląd): w 3D płaskie obrysy zamiast brył; bez draft bryły i podłoga bez obrysów', () => {
+  it('draft (podgląd): bez budynków i ścieżek (ani brył, ani obrysów); bez draft bryły 3D', () => {
     const ring: [number, number][] = [[400, 800], [460, 800], [460, 860], [400, 860]];
-    const layers = { ...LAYERS, building: 'M400 800H460V860H400Z', buildings: [{ ring, h: 20, min: 0 }] };
+    const layers = { ...LAYERS, building: 'M400 800H460V860H400Z', path: 'M1 2L3 4', buildings: [{ ring, h: 20, min: 0 }] };
     const base = { activity: hills, background: 'map' as const, map: layers, theme: 'dark' as const, streams, view: '3d' as const };
     const full = renderToStaticMarkup(<Postcard {...base} />);
     const draft = renderToStaticMarkup(<Postcard {...base} draft />);
     expect(full).not.toContain('M400 800H460V860H400Z');
-    expect(draft).toContain('M400 800H460V860H400Z');
+    expect(draft).not.toContain('M400 800H460V860H400Z');
+    expect(draft).not.toContain('M1 2L3 4');
+    expect(full).toContain('M1 2L3 4');
     expect(draft.length).toBeLessThan(full.length);
-    expect(renderToStaticMarkup(<Postcard {...base} view="flat" draft />)).toBe(renderToStaticMarkup(<Postcard {...base} view="flat" />));
+    const flat = renderToStaticMarkup(<Postcard {...base} view="flat" />);
+    expect(flat).toContain('M400 800H460V860H400Z');
+    expect(renderToStaticMarkup(<Postcard {...base} view="flat" draft />)).not.toContain('M400 800H460V860H400Z');
   });
 
   it('part: base ma mapę bez trasy i statystyk, top trasę i statystyki bez mapy (płasko i 3D)', () => {

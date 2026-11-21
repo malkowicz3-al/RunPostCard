@@ -772,7 +772,7 @@ export function PostcardScreen({
               )}
               {fit && (
                 <p className="panel-hint">
-                  Drag, scroll or pinch to move and zoom.{!rotLocked && ' Twist or Shift+scroll to rotate.'}
+                  Drag, scroll or pinch to move and zoom.{!rotLocked && ' Twist or Shift+scroll to rotate.'} The preview is simplified: the download has every building.
                 </p>
               )}
           </section>

@@ -85,7 +85,7 @@ export function Postcard({
   glow?: number; // poświata trasy 0..100; 0 = bez filtra
   mapDim?: number; // przyciemnienie mapy pod trasą 0..100; 0 = bez prostokąta
   props?: Prop[]; // pojazdy świata World: nad mapą i bryłami, pod trasą
-  draft?: boolean; // podgląd na ekranie: w 3D bez brył (płaskie obrysy), żeby kadrowanie było płynne; eksport rysuje pełne
+  draft?: boolean; // podgląd na ekranie: bez budynków, ścieżek i pojazdów (płynne kadrowanie); eksport rysuje pełną mapę
   part?: 'base' | 'top'; // wideo: 'base' = tło i mapa (stałe, rysowane raz), 'top' = reszta nad nim (trasa, osoba, statystyki); brak = całość
 }) {
   // Jedna projekcja dla mapy i trasy („scena”).
@@ -99,11 +99,14 @@ export function Postcard({
   const showTop = part !== 'base';
   const showMap = background === 'map' && !!fit && !!map;
   const solid = !!iso && !draft;
+  // Podgląd (draft): bez budynków (i ozdób World z nich), ścieżek i pojazdów, żeby kadrowanie było płynne także na telefonie.
   // W 3D z bryłami podłoga bez płaskich budynków.
-  const floor = (l: MapLayers): MapLayers => (solid && l.buildings ? { ...l, building: undefined } : l);
+  const floor = (l: MapLayers): MapLayers =>
+    draft ? { ...l, building: undefined, buildings: undefined, path: undefined } : solid && l.buildings ? { ...l, building: undefined } : l;
+  const vehicles = draft ? undefined : props;
   // Mapa i jej fragment w useMemo: w klatkach animacji zmienia się tylko trasa i liczby, ciężka mapa zostaje tym samym elementem.
   const themeDef = typeof theme === 'string' ? THEMES[theme] : theme;
-  const out = useMemo(() => (showMap ? themeDef.render(floor(map!), { accent, font }) : null), [showMap, themeDef, map, solid, accent, font]);
+  const out = useMemo(() => (showMap ? themeDef.render(floor(map!), { accent, font }) : null), [showMap, themeDef, map, solid, draft, accent, font]);
   const style = useMemo(() => themeDef.style({ accent }), [themeDef, accent]);
   const relief = out ? terrain : undefined;
   // Bryły ze środkiem w ostrzejszym fragmencie biorą obrysy z niego, pozostałe z mapy bazowej.
@@ -151,7 +154,7 @@ export function Postcard({
           </g>
         </>
       ),
-    [out, refined, style, solid, themeDef],
+    [out, refined, style, solid, draft, themeDef],
   );
 
   const behind = background === 'photo' && !!photo && !!person;
@@ -301,7 +304,7 @@ export function Postcard({
                 {refinedMap}
               </g>
             )}
-            {out && !relief && props && <Props props={props} matrix={iso.matrix} layer="ground" />}
+            {out && !relief && vehicles && <Props props={vehicles} matrix={iso.matrix} layer="ground" />}
             {out && !relief && buildings && (
               <Buildings3D
                 buildings={buildings}
@@ -314,7 +317,7 @@ export function Postcard({
                 accent={style.colors.mid}
               />
             )}
-            {out && !relief && props && <Props props={props} matrix={iso.matrix} layer="sky" />}
+            {out && !relief && vehicles && <Props props={vehicles} matrix={iso.matrix} layer="sky" />}
           </g>
           {/* Faktura papieru w przestrzeni płótna (jak w widoku płaskim), nie na pochylonej i powiększanej podłodze. */}
           {out?.overlay}
@@ -333,7 +336,7 @@ export function Postcard({
             {out?.scene}
             {refinedMap}
             {relief && terrainImage(relief)}
-            {out && props && <Props props={props} />}
+            {out && vehicles && <Props props={vehicles} />}
           </g>
           {out?.overlay}
           {out && mapDim > 0 && <rect width={1080} height={1920} fill="#000" opacity={mapDim / 100} />}

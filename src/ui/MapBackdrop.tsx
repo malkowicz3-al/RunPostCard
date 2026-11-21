@@ -85,8 +85,13 @@ export function MapBackdrop({
   }, [viewBox, settled, iso]);
   // 3D z terenem: podłogi wektorowej nie ma, więc nie pobieramy jej.
   const { refined: tiles } = useRegionLayers(projection, region, profile, !(iso && terrain), loadArea);
+  // Tło to tylko podgląd: bez budynków i ścieżek, jak pocztówka w trybie draft.
   const refined = useMemo(
-    () => (world && points && tiles ? { rect: tiles.rect, layers: decorateWorld(tiles.layers, points, world.seed, world.genre, world.variant) } : tiles),
+    () => {
+      if (!tiles) return tiles;
+      const layers = world && points ? decorateWorld(tiles.layers, points, world.seed, world.genre, world.variant) : tiles.layers;
+      return { rect: tiles.rect, layers: { ...layers, building: undefined, buildings: undefined, path: undefined } };
+    },
     [tiles, world?.seed, world?.genre, world?.variant, points],
   );
 
@@ -170,7 +175,7 @@ export function MapBackdrop({
         ) : iso ? (
           <>
             <g transform={`matrix(${iso.matrix.join(' ')})`}>
-              {/* Tło to tylko podgląd: budynki płasko, bez brył (płynny obrót i przesuwanie). */}
+              {/* Tło to tylko podgląd: bez budynków i brył (płynny obrót i przesuwanie). */}
               {refined && <MapBackground layers={refined.layers} style={style} rect={refined.rect} />}
             </g>
             <IsoRoute iso={iso} flat={routeStyle.stroke} dash={routeStyle.dash} zoom={camera.zoom} gradientId="backdrop-curtain-grad" color={color} />
