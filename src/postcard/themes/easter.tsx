@@ -1,7 +1,8 @@
-import type { MapStyle } from '../postcard/mapStyle';
+import type { MapStyle } from '../mapStyle';
 import { holidayTheme, DASHES, WIDTHS, dot, oval, paint } from './holiday';
-import { poly } from './geom';
-import type { Pt } from './grid';
+import { poly } from '../../world/geom';
+import type { Pt } from '../../world/grid';
+import { hashSeed } from '../../world/rng';
 
 const INK = '#6a4a7a';
 const EGGS = ['#f4a6c0', '#a8d8f0', '#ffd27a', '#c9b3ec'];
@@ -28,11 +29,12 @@ const STYLE: MapStyle = {
     bridge: '#ffffff',
     minor: '#ffffff',
     mid: '#fff9e0',
-    major: '#ffffff', // ulica trasy rysowana osobno
+    major: '#ffffff',
+    
   },
   widths: WIDTHS,
   dashes: DASHES,
-  fills: { green: 'url(#world-easter-eggs)', sport: 'url(#world-easter-tulips)' },
+  fills: { green: 'url(#easter-eggs)', sport: 'url(#easter-tulips)' },
   outlines: { water: '#7fb8cf', building: '#d9b8a6' },
   buildings3d: 'gabled',
 };
@@ -69,7 +71,7 @@ export const easter = holidayTheme({
   mark: 'black',
   defs: (
     <>
-      <pattern id="world-easter-eggs" patternUnits="userSpaceOnUse" width={80} height={80}>
+      <pattern id="easter-eggs" patternUnits="userSpaceOnUse" width={80} height={80}>
         <rect width={80} height={80} fill={STYLE.colors.green} />
         <path d="M8 30l2 -6M12 30v-7M16 30l-2 -6M48 70l2 -6M52 70v-7M56 70l-2 -6" stroke={STEM} strokeWidth={1.4} strokeLinecap="round" />
         <g stroke={INK} strokeWidth={1}>
@@ -78,7 +80,7 @@ export const easter = holidayTheme({
           <path d={oval(22, 58, 8, 11)} fill={EGGS[2]} />
         </g>
       </pattern>
-      <pattern id="world-easter-tulips" patternUnits="userSpaceOnUse" width={64} height={64}>
+      <pattern id="easter-tulips" patternUnits="userSpaceOnUse" width={64} height={64}>
         <rect width={64} height={64} fill={STYLE.colors.sport} />
         <path d={stem(14, 20, 6) + stem(44, 46, 6)} fill="none" stroke={STEM} strokeWidth={2} strokeLinecap="round" />
         <path d={cup(14, 20, 6)} fill="#ef5f8a" />
@@ -91,7 +93,7 @@ export const easter = holidayTheme({
     const bunnies = marks.filter((_, i) => i % 2 === 1);
     return (
       <>
-        {paint(houses.map((h) => [h.roof, poly(ROOF, h.x, h.y)]), ink)}
+        {paint(houses.map((h) => [EGGS[hashSeed('roof', h.x, h.y) % EGGS.length], poly(ROOF, h.x, h.y)]), ink)}
         {marks.map(([x, y], i) => i % 2 === 0 && <Egg key={`${x}:${y}`} x={x} y={y} rx={32} ry={42} color={EGGS[(i / 2) % 4]} outline={2} />)}
         {bunnies.length > 0 && (
           <>

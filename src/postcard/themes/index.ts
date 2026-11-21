@@ -53,6 +53,10 @@ import { kartrace } from './kartrace';
 import { cyberhud } from './cyberhud';
 import { overworld } from './overworld';
 import { pinball } from './pinball';
+import { christmas } from './christmas';
+import { newyear } from './newyear';
+import { easter } from './easter';
+import { valentine } from './valentine';
 
 // Motywy map na pocztówce: tylko stylistyka (ADR 0005). Nowy motyw = plik w themes/ + wpis w THEMES.
 export type ThemeId =
@@ -103,7 +107,11 @@ export type ThemeId =
   | 'kartrace'
   | 'cyberhud'
   | 'overworld'
-  | 'pinball';
+  | 'pinball'
+  | 'christmas'
+  | 'newyear'
+  | 'easter'
+  | 'valentine';
 
 export type ThemeOutput = {
   scene: ReactNode; // pod trasą: <defs>, tło, warstwy mapy
@@ -128,5 +136,5 @@ export const THEMES: Record<ThemeId, MapTheme> = {
   dark, light, neon, ocean, forest, sunset, mint, mono, slate, sand, plum, rose, coal, arctic, lava, olive, midnight, candy,
   blueprint, pencil, watercolor, vintage, riso, chalk, halftone, synthwave, terminal, ink,
   digitalrain, lightgrid, galaxy, dune, redfog, spellbook, popcomic, bricks, arcademaze, dollhouse,
-  handheld, vectorarcade, dungeon, spaceshooter, voxel, nightvision, kartrace, cyberhud, overworld, pinball,
+  handheld, vectorarcade, dungeon, spaceshooter, voxel, nightvision, kartrace, cyberhud, overworld, pinball, christmas, newyear, easter, valentine,
 };

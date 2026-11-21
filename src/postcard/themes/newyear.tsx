@@ -1,7 +1,7 @@
-import type { MapStyle } from '../postcard/mapStyle';
-import { Overlay } from '../postcard/themes/texture';
-import { poly } from './geom';
-import type { Pt } from './grid';
+import type { MapStyle } from '../mapStyle';
+import { Overlay } from './texture';
+import { poly } from '../../world/geom';
+import type { Pt } from '../../world/grid';
 import { DASHES, WIDTHS, dot, holidayTheme, paint, rays } from './holiday';
 
 const CHAMPAGNE = '#fff1c4';
@@ -28,7 +28,8 @@ const STYLE: MapStyle = {
     bridge: '#4a5aa0',
     minor: '#2b3870',
     mid: '#3b4a8c',
-    major: '#48589e', // ulica trasy rysowana osobno
+    major: '#48589e',
+    
   },
   widths: WIDTHS,
   dashes: DASHES,
@@ -52,7 +53,7 @@ export const newyear = holidayTheme({
   text: CHAMPAGNE,
   mark: 'white',
   defs: (
-    <pattern id="world-newyear-confetti" patternUnits="userSpaceOnUse" width={160} height={160}>
+    <pattern id="newyear-confetti" patternUnits="userSpaceOnUse" width={160} height={160}>
       <g opacity={0.85}>
         <path d={poly([[-3, -1.5], [3, -1.5], [3, 1.5], [-3, 1.5]], 24, 30, 30) + poly([[-3, -1.5], [3, -1.5], [3, 1.5], [-3, 1.5]], 120, 110, -40)} fill={FIRE[0]} />
         <path d={poly([[-3, -1.5], [3, -1.5], [3, 1.5], [-3, 1.5]], 80, 60, 70) + dot(140, 20, 2)} fill={FIRE[1]} />
@@ -77,7 +78,7 @@ export const newyear = holidayTheme({
   },
   overlay: ([ax, ay], [bx, by]) => (
     <>
-      <Overlay fill="url(#world-newyear-confetti)" />
+      <Overlay fill="url(#newyear-confetti)" />
       {paint(
         [
           [FIRE[0], burst(ax, ay - 12, 54)],

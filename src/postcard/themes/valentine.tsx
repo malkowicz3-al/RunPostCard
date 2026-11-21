@@ -1,4 +1,4 @@
-import type { MapStyle } from '../postcard/mapStyle';
+import type { MapStyle } from '../mapStyle';
 import { DASHES, WIDTHS, holidayTheme, paint, r1 } from './holiday';
 
 const INK = '#7a0f2a';
@@ -25,11 +25,11 @@ const STYLE: MapStyle = {
     bridge: '#ffffff',
     minor: '#ffffff',
     mid: '#fff4f7',
-    major: '#f7b9cb', // ulica trasy rysowana osobno; różowa, żeby biały kontur trasy był widoczny
+    major: '#f7b9cb', // różowa, żeby biały kontur trasy był widoczny
   },
   widths: WIDTHS,
   dashes: DASHES,
-  fills: { green: 'url(#world-valentine-hearts)' },
+  fills: { green: 'url(#valentine-hearts)' },
   outlines: { water: '#c97a98', building: '#c2556f' },
   buildings3d: 'gabled',
 };
@@ -50,7 +50,7 @@ export const valentine = holidayTheme({
   text: INK,
   mark: 'black',
   defs: (
-    <pattern id="world-valentine-hearts" patternUnits="userSpaceOnUse" width={64} height={64}>
+    <pattern id="valentine-hearts" patternUnits="userSpaceOnUse" width={64} height={64}>
       <rect width={64} height={64} fill={STYLE.colors.green} />
       <path d={heart(16, 18, 12) + heart(46, 46, 10)} fill="#e86a8a" />
     </pattern>

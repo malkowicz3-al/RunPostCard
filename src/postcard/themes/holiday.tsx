@@ -1,22 +1,21 @@
-import { MapBackground } from '../postcard/MapBackground';
-import type { MapStyle } from '../postcard/mapStyle';
+import { MapBackground } from '../MapBackground';
+import type { MapStyle } from '../mapStyle';
 import type { ReactNode, SVGProps } from 'react';
-import type { FontId } from '../lib/fonts';
-import type { Rect } from '../lib/mapTiles';
-import type { MapLayers } from '../lib/vectorMap';
-import type { MapTheme } from '../postcard/themes';
-import type { StravaMarkVariant } from '../postcard/StravaMark';
-import { Outline } from '../postcard/themes/texture';
-import { parseLines } from './geom';
-import type { Pt } from './grid';
-import { center, corners, houseIcons, keepOutDist, landmarks, type House } from './icons';
+import type { FontId } from '../../lib/fonts';
+import type { Rect } from '../../lib/mapTiles';
+import type { MapLayers } from '../../lib/vectorMap';
+import type { MapTheme } from './index';
+import type { StravaMarkVariant } from '../StravaMark';
+import { Outline } from './texture';
+import type { Pt } from '../../world/grid';
+import { CORNERS, center, houseIcons, keepOutDist, landmarks, type House } from '../../world/icons';
 
-// Wspólny szkielet stylów świątecznych (Christmas, New Year, Easter, Valentine): mapa jak w Bright (ulice z obrzeżem,
-// ulica trasy najszersza), na niej statyczne ozdoby przy domkach i punktach orientacyjnych (houseIcons/landmarks
-// z ./icons), rysunki w górnych rogach w nakładce. Ozdoby tylko płasko: Postcard w 3D usuwa warstwę building.
-export const WIDTHS: MapStyle['widths'] = { water: 3, building: 1.2, waterway: 3, path: 1.2, minor: 4, mid: 7, major: 24, rail: 1.6, tunnel: 1.4, bridge: 5, runway: 6 };
+// Wspólny szkielet motywów świątecznych (Christmas, New Year, Easter, Valentine; motywy Map, bez decorateWorld): ulice
+// z obrzeżem (major to zwykłe główne ulice), na niej statyczne ozdoby przy domkach i punktach orientacyjnych
+// (houseIcons/landmarks z world/icons), rysunki w stałych górnych rogach (CORNERS) w nakładce. Ozdoby tylko płasko: Postcard w 3D usuwa warstwę building.
+export const WIDTHS: MapStyle['widths'] = { water: 3, building: 1.2, waterway: 3, path: 1.2, minor: 4, mid: 7, major: 11, rail: 1.6, tunnel: 1.4, bridge: 5, runway: 6 };
 export const DASHES: MapStyle['dashes'] = { path: '2 4', rail: '8 5', tunnel: '4 4' };
-const CASINGS = [['minor', 6], ['mid', 10], ['major', 30]] as const;
+const CASINGS = [['minor', 6], ['mid', 10], ['major', 15]] as const;
 
 export type Spots = { houses: House[]; marks: Pt[] };
 export type HolidaySpec = {
@@ -28,7 +27,7 @@ export type HolidaySpec = {
   route: { stroke: string; outline: string };
   text: string;
   mark: StravaMarkVariant;
-  defs?: ReactNode; // wzory i filtry z id world-<id>-…
+  defs?: ReactNode; // wzory i filtry z id <id>-…
   decor: (spots: Spots) => ReactNode;
   overlay: (first: Pt, second: Pt) => ReactNode; // first: rysunek w rogu COMPASS_BOX, second: SERPENT_BOX (./icons)
 };
@@ -73,7 +72,7 @@ export function holidayTheme(spec: HolidaySpec): MapTheme {
           {CASINGS.map(([k, w]) => layers[k] && <path key={`c${k}`} d={layers[k]} stroke={spec.casing} strokeWidth={w} />)}
           {CASINGS.map(([k]) => layers[k] && <path key={k} d={layers[k]} stroke={style.colors[k]} strokeWidth={style.widths[k]} />)}
         </g>
-        {(houses.length > 0 || marks.length > 0) && <g className="world-decor">{spec.decor({ houses, marks })}</g>}
+        {(houses.length > 0 || marks.length > 0) && <g className="holiday-decor">{spec.decor({ houses, marks })}</g>}
       </>
     );
   };
@@ -83,19 +82,19 @@ export function holidayTheme(spec: HolidaySpec): MapTheme {
     style: () => style,
     floor,
     render: (layers) => {
-      const [first, second] = corners(parseLines(layers.major)[0] ?? []);
+      const [first, second] = CORNERS;
       return {
         scene: (
           <>
             <defs>
-              <Outline id={`world-${id}-route`} color={spec.route.outline} radius={4} />
+              <Outline id={`${id}-route`} color={spec.route.outline} radius={4} />
               {spec.defs}
             </defs>
             {floor(layers)}
           </>
         ),
         overlay: spec.overlay(first, second),
-        route: { stroke: spec.route.stroke, width: 16, filter: `url(#world-${id}-route)` },
+        route: { stroke: spec.route.stroke, width: 16, filter: `url(#${id}-route)` },
         text: { color: spec.text },
         mark: spec.mark,
       };

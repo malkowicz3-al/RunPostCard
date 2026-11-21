@@ -234,7 +234,7 @@ export const medieval: MapTheme = {
               <rect width={40} height={24} fill={STYLE.colors.water} />
               <path d="M4 8q4 -3 8 0t8 0M22 19q4 -3 8 0t8 0" fill="none" stroke="#4c6372" strokeWidth={1.2} strokeLinecap="round" />
             </pattern>
-            <Outline id="world-medieval-route" color={INK} radius={2.5} />
+            <Outline id="world-medieval-route" color="#f3e6c4" radius={3.5} />
             <Vignette id="world-medieval-vignette" color={INK} opacity={0.35} />
           </defs>
           {floor(layers)}
@@ -250,7 +250,7 @@ export const medieval: MapTheme = {
           <Ribbon at={ribbon} />
         </>
       ),
-      route: { stroke: '#7a2a1a', width: 14, filter: 'url(#world-medieval-route)' },
+      route: { stroke: '#16286e', width: 16, filter: 'url(#world-medieval-route)' },
       text: { color: INK },
       mark: 'black',
     };
